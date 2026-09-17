@@ -20,14 +20,23 @@ async function main() {
     const read = (path: string) => fetch(base + path, { headers: { cookie }, redirect: "manual" });
     await sql`insert into clients(id,name,phone,origin,assigned_to) values(${owned},${"OWNED-"+owned},'11999999999','test',${id}),(${other},${"OTHER-"+other},'11999999998','test',null)`;
     await sql`insert into deals(id,client_id,stage_id,title,position) select ${dealId},${other},id,'Synthetic restricted deal',1000 from stages order by position limit 1`;
-    assert.equal((await read("/painel/configuracoes")).status, 404, "team accessed admin settings");
-    assert.equal((await read("/painel/imoveis")).status, 404, "blocked module was accessible");
+    const settingsResponse = await read("/painel/configuracoes");
+    const settingsHtml = await settingsResponse.text();
+    // Streaming responses may send HTTP 200 before Next.js emits notFound().
+    assert.ok(settingsResponse.status === 404 || settingsHtml.includes("NEXT_HTTP_ERROR_FALLBACK;404"), "team accessed admin settings");
+    assert.ok(!settingsHtml.includes("Criar conta pendente"), "protected admin form leaked");
+    const moduleResponse = await read("/painel/imoveis");
+    const moduleHtml = await moduleResponse.text();
+    assert.ok(moduleResponse.status === 404 || moduleHtml.includes("NEXT_HTTP_ERROR_FALLBACK;404"), "blocked module was accessible");
     const all = await (await read("/painel/clientes")).text();
     assert.ok(all.includes("OTHER-"+other) && all.includes("OWNED-"+owned), "all scope failed");
     await sql`update users set access='{"modules":["clientes","crm"],"clients":"own"}'::jsonb where id=${id}`;
     const scoped = await (await read("/painel/clientes")).text();
     assert.ok(scoped.includes("OWNED-"+owned) && !scoped.includes("OTHER-"+other), "own scope leaked another client");
-    assert.equal((await read("/painel/crm/"+dealId)).status, 404, "direct deal URL leaked another client");
+    const dealResponse = await read("/painel/crm/"+dealId);
+    const dealHtml = await dealResponse.text();
+    assert.ok(dealResponse.status === 404 || dealHtml.includes("NEXT_HTTP_ERROR_FALLBACK;404"), "direct deal URL leaked another client");
+    assert.ok(!dealHtml.includes("Synthetic restricted deal"), "restricted deal content leaked");
     await sql`update users set active=false where id=${id}`;
     const blocked = await read("/painel/clientes");
     assert.ok(blocked.status === 307 || (await blocked.text()).includes('NEXT_REDIRECT'), "disabled account retained access");

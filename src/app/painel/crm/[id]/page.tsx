@@ -5,7 +5,9 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { EmptyState, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 import { getDb } from "@/db";
-import { activities, clients, deals, stages } from "@/db/schema";
+import { activities, clients, deals, stages, dealProperties } from "@/db/schema";
+import { DealEditor } from "@/components/deal-editor";
+import { dealChoices } from "../actions";
 import { clientScope, requireModule } from "@/lib/access";
 import { formatMoney } from "@/lib/format";
 
@@ -23,6 +25,9 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
     .where(and(eq(deals.id, id), clientScope(user)))
     .limit(1);
   if (!deal) notFound();
+  const [record] = await db.select().from(deals).where(eq(deals.id,id));
+  const choices=await dealChoices();
+  const linked=await db.select({id:dealProperties.propertyId}).from(dealProperties).where(eq(dealProperties.dealId,id));
 
   const timeline = await db
     .select({ id: activities.id, description: activities.description, occurredAt: activities.occurredAt })
@@ -41,6 +46,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
         action={<StatusBadge value={deal.stage} />}
       />
 
+      <SectionCard title="Gerenciar oportunidade" description="Etapa, responsável pelo cliente, próxima ação, imóveis e notas."><DealEditor choices={choices} initial={{id,clientId:record.clientId,title:record.title,stageId:record.stageId,amount:record.estimatedValueCents===null?"":String(record.estimatedValueCents/100),nextActionAt:record.nextActionAt?.toISOString()||"",lostReason:record.lostReason||""}} selected={linked.map(p=>p.id)}/></SectionCard>
       <div className="deal-detail-grid">
         <SectionCard title="Contato e oportunidade" description="Dados usados durante o atendimento comercial.">
           <dl className="detail-list">

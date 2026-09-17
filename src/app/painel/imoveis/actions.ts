@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { properties, activityLogs } from "@/db/schema";
+import { properties, activityLogs, owners, propertyOwners } from "@/db/schema";
+import { listInput } from "@/lib/client-input";
 import { requireModule } from "@/lib/access";
 import { propertyInput } from "@/lib/property-input";
 
@@ -17,15 +18,23 @@ export async function saveProperty(_previous: { error: string }, formData: FormD
   if (rawId && !z.uuid().safeParse(rawId).success) return { error: "Identificador inválido." };
   const id = typeof rawId === "string" && rawId ? rawId : randomUUID();
   const p = parsed.data;
+  const ownerInput=z.object({ownerId:z.union([z.uuid(),z.literal("")]),ownerName:z.string().trim().max(160),ownerPhone:z.string().trim().max(30),ownerEmail:z.union([z.email(),z.literal("")]),features:listInput}).safeParse({ownerId:formData.get("ownerId")||"",ownerName:formData.get("ownerName")||"",ownerPhone:formData.get("ownerPhone")||"",ownerEmail:formData.get("ownerEmail")||"",features:formData.get("features")||""});
+  if(!ownerInput.success)return {error:"Revise os dados do proprietário e características."};
+  const owner=ownerInput.data;
+  if(!owner.ownerId&&owner.ownerName&&owner.ownerName.length<2)return {error:"Informe o nome completo do proprietário."};
   const values = { code: p.code, title: p.title, slug: p.slug, type: p.type, priceCents: p.price, city: p.city, state: p.state, neighborhood: p.neighborhood, addressPrivate: p.address, description: p.description, bedrooms: p.bedrooms, bathrooms: p.bathrooms, parkingSpaces: p.parking, privateArea: p.area.toFixed(2), status: p.status, publishedAt: p.status === "disponivel" ? new Date() : null, updatedAt: new Date() };
   try {
     const db = getDb();
+    if(owner.ownerId){const [found]=await db.select({id:owners.id}).from(owners).where(eq(owners.id,owner.ownerId));if(!found)return {error:"Proprietário indisponível."};}
+    if(rawId){const [found]=await db.select({id:properties.id}).from(properties).where(and(eq(properties.id,id),ne(properties.status,"vendido")));if(!found)return {error:"Imóvel indisponível ou vendido."};}
+    const ownerId=owner.ownerId||(owner.ownerName?randomUUID():null);
+    const ownerQueries=[...(!owner.ownerId&&ownerId?[db.insert(owners).values({id:ownerId,name:owner.ownerName,phone:owner.ownerPhone,email:owner.ownerEmail||null})]:[]),...(ownerId?[db.insert(propertyOwners).values({propertyId:id,ownerId}).onConflictDoNothing()]:[])];
     if (rawId) {
-      const result = await db.update(properties).set(values).where(and(eq(properties.id, id), ne(properties.status, "vendido"))).returning({ id: properties.id });
-      if (!result.length) return { error: "Imóvel não encontrado ou já vendido. A venda deve ser tratada pelo fluxo comercial." };
+      await db.batch([db.update(properties).set({...values,features:owner.features}).where(and(eq(properties.id,id),ne(properties.status,"vendido"))),...ownerQueries,db.insert(activityLogs).values({userId:user.id,entityType:"property",entityId:id,action:"updated"})]);
     } else {
       await db.batch([
-        db.insert(properties).values({ id, ...values }),
+        db.insert(properties).values({ id, ...values, features:owner.features }),
+        ...ownerQueries,
         db.insert(activityLogs).values({ userId: user.id, entityType: "property", entityId: id, action: "create", details: { code: p.code } }),
       ]);
     }
