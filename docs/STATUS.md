@@ -8,6 +8,9 @@
 - Projeção pública explícita: endereço privado, comissão e coordenadas exatas não são serializados.
 - Criação atômica de cliente, negócio, vínculo ao imóvel e atividade no recebimento de um lead.
 - CRM com dados reais e página de consulta do contato/histórico, sem cartões fictícios.
+- Painel administrativo reformulado com navegação responsiva, estados vazios, tabelas operacionais, formulário de imóveis por seções e feedback visual consistente.
+- Dashboard ligado a métricas reais do Neon: clientes, negócios fechados, visitas, imóveis ativos, propostas, vendas, comissões, conversão, funil e atividade recente.
+- Consultas iniciais de visitas, propostas, proprietários e clientes exibidas em tabelas reais, sem dados demonstrativos.
 - Tratamento de falha de rede e validação de consentimento, telefone, e-mail e identificador.
 - Teste integrado em desenvolvimento com fixtures sintéticas e limpeza restrita ao UUID de cada execução.
 
@@ -15,8 +18,8 @@
 
 - Upload/galeria e documentos privados no Neon Object Storage (beta aceita pelo usuário; serviço ainda não provisionado).
 - Movimentação e edição de negócios, notas, perda/ganho, cadastro manual de clientes e preferências.
-- Fluxos de visitas, propostas, vendas, comissões e proprietários.
-- Dashboard completo e relatórios; revisar todos os números antes de lançamento.
+- Criação e edição dos fluxos de visitas, propostas, vendas, comissões e proprietários; as consultas já estão disponíveis.
+- Relatórios avançados, filtros por período e exportações; os indicadores operacionais básicos já usam dados reais.
 - Recuperação de senha, convite por e-mail, permissões por campo/operação e trilha completa de auditoria.
 - Alertas de busca, formulário geral de contato, lembretes e canais de envio.
 - Paginação do catálogo/CRM: atualmente limitados aos 200 registros mais recentes.

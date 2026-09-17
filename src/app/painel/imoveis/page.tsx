@@ -1,8 +1,16 @@
-import { requireModule } from "@/lib/access";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Building2, ChevronRight, Plus } from "lucide-react";
+import { desc } from "drizzle-orm";
+import { requireModule } from "@/lib/access";
 import { getDb } from "@/db";
 import { properties } from "@/db/schema";
-import { desc } from "drizzle-orm";
 import { formatMoney } from "@/lib/format";
-export default async function AdminPropertiesPage(){await requireModule("imoveis");const rows=await getDb().select({id:properties.id,code:properties.code,title:properties.title,status:properties.status,city:properties.city,price:properties.priceCents,updatedAt:properties.updatedAt}).from(properties).orderBy(desc(properties.updatedAt)).limit(50);return <div className="admin-content"><div className="admin-page-title"><div><span>Portfólio</span><h1>Imóveis</h1></div><Link className="admin-primary" href="/painel/imoveis/novo"><Plus/> Novo imóvel</Link></div><section className="admin-card table-card"><table><thead><tr><th>Código</th><th>Imóvel</th><th>Cidade</th><th>Valor</th><th>Status</th><th>Atualizado</th></tr></thead><tbody>{rows.map((p)=><tr key={p.id}><td><strong>{p.code}</strong></td><td><Link href={`/painel/imoveis/${p.id}`}>{p.title}</Link></td><td>{p.city}</td><td>{formatMoney(p.price)}</td><td><span className={`status ${p.status}`}>{p.status}</span></td><td>{new Intl.DateTimeFormat("pt-BR").format(p.updatedAt)}</td></tr>)}</tbody></table>{!rows.length&&<div className="table-empty">Nenhum imóvel cadastrado.</div>}</section></div>}
+import { EmptyState, PageHeader, StatusBadge } from "@/components/admin-ui";
+export default async function AdminPropertiesPage() {
+  await requireModule("imoveis");
+  const rows = await getDb().select({ id: properties.id, code: properties.code, title: properties.title, status: properties.status, city: properties.city, neighborhood: properties.neighborhood, price: properties.priceCents, updatedAt: properties.updatedAt }).from(properties).orderBy(desc(properties.updatedAt)).limit(50);
+  return <div className="admin-content">
+    <PageHeader eyebrow="Portfólio" title="Imóveis" description="Gerencie os imóveis cadastrados e a disponibilidade no site." action={<Link className="admin-button primary" href="/painel/imoveis/novo"><Plus/> Novo imóvel</Link>}/>
+    {rows.length ? <section className="admin-card table-card"><div className="table-toolbar"><div><strong>{rows.length} imóveis</strong><span>Ordenados pela atualização mais recente</span></div></div><div className="table-scroll"><table><thead><tr><th>Imóvel</th><th>Localização</th><th>Valor</th><th>Status</th><th>Atualizado</th><th><span className="sr-only">Abrir</span></th></tr></thead><tbody>{rows.map((p) => <tr key={p.id}><td><Link className="property-cell" href={`/painel/imoveis/${p.id}`}><span className="table-thumb"><Building2/></span><span><strong>{p.title}</strong><small>{p.code}</small></span></Link></td><td>{p.neighborhood}<small>{p.city}</small></td><td><strong>{formatMoney(p.price)}</strong></td><td><StatusBadge value={p.status}/></td><td>{new Intl.DateTimeFormat("pt-BR").format(p.updatedAt)}</td><td><Link className="row-action" href={`/painel/imoveis/${p.id}`} aria-label={`Editar ${p.title}`}><ChevronRight/></Link></td></tr>)}</tbody></table></div></section> : <EmptyState icon={Building2} title="Nenhum imóvel cadastrado" description="Cadastre o primeiro imóvel para iniciar seu portfólio." action={<Link className="admin-button primary" href="/painel/imoveis/novo"><Plus/> Novo imóvel</Link>}/>}
+  </div>;
+}

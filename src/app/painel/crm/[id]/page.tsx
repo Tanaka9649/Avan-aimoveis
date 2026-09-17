@@ -1,28 +1,72 @@
+import { ArrowLeft, Clock3, Mail, Phone, UserRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { EmptyState, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 import { getDb } from "@/db";
 import { activities, clients, deals, stages } from "@/db/schema";
-import { requireModule, clientScope } from "@/lib/access";
+import { clientScope, requireModule } from "@/lib/access";
 import { formatMoney } from "@/lib/format";
 
 export default async function DealPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireModule("crm");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
+
   const db = getDb();
-  const [deal] = await db.select({ title: deals.title, name: clients.name, email: clients.email, phone: clients.phone, value: deals.estimatedValueCents, stage: stages.name })
-    .from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).innerJoin(stages, eq(stages.id, deals.stageId)).where(and(eq(deals.id, id), clientScope(user))).limit(1);
+  const [deal] = await db
+    .select({ title: deals.title, name: clients.name, email: clients.email, phone: clients.phone, value: deals.estimatedValueCents, stage: stages.name })
+    .from(deals)
+    .innerJoin(clients, eq(clients.id, deals.clientId))
+    .innerJoin(stages, eq(stages.id, deals.stageId))
+    .where(and(eq(deals.id, id), clientScope(user)))
+    .limit(1);
   if (!deal) notFound();
-  const timeline = await db.select({ id: activities.id, description: activities.description, occurredAt: activities.occurredAt }).from(activities).where(eq(activities.dealId, id)).orderBy(desc(activities.occurredAt)).limit(100);
-  return <div className="admin-content">
-    <Link href="/painel/crm">← Voltar ao CRM</Link>
-    <div className="admin-page-title"><div><span>{deal.stage}</span><h1>{deal.title}</h1></div></div>
-    <section className="admin-card"><h2>{deal.name}</h2><p>Telefone: {deal.phone}</p><p>E-mail: {deal.email || "Não informado"}</p><p>Valor estimado: {deal.value === null ? "Não informado" : formatMoney(deal.value)}</p></section>
-    <section className="admin-card"><h2>Histórico de atendimento</h2>
-      {!timeline.length && <p>Nenhuma atividade registrada.</p>}
-      {timeline.map((item) => <article key={item.id}><time dateTime={item.occurredAt.toISOString()}>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(item.occurredAt)}</time><p style={{ whiteSpace: "pre-wrap" }}>{item.description}</p></article>)}
-    </section>
-  </div>;
+
+  const timeline = await db
+    .select({ id: activities.id, description: activities.description, occurredAt: activities.occurredAt })
+    .from(activities)
+    .where(eq(activities.dealId, id))
+    .orderBy(desc(activities.occurredAt))
+    .limit(100);
+
+  return (
+    <div className="admin-content">
+      <Link href="/painel/crm" className="back-link"><ArrowLeft /> Voltar ao CRM</Link>
+      <PageHeader
+        eyebrow="Negócio"
+        title={deal.title}
+        description={`Atendimento de ${deal.name}`}
+        action={<StatusBadge value={deal.stage} />}
+      />
+
+      <div className="deal-detail-grid">
+        <SectionCard title="Contato e oportunidade" description="Dados usados durante o atendimento comercial.">
+          <dl className="detail-list">
+            <div><dt><UserRound />Cliente</dt><dd>{deal.name}</dd></div>
+            <div><dt><Phone />Telefone</dt><dd>{deal.phone}</dd></div>
+            <div><dt><Mail />E-mail</dt><dd>{deal.email || "Não informado"}</dd></div>
+            <div><dt>Valor estimado</dt><dd>{deal.value === null ? "Não informado" : formatMoney(deal.value)}</dd></div>
+          </dl>
+        </SectionCard>
+
+        <SectionCard title="Histórico de atendimento" description="Atividades registradas em ordem cronológica.">
+          {timeline.length ? (
+            <div className="deal-timeline">
+              {timeline.map((item) => (
+                <article key={item.id}>
+                  <span><Clock3 /></span>
+                  <div>
+                    <time dateTime={item.occurredAt.toISOString()}>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(item.occurredAt)}</time>
+                    <p>{item.description}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : <EmptyState icon={Clock3} title="Nenhuma atividade registrada" description="O histórico deste negócio aparecerá aqui." />}
+        </SectionCard>
+      </div>
+    </div>
+  );
 }
