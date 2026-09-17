@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import { Plus, type LucideIcon } from "lucide-react";
 
 export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: React.ReactNode }) {
   return <header className="page-header">
@@ -7,8 +7,8 @@ export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: 
   </header>;
 }
 
-export function MetricCard({ label, value, helper, icon: Icon, tone = "blue" }: { label: string; value: string; helper: string; icon: LucideIcon; tone?: "blue" | "green" | "amber" | "slate" }) {
-  return <article className="metric-card"><div className="metric-card-top"><span>{label}</span><i className={"metric-icon " + tone}><Icon/></i></div><strong>{value}</strong><small>{helper}</small></article>;
+export function MetricCard({ label, value, helper, icon: Icon, tone = "blue", featured = false }: { label: string; value: string; helper: string; icon: LucideIcon; tone?: "blue" | "green" | "amber" | "slate"; featured?: boolean }) {
+  return <article className={`metric-card${featured ? " featured" : ""}`}><div className="metric-card-top"><span>{label}</span><i className={"metric-icon " + tone}><Icon/></i></div><strong>{value}</strong><small>{helper}</small></article>;
 }
 
 export function SectionCard({ title, description, action, children, className = "" }: { title?: string; description?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
@@ -17,6 +17,10 @@ export function SectionCard({ title, description, action, children, className = 
 
 export function EmptyState({ icon: Icon, title, description, action }: { icon: LucideIcon; title: string; description: string; action?: React.ReactNode }) {
   return <div className="admin-empty"><span><Icon/></span><h2>{title}</h2><p>{description}</p>{action}</div>;
+}
+
+export function PlannedAction({ label }: { label: string }) {
+  return <button className="admin-button secondary planned-action" type="button" disabled title="Fluxo de cadastro em preparação"><Plus />{label}<small>Em breve</small></button>;
 }
 
 export function StatusBadge({ value }: { value: string }) {

@@ -1,10 +1,29 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { BarChart3, Building2, CalendarDays, ChevronLeft, Contact, HandCoins, KanbanSquare, LogOut, Menu, Settings, Users, X } from "lucide-react";
-import { BrandLogo } from "./brand-logo";
+import { useEffect, useState } from "react";
+import {
+  BarChart3,
+  Bell,
+  Building2,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Contact,
+  HandCoins,
+  KanbanSquare,
+  LogOut,
+  Menu,
+  Moon,
+  Search,
+  Settings,
+  Sun,
+  Users,
+  X,
+} from "lucide-react";
 import { canAccess, modules, type Access, type Module } from "@/lib/permissions";
+import { BrandLogo } from "./brand-logo";
 
 const moduleMeta: Record<Module, { label: string; icon: typeof Building2 }> = {
   imoveis: { label: "Imóveis", icon: Building2 },
@@ -15,24 +34,90 @@ const moduleMeta: Record<Module, { label: string; icon: typeof Building2 }> = {
   proprietarios: { label: "Proprietários", icon: Contact },
 };
 
+const routeLabels: Record<string, string> = {
+  "/painel": "Visão geral",
+  "/painel/imoveis": "Imóveis",
+  "/painel/clientes": "Clientes",
+  "/painel/crm": "CRM comercial",
+  "/painel/visitas": "Visitas",
+  "/painel/propostas": "Propostas e vendas",
+  "/painel/proprietarios": "Proprietários",
+  "/painel/configuracoes": "Equipe e acessos",
+};
+
 export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; access: Access } }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setCollapsed(localStorage.getItem("avanca:sidebar") === "collapsed");
+      setTheme(localStorage.getItem("avanca:theme") === "light" ? "light" : "dark");
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   const active = (href: string) => href === "/painel" ? pathname === href : pathname.startsWith(href);
-  const item = (href: string, label: string, Icon: typeof Building2) => <Link aria-current={active(href) ? "page" : undefined} className={active(href) ? "active" : ""} href={href} onClick={() => setOpen(false)}><Icon/><span>{label}</span></Link>;
-  return <div className="admin-app">
-    <button className={"sidebar-backdrop" + (open ? " open" : "")} aria-label="Fechar menu" onClick={() => setOpen(false)}/>
-    <aside className={"admin-sidebar" + (open ? " open" : "")}>
-      <div className="sidebar-brand"><Link href="/painel" aria-label="Avança Imóveis — início do painel"><BrandLogo light/></Link><button aria-label="Fechar menu" onClick={() => setOpen(false)}><X/></button></div>
-      <nav aria-label="Navegação do painel">
-        <small>OPERAÇÃO</small>
-        {item("/painel", "Visão geral", BarChart3)}
-        {modules.filter((module) => canAccess(user, module)).map((module) => { const meta = moduleMeta[module]; return <div key={module}>{item(`/painel/${module}`, meta.label, meta.icon)}</div>; })}
-        {user.role === "admin" && <><small>ADMINISTRAÇÃO</small>{item("/painel/configuracoes", "Equipe e acessos", Settings)}</>}
-      </nav>
-      <div className="sidebar-profile"><span>{user.name.slice(0,2).toUpperCase()}</span><div><strong>{user.name}</strong><small>{user.role === "admin" ? "Administrador" : "Equipe"}</small></div></div>
-      <form action="/api/auth/logout" method="post"><button className="sidebar-logout"><LogOut/> Sair</button></form>
-    </aside>
-    <div className="admin-main"><header className="admin-header"><button className="admin-menu" aria-label="Abrir menu" onClick={() => setOpen(true)}><Menu/></button><div><span>Painel operacional</span><small>Avança Imóveis</small></div><Link className="admin-view-site" href="/" target="_blank">Ver site <ChevronLeft/></Link></header>{children}</div>
-  </div>;
+  const toggleCollapsed = () => setCollapsed((current) => {
+    const next = !current;
+    localStorage.setItem("avanca:sidebar", next ? "collapsed" : "expanded");
+    return next;
+  });
+  const toggleTheme = () => setTheme((current) => {
+    const next = current === "dark" ? "light" : "dark";
+    localStorage.setItem("avanca:theme", next);
+    return next;
+  });
+  const item = (href: string, label: string, Icon: typeof Building2) => (
+    <Link
+      aria-current={active(href) ? "page" : undefined}
+      className={active(href) ? "active" : ""}
+      href={href}
+      onClick={() => setOpen(false)}
+      title={collapsed ? label : undefined}
+    >
+      <Icon /><span>{label}</span>
+    </Link>
+  );
+  const pageLabel = Object.entries(routeLabels).sort(([a], [b]) => b.length - a.length).find(([route]) => route === "/painel" ? pathname === route : pathname.startsWith(route))?.[1] ?? "Painel";
+
+  return (
+    <div className={`admin-app theme-${theme}${collapsed ? " sidebar-collapsed" : ""}`}>
+      <button className={`sidebar-backdrop${open ? " open" : ""}`} aria-label="Fechar menu" onClick={() => setOpen(false)} />
+      <aside className={`admin-sidebar${open ? " open" : ""}`}>
+        <div className="sidebar-brand">
+          <Link href="/painel" aria-label="Avança Imóveis — início do painel"><BrandLogo light={theme === "dark"} compact={collapsed && !open} /></Link>
+          <button className="sidebar-close" aria-label="Fechar menu" onClick={() => setOpen(false)}><X /></button>
+          <button className="sidebar-collapse" aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"} title={collapsed ? "Expandir" : "Recolher"} onClick={toggleCollapsed}>{collapsed ? <ChevronRight /> : <ChevronLeft />}</button>
+        </div>
+        <nav aria-label="Navegação do painel">
+          <small>OPERAÇÃO</small>
+          {item("/painel", "Visão geral", BarChart3)}
+          {modules.filter((module) => canAccess(user, module)).map((module) => {
+            const meta = moduleMeta[module];
+            return <div key={module}>{item(`/painel/${module}`, meta.label, meta.icon)}</div>;
+          })}
+          {user.role === "admin" ? <><small>ADMINISTRAÇÃO</small>{item("/painel/configuracoes", "Equipe e acessos", Settings)}</> : null}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="sidebar-profile"><span>{user.name.slice(0, 2).toUpperCase()}</span><div><strong>{user.name}</strong><small>{user.role === "admin" ? "Administrador" : "Equipe"}</small></div></div>
+          <button className="sidebar-utility" onClick={toggleTheme} title={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"}>{theme === "dark" ? <Sun /> : <Moon />}<span>{theme === "dark" ? "Tema claro" : "Tema escuro"}</span></button>
+          <form action="/api/auth/logout" method="post"><button className="sidebar-logout"><LogOut /><span>Sair</span></button></form>
+        </div>
+      </aside>
+      <div className="admin-main">
+        <header className="admin-header">
+          <button className="admin-menu" aria-label="Abrir menu" onClick={() => setOpen(true)}><Menu /></button>
+          <div className="header-context"><span>Painel</span><small>{pageLabel}</small></div>
+          <label className="admin-global-search" title="Busca global em preparação"><Search /><input type="search" placeholder="Buscar clientes, imóveis e oportunidades" disabled /><kbd>⌘ K</kbd></label>
+          <button className="header-icon-button" aria-label="Notificações em preparação" title="Notificações em preparação" disabled><Bell /></button>
+          <button className="header-theme" aria-label={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"} onClick={toggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
+          <Link className="admin-view-site" href="/" target="_blank">Ver site <ChevronRight /></Link>
+        </header>
+        {children}
+      </div>
+    </div>
+  );
 }

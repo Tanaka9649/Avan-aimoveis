@@ -9,6 +9,6 @@ import "./globals.css";
 const sans = Manrope({ subsets: ["latin"], variable: "--font-sans" });
 const serif = Cormorant_Garamond({ subsets: ["latin"], variable: "--font-serif", weight: ["500", "600"] });
 
-export const metadata: Metadata = { metadataBase: new URL(siteUrl()), title: { default: `${brand.name} — imóveis selecionados`, template: `%s | ${brand.name}` }, description: brand.tagline, icons: { icon: "/favicon.svg" } };
+export const metadata: Metadata = { metadataBase: new URL(siteUrl()), title: { default: `${brand.name} — imóveis selecionados`, template: `%s | ${brand.name}` }, description: brand.tagline, icons: { icon: "/icon.png", apple: "/apple-icon.png" } };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="pt-BR"><body className={`${sans.variable} ${serif.variable}`}><SiteHeader/><main>{children}</main>{brand.whatsapp && <a className="whatsapp-float" href={`https://wa.me/${brand.whatsapp}`} target="_blank" rel="noreferrer" aria-label="Conversar pelo WhatsApp"><MessageCircle/></a>}<SiteFooter/></body></html> }

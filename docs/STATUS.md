@@ -11,6 +11,11 @@
 - Painel administrativo reformulado com navegação responsiva, estados vazios, tabelas operacionais, formulário de imóveis por seções e feedback visual consistente.
 - Dashboard ligado a métricas reais do Neon: clientes, negócios fechados, visitas, imóveis ativos, propostas, vendas, comissões, conversão, funil e atividade recente.
 - Consultas iniciais de visitas, propostas, proprietários e clientes exibidas em tabelas reais, sem dados demonstrativos.
+- Tema claro e escuro no painel com preferência local, sidebar recolhível no desktop e drawer no mobile.
+- Header operacional com contexto da página, busca global preparada, notificações sinalizadas como futuras e acesso ao site público.
+- CRM mobile mostra uma etapa por vez; visitas têm abas Lista/Calendário e propostas ficam separadas do histórico real de vendas.
+- Skeleton de carregamento compartilhado para as rotas administrativas.
+- Favicon e ícone Apple derivados diretamente do emblema original da Avança Imóveis, sem redesenho.
 - Tratamento de falha de rede e validação de consentimento, telefone, e-mail e identificador.
 - Teste integrado em desenvolvimento com fixtures sintéticas e limpeza restrita ao UUID de cada execução.
 

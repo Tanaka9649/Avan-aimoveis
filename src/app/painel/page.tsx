@@ -30,12 +30,12 @@ export default async function DashboardPage() {
   const conversion = number(dealTotal.value) ? Math.round(number(salesMonth.count) / number(dealTotal.value) * 100) : 0;
   const metrics = [
     { label: "Clientes", value: String(clientTotal.value), helper: `+${newClients.value} neste mês`, icon: Users, tone: "blue" as const },
-    { label: "Negócios fechados", value: String(salesMonth.count), helper: "vendas no mês", icon: Handshake, tone: "green" as const },
+    { label: "Negócios fechados", value: String(salesMonth.count), helper: "vendas no mês", icon: Handshake, tone: "green" as const, featured: true },
     { label: "Visitas", value: String(futureVisits.value), helper: "agendadas a partir de hoje", icon: CalendarCheck, tone: "amber" as const },
-    { label: "Imóveis ativos", value: String(activeProperties.value), helper: "disponíveis no catálogo", icon: Building2, tone: "blue" as const },
+    { label: "Imóveis ativos", value: String(activeProperties.value), helper: "disponíveis no catálogo", icon: Building2, tone: "blue" as const, featured: true },
     { label: "Propostas abertas", value: String(openProposals.value), helper: "em negociação", icon: HandCoins, tone: "amber" as const },
-    { label: "Vendas no mês", value: formatMoney(number(salesMonth.amount)), helper: "volume realizado", icon: CircleDollarSign, tone: "green" as const },
-    { label: "Comissão no mês", value: formatMoney(number(salesMonth.commission)), helper: "comissão registrada", icon: CircleDollarSign, tone: "green" as const },
+    { label: "Vendas no mês", value: formatMoney(number(salesMonth.amount)), helper: "volume realizado", icon: CircleDollarSign, tone: "green" as const, featured: true },
+    { label: "Comissão no mês", value: formatMoney(number(salesMonth.commission)), helper: "comissão registrada", icon: CircleDollarSign, tone: "green" as const, featured: true },
     { label: "Taxa de conversão", value: conversion + "%", helper: "vendas ÷ negócios", icon: Gauge, tone: "slate" as const },
   ];
   const maxFunnel = Math.max(1, ...funnel.map((row) => number(row.value)));
