@@ -6,11 +6,11 @@ import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { properties, activityLogs } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/access";
 import { propertyInput } from "@/lib/property-input";
 
 export async function saveProperty(_previous: { error: string }, formData: FormData): Promise<{ error: string }> {
-  const user = await requireUser();
+  const user = await requireModule("imoveis");
   const parsed = propertyInput.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Revise os campos: " + [...new Set(parsed.error.issues.map((issue) => issue.path.join(".")))].join(", ") };
   const rawId = formData.get("id");

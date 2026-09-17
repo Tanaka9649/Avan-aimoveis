@@ -8,6 +8,20 @@
       "when": 1789654281884,
       "tag": "0000_chubby_molly_hayes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789662088052,
+      "tag": "0001_light_black_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789662502241,
+      "tag": "0002_tiny_wonder_man",
+      "breakpoints": true
     }
   ]
 }

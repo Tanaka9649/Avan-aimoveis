@@ -2,6 +2,7 @@ import {
   boolean, index, integer, jsonb, numeric, pgEnum, pgTable,
   primaryKey, text, timestamp, uniqueIndex, uuid, varchar,
 } from "drizzle-orm/pg-core";
+import { defaultAccess, type Access } from "../../lib/permissions";
 
 export const userRole = pgEnum("user_role", ["admin", "equipe"]);
 export const propertyStatus = pgEnum("property_status", ["rascunho", "disponivel", "reservado", "vendido", "pausado"]);
@@ -13,6 +14,14 @@ const audit = {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 };
 
+export const reminderSettings = pgTable("reminder_settings", {
+  key: text("key").primaryKey(),
+  panel: boolean("panel").default(true).notNull(),
+  email: boolean("email").default(true).notNull(),
+  recipients: jsonb("recipients").$type<string[]>().default([]).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 160 }).notNull(),
@@ -20,6 +29,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: userRole("role").default("equipe").notNull(),
   active: boolean("active").default(true).notNull(),
+  access: jsonb("access").$type<Access>().default(defaultAccess).notNull(),
   ...audit,
 }, (t) => [uniqueIndex("users_email_uq").on(t.email)]);
 
@@ -78,9 +88,10 @@ export const documentCategories = pgTable("document_categories", { id: uuid("id"
 export const propertyDocuments = pgTable("property_documents", { id: uuid("id").defaultRandom().primaryKey(), propertyId: uuid("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(), categoryId: uuid("category_id").references(() => documentCategories.id).notNull(), storagePath: text("storage_path").notNull(), originalName: varchar("original_name", { length: 240 }).notNull(), mime: varchar("mime", { length: 100 }).notNull(), size: integer("size").notNull(), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull() });
 
 export const clients = pgTable("clients", {
+  assignedTo: uuid("assigned_to").references(() => users.id, { onDelete: "set null" }),
   id: uuid("id").defaultRandom().primaryKey(), name: varchar("name", { length: 160 }).notNull(), phone: varchar("phone", { length: 30 }).notNull(), email: varchar("email", { length: 254 }), origin: varchar("origin", { length: 80 }).notNull(),
   budgetMinCents: integer("budget_min_cents"), budgetMaxCents: integer("budget_max_cents"), desiredTypes: jsonb("desired_types").$type<string[]>().default([]).notNull(), desiredRegions: jsonb("desired_regions").$type<string[]>().default([]).notNull(), minBedrooms: integer("min_bedrooms"), minBathrooms: integer("min_bathrooms"), minParkingSpaces: integer("min_parking_spaces"), minArea: numeric("min_area", { precision: 10, scale: 2 }), desiredFeatures: jsonb("desired_features").$type<string[]>().default([]).notNull(), lgpdConsentAt: timestamp("lgpd_consent_at", { withTimezone: true }), anonymizedAt: timestamp("anonymized_at", { withTimezone: true }), ...audit,
-}, (t) => [index("clients_contact_idx").on(t.email, t.phone)]);
+}, (t) => [index("clients_contact_idx").on(t.email, t.phone), index("clients_assigned_idx").on(t.assignedTo)]);
 
 export const stages = pgTable("stages", { id: uuid("id").defaultRandom().primaryKey(), name: varchar("name", { length: 80 }).notNull(), position: integer("position").notNull(), color: varchar("color", { length: 20 }).notNull(), isWon: boolean("is_won").default(false).notNull(), isLost: boolean("is_lost").default(false).notNull(), ...audit }, (t) => [uniqueIndex("stages_position_uq").on(t.position)]);
 export const deals = pgTable("deals", { id: uuid("id").defaultRandom().primaryKey(), clientId: uuid("client_id").references(() => clients.id).notNull(), stageId: uuid("stage_id").references(() => stages.id).notNull(), title: varchar("title", { length: 180 }).notNull(), estimatedValueCents: integer("estimated_value_cents"), position: numeric("position", { precision: 20, scale: 10 }).notNull(), tags: jsonb("tags").$type<string[]>().default([]).notNull(), nextActionAt: timestamp("next_action_at", { withTimezone: true }), lostReason: text("lost_reason"), ...audit }, (t) => [index("deals_board_idx").on(t.stageId, t.position)]);

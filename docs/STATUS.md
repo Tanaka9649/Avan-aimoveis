@@ -17,7 +17,7 @@
 - Movimentação e edição de negócios, notas, perda/ganho, cadastro manual de clientes e preferências.
 - Fluxos de visitas, propostas, vendas, comissões e proprietários.
 - Dashboard completo e relatórios; revisar todos os números antes de lançamento.
-- Configurações de equipe, recuperação de senha, trilha completa de auditoria e permissões por função.
+- Recuperação de senha, convite por e-mail, permissões por campo/operação e trilha completa de auditoria.
 - Alertas de busca, formulário geral de contato, lembretes e canais de envio.
 - Paginação do catálogo/CRM: atualmente limitados aos 200 registros mais recentes.
 - Favoritos fora dos 200 anúncios recentes precisam de consulta por IDs.
@@ -26,6 +26,18 @@
 - Release bloqueado por segurança: não promover configuração de Preview para Production.
 
 ## Verificação
+
+## Identidade e administração — atualização
+
+- Nome público Avança Imóveis; logo recebida com fundo removido pela ferramenta nativa de edição, preservada com canal alpha.
+- Prompt da edição: remover somente o fundo branco, preservar símbolo, composição e textos AVANÇA e IMÓVEIS; sem redesenho.
+- E-mail comercial, localização, telefone e CRECI demonstrativos removidos. WhatsApp aguarda confirmação do número completo; CRECI/região ainda não fornecidos.
+- Administração em /painel/configuracoes: criar contas de equipe pendentes, aprovar/suspender, selecionar módulos e escopo todos/próprios, atribuir clientes.
+- Administrador não pode ser desativado por esse formulário. Alterar permissões encerra as sessões do usuário alvo.
+- Restrições aplicadas no servidor a páginas, ações de imóveis e consultas de clientes/CRM. Indicadores globais são exclusivos do administrador.
+- Lembretes: preferências painel/e-mail e lista de até 50 destinatários persistidas no Neon. Não há entrega operacional ainda; cron retorna indisponível em vez de marcar lembretes como enviados.
+- Publicação futura no subdomínio Vercel, sem domínio próprio por enquanto. Nenhum deploy realizado nesta atualização.
+- Teste scripts/smoke-access.ts cobre conta pendente, login aprovado, módulo bloqueado, clientes próprios, URL direta e suspensão.
 
 `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
 

@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { properties } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/access";
 import { PropertyEditor } from "@/components/property-editor";
 export default async function EditPropertyPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  await requireModule("imoveis");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const [p] = await getDb().select().from(properties).where(eq(properties.id, id)).limit(1);

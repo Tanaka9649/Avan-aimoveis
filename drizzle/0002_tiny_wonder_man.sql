@@ -1,0 +1,1 @@
+CREATE INDEX "clients_assigned_idx" ON "clients" USING btree ("assigned_to");

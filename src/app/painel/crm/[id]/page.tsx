@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { activities, clients, deals, stages } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule, clientScope } from "@/lib/access";
 import { formatMoney } from "@/lib/format";
 
 export default async function DealPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const user = await requireModule("crm");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const db = getDb();
   const [deal] = await db.select({ title: deals.title, name: clients.name, email: clients.email, phone: clients.phone, value: deals.estimatedValueCents, stage: stages.name })
-    .from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).innerJoin(stages, eq(stages.id, deals.stageId)).where(eq(deals.id, id)).limit(1);
+    .from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).innerJoin(stages, eq(stages.id, deals.stageId)).where(and(eq(deals.id, id), clientScope(user))).limit(1);
   if (!deal) notFound();
   const timeline = await db.select({ id: activities.id, description: activities.description, occurredAt: activities.occurredAt }).from(activities).where(eq(activities.dealId, id)).orderBy(desc(activities.occurredAt)).limit(100);
   return <div className="admin-content">

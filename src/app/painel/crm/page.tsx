@@ -2,16 +2,16 @@ import Link from "next/link";
 import { asc, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { clients, deals, stages } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule, clientScope } from "@/lib/access";
 import { formatMoney } from "@/lib/format";
 
 export default async function CrmPage() {
-  await requireUser();
+  const user = await requireModule("crm");
   const db = getDb();
   const [columns, cards] = await Promise.all([
     db.select().from(stages).orderBy(asc(stages.position)),
     db.select({ id: deals.id, title: deals.title, client: clients.name, stageId: deals.stageId, value: deals.estimatedValueCents, nextActionAt: deals.nextActionAt })
-      .from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).orderBy(desc(deals.updatedAt)).limit(200),
+      .from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).where(clientScope(user)).orderBy(desc(deals.updatedAt)).limit(200),
   ]);
   return <div className="admin-content">
     <div className="admin-page-title"><div><span>Relacionamento</span><h1>CRM comercial</h1></div></div>
