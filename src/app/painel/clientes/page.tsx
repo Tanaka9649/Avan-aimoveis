@@ -1,0 +1,5 @@
+import { desc } from "drizzle-orm";
+import { getDb } from "@/db";
+import { clients } from "@/db/schema";
+import { Plus } from "lucide-react";
+export default async function ClientsPage(){const rows=await getDb().select().from(clients).orderBy(desc(clients.createdAt)).limit(50);return <div className="admin-content"><div className="admin-page-title"><div><span>Relacionamento</span><h1>Clientes</h1></div><button className="admin-primary"><Plus/> Novo cliente</button></div><section className="admin-card table-card"><table><thead><tr><th>Cliente</th><th>Contato</th><th>Origem</th><th>Orçamento</th><th>Consentimento</th></tr></thead><tbody>{rows.map((c)=><tr key={c.id}><td><strong>{c.name}</strong></td><td>{c.email}<small>{c.phone}</small></td><td>{c.origin}</td><td>{c.budgetMaxCents?new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}).format(c.budgetMaxCents/100):"—"}</td><td>{c.lgpdConsentAt?"Registrado":"Pendente"}</td></tr>)}</tbody></table>{!rows.length&&<div className="table-empty">Nenhum cliente cadastrado.</div>}</section></div>}

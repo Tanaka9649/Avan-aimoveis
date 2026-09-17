@@ -1,0 +1,2 @@
+import { HandCoins, Plus } from "lucide-react";
+export default function ProposalsPage(){return <div className="admin-content"><div className="admin-page-title"><div><span>Negociação</span><h1>Propostas e vendas</h1></div><button className="admin-primary"><Plus/> Nova proposta</button></div><div className="admin-card table-empty roomy"><HandCoins/><h2>Histórico de negociações</h2><p>Contrapropostas permanecem registradas e o fechamento é processado de forma transacional.</p></div></div>}

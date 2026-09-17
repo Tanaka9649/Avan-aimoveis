@@ -1,0 +1,2 @@
+import { CalendarDays, Plus } from "lucide-react";
+export default function VisitsPage(){return <div className="admin-content"><div className="admin-page-title"><div><span>Agenda</span><h1>Visitas</h1></div><button className="admin-primary"><Plus/> Agendar visita</button></div><div className="admin-card table-empty roomy"><CalendarDays/><h2>Agenda centralizada</h2><p>As visitas cadastradas aparecerão aqui com lembretes, responsável e feedback.</p></div></div>}
