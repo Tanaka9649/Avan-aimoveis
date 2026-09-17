@@ -4,7 +4,7 @@ Plataforma imobiliária full-stack em português, com catálogo público, capta�
 
 ## Estado da entrega
 
-O projeto inclui a experiência pública completa, autenticação com sessão persistida e cookie `httpOnly`, dashboard conectado ao banco, listagens administrativas, criação de imóvel, CRM visual, schema relacional completo, rate limit persistente, CI e pipeline de promoção do mesmo artefato validado. Uploads privados, e-mails e algumas telas administrativas avançadas têm o modelo de dados e as variáveis preparados, mas exigem a conexão dos serviços antes de serem habilitados.
+Em desenvolvimento, não pronto para produção. Implementado: autenticação, criação/edição/publicação de imóveis, catálogo público conectado ao Neon, favoritos locais, captura atômica de leads e consulta do CRM com histórico. As fotos ainda usam um aviso de preparação. Consulte `docs/STATUS.md` para limites e pendências. Ter tabelas no banco não significa que cada módulo esteja funcional.
 
 ## Desenvolvimento local
 
@@ -40,7 +40,7 @@ Cadastre como GitHub Actions Secrets:
 - `PRODUCTION_DIRECT_URL`
 - `PRODUCTION_URL`
 
-O workflow manual `Release validated preview` gera um artefato de preview, aplica a migration versionada uma única vez, executa smoke test, promove exatamente aquele artefato e verifica a produção. A CLI está fixada em `vercel@59.20.0`.
+O workflow manual de release está bloqueado deliberadamente: a versão inicial construía com variáveis de Preview e migrava Production. Não remova o bloqueio antes de separar os ambientes e validar um artefato preparado com a configuração correta de Production, ainda sem atribuir o domínio público. Nenhum deploy de produção está concluído.
 
 ## Proteção da main
 

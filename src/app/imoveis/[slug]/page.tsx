@@ -2,17 +2,24 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { Bath, BedDouble, Car, ChevronRight, Heart, MapPin, MessageCircle, Ruler, ShieldAlert } from "lucide-react";
-import { findProperty, properties } from "@/data/properties";
+import { publicProperties } from "@/lib/public-properties";
 import { formatArea, formatMoney } from "@/lib/format";
-import { brand, siteUrl } from "@/lib/brand";
 import { LeadForm } from "@/components/lead-form";
-import { PropertyCard } from "@/components/property-card";
 
-export function generateStaticParams(){return properties.map(({slug})=>({slug}));}
-export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const {slug}=await params;const p=findProperty(slug);if(!p)return{};return{title:p.title,description:p.description.slice(0,155),openGraph:{title:p.title,description:p.description,images:[p.image],url:siteUrl(`/imoveis/${p.slug}`)}}}
-export default async function PropertyPage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const p=findProperty(slug);if(!p)notFound();const message=encodeURIComponent(`Olá, tenho interesse no imóvel ${p.code}: ${siteUrl(`/imoveis/${p.slug}`)}`);const jsonLd={"@context":"https://schema.org","@type":"RealEstateListing",name:p.title,url:siteUrl(`/imoveis/${p.slug}`),image:p.gallery,offers:{"@type":"Offer",price:p.priceCents/100,priceCurrency:"BRL"},address:{"@type":"PostalAddress",addressLocality:p.city,addressRegion:p.state,addressCountry:"BR"}};return <>
-<section className="detail-top shell"><nav className="breadcrumbs"><Link href="/">Início</Link><ChevronRight/><Link href="/imoveis">Imóveis</Link><ChevronRight/><span>{p.neighborhood}</span></nav><div className="detail-title"><div><span className="eyebrow">{p.type} · {p.code}</span><h1>{p.title}</h1><p><MapPin/> {p.neighborhood}, {p.city} — localização aproximada</p></div><div><button className="round-button" aria-label="Favoritar"><Heart/></button><a className="button button-dark" href={`https://wa.me/${brand.whatsapp}?text=${message}`} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div></div></section>
-<section className="gallery shell"><div className="gallery-main"><Image src={p.gallery[0]} alt={p.title} fill priority sizes="70vw"/></div>{p.gallery.slice(1,3).map((src,i)=><div className="gallery-small" key={src}><Image src={src} alt={`Ambiente ${i+2} de ${p.title}`} fill sizes="30vw"/></div>)}</section>
-<section className="detail-layout shell"><article><div className="detail-price"><span>Valor do imóvel</span><strong>{formatMoney(p.priceCents)}</strong></div><div className="spec-grid"><div><BedDouble/><strong>{p.bedrooms}</strong><span>quartos</span></div><div><Bath/><strong>{p.bathrooms}</strong><span>banheiros</span></div><div><Car/><strong>{p.parkingSpaces}</strong><span>vagas</span></div><div><Ruler/><strong>{formatArea(p.area)}</strong><span>área privativa</span></div></div><div className="prose"><h2>Sobre este imóvel</h2><p>{p.description}</p><h2>O que você encontra aqui</h2><ul>{p.features.map((feature)=><li key={feature}>{feature}</li>)}</ul><div className="safety"><ShieldAlert/><div><strong>Negocie com segurança</strong><p>A Avan nunca solicita depósitos antes da identificação formal das partes. Em caso de dúvida, confirme nossos canais oficiais.</p></div></div></div></article><aside><LeadForm propertyId={p.id} propertyTitle={p.title}/></aside></section>
-<section className="section related shell"><div className="section-heading"><h2>Imóveis semelhantes</h2></div><div className="property-grid">{properties.filter((x)=>x.id!==p.id).slice(0,3).map((x)=><PropertyCard property={x} key={x.id}/>)}</div></section><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}}/></>}
+export const dynamic = "force-dynamic";
+type Props = { params: Promise<{ slug: string }> };
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const p = (await publicProperties(slug))[0];
+  return p ? { title: p.title, description: p.description.slice(0, 155) } : { title: "Imóvel não encontrado" };
+}
+export default async function PropertyPage({ params }: Props) {
+  const { slug } = await params;
+  const p = (await publicProperties(slug))[0];
+  if (!p) notFound();
+  return <>
+    <section className="detail-top shell"><Link href="/imoveis">← Todos os imóveis</Link><div className="detail-title"><div><span className="eyebrow">{p.type} · {p.code}</span><h1>{p.title}</h1><p>{p.neighborhood}, {p.city} — {p.state}</p></div></div></section>
+    <section className="gallery shell"><div className="gallery-main"><Image src={p.image} alt={p.title} fill priority sizes="(max-width: 760px) 100vw, 70vw"/></div></section>
+    <section className="detail-layout shell"><article><div className="detail-price"><span>Valor do imóvel</span><strong>{formatMoney(p.priceCents)}</strong></div><div className="spec-grid"><div><strong>{p.bedrooms}</strong><span>quartos</span></div><div><strong>{p.bathrooms}</strong><span>banheiros</span></div><div><strong>{p.parkingSpaces}</strong><span>vagas</span></div><div><strong>{formatArea(p.area)}</strong><span>área privativa</span></div></div><div className="prose"><h2>Sobre este imóvel</h2><p style={{ whiteSpace: "pre-wrap" }}>{p.description}</p><ul>{p.features.map((feature) => <li key={feature}>{feature}</li>)}</ul></div></article><aside><LeadForm propertyId={p.id} propertyTitle={p.title}/></aside></section>
+  </>;
+}

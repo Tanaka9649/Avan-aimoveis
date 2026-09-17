@@ -1,9 +1,49 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { z } from "zod";
+import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { activities, clients, dealProperties, deals, stages } from "@/db/schema";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { leadInput } from "@/lib/lead-input";
 
-const schema=z.object({name:z.string().trim().min(2).max(160),phone:z.string().trim().min(8).max(30),email:z.email().max(254),message:z.string().trim().max(1200).optional(),propertyId:z.uuid(),consent:z.literal("true")});
-export async function POST(request:Request){try{const forwarded=(await headers()).get("x-forwarded-for")?.split(",")[0]?.trim()||"unknown";if(!await checkRateLimit(`lead:${forwarded}`,5,60*60*1000))return NextResponse.json({error:"Muitas solicitações. Tente novamente mais tarde."},{status:429});const parsed=schema.safeParse(await request.json());if(!parsed.success)return NextResponse.json({error:"Revise os campos informados."},{status:400});const db=getDb();const [client]=await db.insert(clients).values({name:parsed.data.name,phone:parsed.data.phone,email:parsed.data.email.toLowerCase(),origin:"site",lgpdConsentAt:new Date()}).returning({id:clients.id});const [stage]=await db.select({id:stages.id}).from(stages).orderBy(stages.position).limit(1);if(stage){const [deal]=await db.insert(deals).values({clientId:client.id,stageId:stage.id,title:`Interesse pelo site — ${parsed.data.name}`,position:"1000",tags:["site","novo-lead"]}).returning({id:deals.id});await Promise.all([db.insert(dealProperties).values({dealId:deal.id,propertyId:parsed.data.propertyId}),db.insert(activities).values({dealId:deal.id,clientId:client.id,type:"lead_recebido",description:parsed.data.message||"Interesse enviado pelo site"})]);}return NextResponse.json({message:"Recebemos seus dados. Nossa equipe entrará em contato."},{status:201});}catch(error){console.error("lead_create_failed",error instanceof Error?error.message:"unknown");return NextResponse.json({error:"Serviço temporariamente indisponível."},{status:503})}}
+export async function POST(request: Request) {
+  let body: unknown;
+  try { body = await request.json(); }
+  catch { return NextResponse.json({ error: "JSON inválido." }, { status: 400 }); }
+  const parsed = leadInput.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Revise os campos informados." }, { status: 400 });
+  try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!await checkRateLimit(`lead:${ip}`, 5, 3600000)) {
+      return NextResponse.json({ error: "Muitas solicitações. Tente novamente mais tarde." }, { status: 429 });
+    }
+    const p = parsed.data;
+    // One statement: all dependent writes commit together, or none do.
+    const result = await getDb().execute(sql`
+      with eligible as (
+        select p.id, p.title, p.price_cents, s.id as stage_id
+        from properties p cross join lateral (
+          select id from stages where not is_won and not is_lost order by position limit 1
+        ) s
+        where p.id = ${p.propertyId}::uuid and p.status = 'disponivel' and p.published_at is not null
+      ), new_client as (
+        insert into clients (name, phone, email, origin, lgpd_consent_at)
+        select ${p.name}, ${p.phone}, ${p.email}, 'site', now() from eligible returning id
+      ), new_deal as (
+        insert into deals (client_id, stage_id, title, estimated_value_cents, position, tags)
+        select c.id, e.stage_id, left('Interesse — ' || e.title, 180), e.price_cents, 1000, '["site","novo-lead"]'::jsonb
+        from new_client c cross join eligible e returning id, client_id
+      ), linked as (
+        insert into deal_properties (deal_id, property_id)
+        select d.id, e.id from new_deal d cross join eligible e returning deal_id
+      ), recorded as (
+        insert into activities (deal_id, client_id, type, description)
+        select id, client_id, 'lead_recebido', ${p.message || "Interesse enviado pelo site"} from new_deal returning id
+      ) select id from new_deal
+    `);
+    if (!result.rows.length) return NextResponse.json({ error: "Este imóvel não está disponível para atendimento no momento." }, { status: 409 });
+    return NextResponse.json({ message: "Recebemos seus dados. Nossa equipe entrará em contato." }, { status: 201 });
+  } catch {
+    // Do not log database errors: they can contain the contact's personal data.
+    console.error("lead_create_failed");
+    return NextResponse.json({ error: "Serviço temporariamente indisponível." }, { status: 503 });
+  }
+}

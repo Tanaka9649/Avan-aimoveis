@@ -1,4 +1,6 @@
 // Workaround for constrained Windows sandboxes where uv_os_get_passwd fails.
+// Node preload scripts run as CommonJS before Next.js starts.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const os = require("node:os");
 const original = os.userInfo;
 os.userInfo = (...args) => {

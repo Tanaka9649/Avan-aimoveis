@@ -1,3 +1,33 @@
-import { MoreHorizontal, Plus } from "lucide-react";
-const columns=[{name:"Novos leads",color:"#5477bf",cards:[{client:"Marina Alves",property:"Apartamento · Jardins",value:"R$ 1.890.000",tag:"Site"},{client:"Rafael Dias",property:"Casa · Alto de Pinheiros",value:"R$ 4.250.000",tag:"Indicação"}]},{name:"Em contato",color:"#d49a42",cards:[{client:"Camila Prado",property:"Studio · Vila Madalena",value:"R$ 690.000",tag:"WhatsApp"}]},{name:"Visita",color:"#8b69b1",cards:[{client:"Eduardo Matos",property:"Cobertura · Vila Nova",value:"R$ 5.980.000",tag:"Retorno"}]},{name:"Proposta",color:"#329477",cards:[{client:"Fernanda Luz",property:"Apartamento · Jardins",value:"R$ 1.820.000",tag:"Proposta"}]}];
-export default function CrmPage(){return <div className="admin-content"><div className="admin-page-title"><div><span>Relacionamento</span><h1>CRM comercial</h1></div><button className="admin-primary"><Plus/> Novo negócio</button></div><div className="kanban">{columns.map((column)=><section className="kanban-column" key={column.name}><header><div><i style={{background:column.color}}/><strong>{column.name}</strong><span>{column.cards.length}</span></div><button><Plus/></button></header>{column.cards.map((card)=><article className="deal-card" key={card.client}><div><span>{card.tag}</span><button><MoreHorizontal/></button></div><h3>{card.client}</h3><p>{card.property}</p><strong>{card.value}</strong><small>Próxima ação · hoje</small></article>)}</section>)}</div></div>}
+import Link from "next/link";
+import { asc, desc, eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import { clients, deals, stages } from "@/db/schema";
+import { requireUser } from "@/lib/auth";
+import { formatMoney } from "@/lib/format";
+
+export default async function CrmPage() {
+  await requireUser();
+  const db = getDb();
+  const [columns, cards] = await Promise.all([
+    db.select().from(stages).orderBy(asc(stages.position)),
+    db.select({ id: deals.id, title: deals.title, client: clients.name, stageId: deals.stageId, value: deals.estimatedValueCents, nextActionAt: deals.nextActionAt })
+      .from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).orderBy(desc(deals.updatedAt)).limit(200),
+  ]);
+  return <div className="admin-content">
+    <div className="admin-page-title"><div><span>Relacionamento</span><h1>CRM comercial</h1></div></div>
+    <p>Negócios reais recebidos pelo site. Exibindo os {cards.length} mais recentes (limite de 200).</p>
+    {!columns.length && <p role="status">Nenhuma etapa configurada. Configure as etapas antes de receber contatos.</p>}
+    <div className="kanban">{columns.map((column) => {
+      const items = cards.filter((card) => card.stageId === column.id);
+      return <section className="kanban-column" key={column.id}>
+        <header><div><i style={{ background: column.color }}/><strong>{column.name}</strong><span>{items.length}</span></div></header>
+        {items.map((card) => <article className="deal-card" key={card.id}>
+          <h3><Link href={`/painel/crm/${card.id}`}>{card.client}</Link></h3><p>{card.title}</p>
+          <strong>{card.value === null ? "Valor não informado" : formatMoney(card.value)}</strong>
+          <small>{card.nextActionAt ? `Próxima ação: ${new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(card.nextActionAt)}` : "Sem próxima ação agendada"}</small>
+        </article>)}
+        {!items.length && <p className="table-empty">Nenhum negócio nesta etapa.</p>}
+      </section>;
+    })}</div>
+  </div>;
+}

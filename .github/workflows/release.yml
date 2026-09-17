@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Production safety gate
+        run: |
+          echo "Release disabled: configure isolated environments and a production-target staged artifact before enabling promotion."
+          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
