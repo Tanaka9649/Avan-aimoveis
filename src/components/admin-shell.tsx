@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
-  Bell,
   Building2,
   CalendarDays,
   ChevronLeft,
@@ -43,6 +42,7 @@ const routeLabels: Record<string, string> = {
   "/painel/propostas": "Propostas e vendas",
   "/painel/proprietarios": "Proprietários",
   "/painel/configuracoes": "Equipe e acessos",
+  "/painel/busca": "Busca global",
 };
 
 export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; access: Access } }) {
@@ -50,6 +50,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -58,6 +59,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
     });
     return () => cancelAnimationFrame(frame);
   }, []);
+  useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){event.preventDefault();searchRef.current?.focus();}};window.addEventListener("keydown",shortcut);return()=>window.removeEventListener("keydown",shortcut)},[]);
 
   const active = (href: string) => href === "/painel" ? pathname === href : pathname.startsWith(href);
   const toggleCollapsed = () => setCollapsed((current) => {
@@ -111,8 +113,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
         <header className="admin-header">
           <button className="admin-menu" aria-label="Abrir menu" onClick={() => setOpen(true)}><Menu /></button>
           <div className="header-context"><span>Painel</span><small>{pageLabel}</small></div>
-          <label className="admin-global-search" title="Busca global em preparação"><Search /><input type="search" placeholder="Buscar clientes, imóveis e oportunidades" disabled /><kbd>⌘ K</kbd></label>
-          <button className="header-icon-button" aria-label="Notificações em preparação" title="Notificações em preparação" disabled><Bell /></button>
+          <form className="admin-global-search" action="/painel/busca" role="search"><Search /><input ref={searchRef} name="q" type="search" placeholder="Buscar clientes, imóveis e oportunidades" aria-label="Busca global"/><kbd>⌘ K</kbd></form>
           <button className="header-theme" aria-label={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"} onClick={toggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
           <Link className="admin-view-site" href="/" target="_blank">Ver site <ChevronRight /></Link>
         </header>

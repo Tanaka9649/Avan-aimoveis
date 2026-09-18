@@ -1,19 +1,20 @@
 import { asc, eq } from "drizzle-orm";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { AdminTabs } from "@/components/admin-tabs";
-import { EmptyState, PageHeader, PlannedAction, StatusBadge } from "@/components/admin-ui";
+import { EmptyState, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
+import { VisitForm } from "@/components/visit-form";
 import { getDb } from "@/db";
-import { clients, properties, visits } from "@/db/schema";
+import { clients, deals, properties, visits } from "@/db/schema";
 import { requireModule } from "@/lib/access";
+import { updateVisit } from "./actions";
 
-export default async function VisitsPage() {
-  await requireModule("visitas");
-  const rows = await getDb().select({ id: visits.id, scheduledAt: visits.scheduledAt, status: visits.status, client: clients.name, property: properties.title, code: properties.code }).from(visits).innerJoin(clients, eq(clients.id, visits.clientId)).innerJoin(properties, eq(properties.id, visits.propertyId)).orderBy(asc(visits.scheduledAt)).limit(100);
-  const list = rows.length ? <section className="admin-card table-card"><div className="table-toolbar"><div><strong>{rows.length} visitas</strong><span>Agenda ordenada por data</span></div></div><div className="table-scroll"><table><thead><tr><th>Data</th><th>Horário</th><th>Cliente</th><th>Imóvel</th><th>Status</th></tr></thead><tbody>{rows.map((visit) => <tr key={visit.id}><td><strong>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeZone: "America/Sao_Paulo" }).format(visit.scheduledAt)}</strong></td><td>{new Intl.DateTimeFormat("pt-BR", { timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(visit.scheduledAt)}</td><td>{visit.client}</td><td>{visit.property}<small>{visit.code}</small></td><td><StatusBadge value={visit.status} /></td></tr>)}</tbody></table></div></section> : <EmptyState icon={CalendarDays} title="Nenhuma visita agendada" description="Quando uma visita for cadastrada, data, cliente e imóvel aparecerão aqui." />;
-  const calendar = <div className="calendar-placeholder"><div><CalendarDays /><h2>Calendário de visitas</h2><p>A estrutura está preparada para a visualização mensal e semanal quando o fluxo de agendamento estiver habilitado.</p></div></div>;
-
-  return <div className="admin-content">
-    <PageHeader eyebrow="Agenda" title="Visitas" description="Acompanhe horários, clientes, imóveis e o andamento de cada visita." action={<PlannedAction label="Agendar visita" />} />
-    <AdminTabs tabs={[{ id: "lista", label: "Lista", content: list }, { id: "calendario", label: "Calendário", content: calendar }]} />
-  </div>;
+const dateFmt=new Intl.DateTimeFormat("pt-BR",{dateStyle:"medium",timeZone:"America/Sao_Paulo"});
+const timeFmt=new Intl.DateTimeFormat("pt-BR",{timeStyle:"short",timeZone:"America/Sao_Paulo"});
+const statusLabels={agendada:"Agendada",realizada:"Realizada",cancelada:"Cancelada",nao_compareceu:"Não compareceu"};
+export default async function VisitsPage(){await requireModule("visitas");const db=getDb();const[rows,clientChoices,propertyChoices,dealChoices]=await Promise.all([
+ db.select({id:visits.id,scheduledAt:visits.scheduledAt,status:visits.status,notes:visits.notes,feedback:visits.feedback,client:clients.name,property:properties.title,code:properties.code}).from(visits).innerJoin(clients,eq(clients.id,visits.clientId)).innerJoin(properties,eq(properties.id,visits.propertyId)).orderBy(asc(visits.scheduledAt)).limit(100),
+ db.select({id:clients.id,name:clients.name}).from(clients).orderBy(asc(clients.name)),db.select({id:properties.id,title:properties.title,code:properties.code}).from(properties).orderBy(asc(properties.title)),db.select({id:deals.id,title:deals.title}).from(deals).orderBy(asc(deals.title))]);
+ const list=rows.length?<section className="admin-card table-card"><div className="table-toolbar"><div><strong>{rows.length} visitas</strong><span>Agenda ordenada por data</span></div></div><div className="table-scroll"><table><thead><tr><th>Data</th><th>Cliente</th><th>Imóvel</th><th>Status e feedback</th></tr></thead><tbody>{rows.map(v=><tr key={v.id}><td><strong>{dateFmt.format(v.scheduledAt)}</strong><small>{timeFmt.format(v.scheduledAt)}</small></td><td>{v.client}</td><td>{v.property}<small>{v.code}</small></td><td><form action={updateVisit} className="table-inline-form"><input type="hidden" name="id" value={v.id}/><select name="status" defaultValue={v.status} aria-label="Status da visita">{Object.entries(statusLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select><input name="feedback" defaultValue={v.feedback||""} placeholder={v.status==="realizada"?"Feedback da visita":"Observação ou feedback"}/><button className="admin-button secondary">Salvar</button></form>{v.notes?<small>{v.notes}</small>:null}</td></tr>)}</tbody></table></div></section>:<EmptyState icon={CalendarDays} title="Nenhuma visita agendada" description="Agende uma visita para acompanhar o cliente."/>;
+ const grouped=new Map<string,typeof rows>();for(const row of rows){const key=dateFmt.format(row.scheduledAt);grouped.set(key,[...(grouped.get(key)||[]),row]);}const calendar=rows.length?<div className="visit-calendar">{[...grouped].map(([date,items])=><section key={date}><header><CalendarDays/><strong>{date}</strong></header>{items.map(v=><article key={v.id}><time>{timeFmt.format(v.scheduledAt)}</time><div><strong>{v.client}</strong><span>{v.property}</span></div><StatusBadge value={v.status}/></article>)}</section>)}</div>:<EmptyState icon={CalendarDays} title="Calendário vazio" description="As visitas agendadas aparecerão organizadas por dia."/>;
+ return <div className="admin-content"><PageHeader eyebrow="Agenda" title="Visitas" description="Agende, acompanhe e registre o resultado de cada visita." action={<a className="admin-button primary" href="#nova-visita"><Plus/> Agendar visita</a>}/><SectionCard className="operation-composer" title="Nova visita" description="Vincule cliente, imóvel e oportunidade."><div id="nova-visita"><VisitForm clients={clientChoices} properties={propertyChoices} deals={dealChoices}/></div></SectionCard><AdminTabs tabs={[{id:"lista",label:"Lista",content:list},{id:"calendario",label:"Calendário",content:calendar}]}/></div>;
 }

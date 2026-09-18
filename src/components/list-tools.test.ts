@@ -20,7 +20,7 @@ it("keeps CRM search as a GET form with the same query and clear URL", () => {
   expect(html).toContain("crm-list-tools");
   expect(html).toContain('role="search"');
 });
-it("does not apply CRM presentation to other list pages", () => {
+it("shares the professional toolbar without leaking CRM-only classes", () => {
   const html = renderToStaticMarkup(
     createElement(ListFilters, {
       scope: "clientes",
@@ -30,6 +30,21 @@ it("does not apply CRM presentation to other list pages", () => {
   );
   expect(html).not.toContain("crm-list-tools");
   expect(html).not.toContain("crm-search-field");
-  expect(html).toContain('placeholder="Nome, código ou contato"');
-  expect(html).toContain('href="/painel/clientes"');
+  expect(html).toContain("list-search-field");
+  expect(html).toContain('placeholder="Buscar por nome, telefone ou e-mail"');
+  expect(html).not.toContain('href="/painel/clientes"');
+});
+
+it("renders the property toolbar with accessible search and conditional clear", () => {
+  const html = renderToStaticMarkup(
+    createElement(ListFilters, {
+      scope: "imoveis",
+      userId: "test",
+      query: { q: "Casa" },
+    }),
+  );
+  expect(html).toContain("property-list-tools");
+  expect(html).toContain('placeholder="Buscar por nome, código ou contato"');
+  expect(html).toContain('aria-label="Buscar imóvel"');
+  expect(html).toContain("Limpar filtros");
 });

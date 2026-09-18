@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Building2, Check, Copy, Plus, X } from "lucide-react";
+import { Building2, Check, Copy, Plus, SlidersHorizontal, X } from "lucide-react";
 import { ListFilters, Pagination } from "@/components/list-tools";
 import { value, pageNumber, PAGE_SIZE, type Query } from "@/lib/list-query";
 import {
@@ -66,12 +66,9 @@ export default async function AdminPropertiesPage({
       : undefined,
   );
   const db = getDb();
-  const [total] = await db
-    .select({ value: count() })
-    .from(properties)
-    .where(where);
-  const rows = await db
-    .select({
+  const [[total], rows] = await Promise.all([
+    db.select({ value: count() }).from(properties).where(where),
+    db.select({
       id: properties.id,
       code: properties.code,
       slug: properties.slug,
@@ -93,7 +90,8 @@ export default async function AdminPropertiesPage({
     .where(where)
     .orderBy(desc(properties.updatedAt))
     .limit(PAGE_SIZE)
-    .offset((page - 1) * PAGE_SIZE);
+    .offset((page - 1) * PAGE_SIZE),
+  ]);
   const ids = rows.map((r) => r.id);
   const [photos, documents, ownerLinks] = ids.length
     ? await Promise.all([
@@ -115,6 +113,12 @@ export default async function AdminPropertiesPage({
           .where(inArray(propertyOwners.propertyId, ids)),
       ])
     : [[], [], []];
+  const photosByProperty = new Map<string, typeof photos>();
+  const documentCountByProperty = new Map<string, number>();
+  const ownerCountByProperty = new Map<string, number>();
+  for (const photo of photos) photosByProperty.set(photo.propertyId, [...(photosByProperty.get(photo.propertyId) || []), photo]);
+  for (const document of documents) documentCountByProperty.set(document.propertyId, (documentCountByProperty.get(document.propertyId) || 0) + 1);
+  for (const owner of ownerLinks) ownerCountByProperty.set(owner.propertyId, (ownerCountByProperty.get(owner.propertyId) || 0) + 1);
   return (
     <div className="admin-content">
       <PageHeader
@@ -128,34 +132,45 @@ export default async function AdminPropertiesPage({
         }
       />
       <ListFilters scope="imoveis" userId={user.id} query={query}>
-        <label>
-          Status
+        <label className="filter-control filter-control-status">
+          <span className="crm-visually-hidden">Status</span>
           <select name="status" defaultValue={value(query, "status")}>
-            <option value="">Todos</option>
-            {["rascunho", "disponivel", "reservado", "vendido", "pausado"].map(
-              (s) => (
-                <option key={s}>{s}</option>
-              ),
-            )}
+            <option value="">Todos os status</option>
+            <option value="rascunho">Rascunho</option>
+            <option value="disponivel">Disponível</option>
+            <option value="reservado">Reservado</option>
+            <option value="vendido">Vendido</option>
+            <option value="pausado">Pausado</option>
           </select>
         </label>
-        {[
-          ["city", "Cidade"],
-          ["neighborhood", "Bairro"],
-          ["type", "Tipo"],
-          ["min", "Preço mínimo (R$)"],
-          ["max", "Preço máximo (R$)"],
-        ].map(([key, label]) => (
-          <label key={key}>
-            {label}
-            <input name={key} defaultValue={value(query, key)} />
-          </label>
-        ))}
+        <label className="filter-control filter-control-city">
+          <span className="crm-visually-hidden">Cidade</span>
+          <input name="city" defaultValue={value(query, "city")} placeholder="Todas as cidades" aria-label="Cidade" />
+        </label>
+        <label className="filter-control filter-control-type">
+          <span className="crm-visually-hidden">Tipo</span>
+          <select name="type" defaultValue={value(query, "type")} aria-label="Tipo de imóvel">
+            <option value="">Todos os tipos</option>
+            {["Apartamento", "Casa", "Cobertura", "Studio", "Terreno"].map((type) => <option key={type}>{type}</option>)}
+          </select>
+        </label>
+        <details className="advanced-filters">
+          <summary><SlidersHorizontal aria-hidden="true" /> Filtros</summary>
+          <div className="advanced-filters-panel">
+            <header><strong>Filtros avançados</strong><small>Refine os imóveis exibidos.</small></header>
+            <label>Bairro<input name="neighborhood" defaultValue={value(query, "neighborhood")} placeholder="Digite o bairro" /></label>
+            <div className="price-filter-grid">
+              <label>Preço mínimo<span className="money-field"><b>R$</b><input name="min" inputMode="decimal" defaultValue={value(query, "min")} placeholder="0" /></span></label>
+              <label>Preço máximo<span className="money-field"><b>R$</b><input name="max" inputMode="decimal" defaultValue={value(query, "max")} placeholder="Sem limite" /></span></label>
+            </div>
+            <button className="admin-button primary" type="submit">Aplicar filtros</button>
+          </div>
+        </details>
       </ListFilters>
       {rows.length ? (
         <section className="property-admin-grid">
           {rows.map((p) => {
-            const media = photos.filter((x) => x.propertyId === p.id);
+            const media = photosByProperty.get(p.id) || [];
             const cover = media.find((x) => x.isCover) || media[0];
             const complete = propertyCompleteness({
               title: p.title,
@@ -164,11 +179,9 @@ export default async function AdminPropertiesPage({
               neighborhood: p.neighborhood,
               description: p.description,
               features: p.features,
-              ownerCount: ownerLinks.filter((x) => x.propertyId === p.id)
-                .length,
+              ownerCount: ownerCountByProperty.get(p.id) || 0,
               photoCount: media.length,
-              documentCount: documents.filter((x) => x.propertyId === p.id)
-                .length,
+              documentCount: documentCountByProperty.get(p.id) || 0,
             });
             return (
               <article className="admin-property-card" key={p.id}>

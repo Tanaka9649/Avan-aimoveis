@@ -16,10 +16,15 @@ export function ListFilters({
   children?: React.ReactNode;
 }) {
   const crm = scope === "crm";
+  const properties = scope === "imoveis";
+  const clients = scope === "clientes";
   const [saved, setSaved] = useState<{ name: string; query: string }[]>([]);
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const key = `avanca:filters:v1:${userId}:${scope}`;
+  const hasFilters = Object.entries(query).some(
+    ([key, value]) => key !== "page" && typeof value === "string" && value.trim(),
+  );
   function load() {
     try {
       const rows = JSON.parse(localStorage.getItem(key) || "[]");
@@ -66,57 +71,58 @@ export function ListFilters({
       <button type="submit" className="admin-button primary">
         Filtrar
       </button>
-      <Link
-        className={"admin-button secondary" + (crm ? " crm-filter-clear" : "")}
-        href={`/painel/${scope}`}
-      >
-        Limpar
-      </Link>
+      {hasFilters ? (
+        <Link
+          className={"admin-button secondary filter-clear" + (crm ? " crm-filter-clear" : "")}
+          href={`/painel/${scope}`}
+        >
+          Limpar filtros
+        </Link>
+      ) : null}
     </>
   );
   return (
     <section
-      className={"list-tools" + (crm ? " crm-list-tools" : "")}
-      aria-label={crm ? "Pesquisa e filtros do CRM" : undefined}
+      className={`list-tools${crm ? " crm-list-tools" : ""}${properties ? " property-list-tools" : ""}${clients ? " client-list-tools" : ""}`}
+      aria-label={`Pesquisa e filtros de ${crm ? "oportunidades" : properties ? "imóveis" : "clientes"}`}
     >
       <form
         method="get"
-        className="filter-row"
-        role={crm ? "search" : undefined}
-        aria-label={crm ? "Buscar oportunidades" : undefined}
+        className="filter-row filter-toolbar"
+        role="search"
+        aria-label={crm ? "Buscar oportunidades" : properties ? "Buscar imóveis" : "Buscar clientes"}
       >
-        <label className={crm ? "crm-search-field" : undefined}>
-          <span className={crm ? "crm-visually-hidden" : undefined}>
+        <label className={`list-search-field${crm ? " crm-search-field" : ""}`}>
+          <span className="crm-visually-hidden">
             Buscar
           </span>
-          {crm ? <Search size={18} aria-hidden="true" /> : null}
+          <Search size={18} aria-hidden="true" />
           <input
             key={crm ? String(query.q || "") : undefined}
             name="q"
             defaultValue={String(query.q || "")}
             placeholder={
-              crm ? "Buscar cliente ou oportunidade" : "Nome, código ou contato"
+              crm
+                ? "Buscar cliente ou oportunidade"
+                : properties
+                  ? "Buscar por nome, código ou contato"
+                  : "Buscar por nome, telefone ou e-mail"
             }
+            aria-label={properties ? "Buscar imóvel" : crm ? "Buscar oportunidade" : "Buscar cliente"}
           />
         </label>
         {children}
-        {crm ? <div className="crm-filter-actions">{actions}</div> : actions}
+        <div className={`filter-actions${crm ? " crm-filter-actions" : ""}`}>{actions}</div>
       </form>
       <details
-        className={crm ? "crm-saved-filters" : undefined}
+        className={`saved-filters${crm ? " crm-saved-filters" : ""}`}
         onToggle={(e) => {
           if (e.currentTarget.open) load();
         }}
       >
         <summary>
-          {crm ? <Bookmark size={14} aria-hidden="true" /> : null}Filtros salvos
-          {crm ? (
-            <ChevronDown
-              className="crm-saved-chevron"
-              size={14}
-              aria-hidden="true"
-            />
-          ) : null}
+          <Bookmark size={14} aria-hidden="true" />Filtros salvos
+          <ChevronDown className="saved-filters-chevron crm-saved-chevron" size={14} aria-hidden="true" />
         </summary>
         <div className="filter-row">
           <label>

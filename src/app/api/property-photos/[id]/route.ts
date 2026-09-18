@@ -18,6 +18,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   try {
     const object = await storageClient().send(new GetObjectCommand({ Bucket: PHOTO_BUCKET, Key: photo.path }));
     if (!object.Body) return new NextResponse(null, { status: 404 });
-    return new NextResponse(object.Body.transformToWebStream() as ReadableStream, { headers: { "Content-Type": object.ContentType || "image/webp", "Cache-Control": user ? "private, max-age=60" : "public, max-age=3600, stale-while-revalidate=86400" } });
+    return new NextResponse(object.Body.transformToWebStream() as ReadableStream, { headers: { "Content-Type": object.ContentType || "image/webp", "Cache-Control": user ? "private, max-age=60" : "public, max-age=31536000, immutable", "Content-Disposition": "inline" } });
   } catch { return new NextResponse(null, { status: 404 }); }
 }

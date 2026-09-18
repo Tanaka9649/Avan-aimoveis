@@ -8,6 +8,9 @@ import { formatMoney } from "@/lib/format";
 import { MetricCard, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 
 const number = (value: unknown) => Number(value || 0);
+const activityAction:Record<string,string>={created:"cadastrado",create:"cadastrado",updated:"atualizado",duplicated:"duplicado",deleted:"excluído"};
+const activityEntity:Record<string,string>={property:"Imóvel",client:"Cliente",deal:"Oportunidade",owner:"Proprietário",visit:"Visita",proposal:"Proposta",sale:"Venda"};
+const activityText=(entity:string,action:string)=>`${activityEntity[entity]||"Registro"} ${activityAction[action]||"alterado"}`;
 export default async function DashboardPage({searchParams}:{searchParams:Promise<{period?:string}>}) {
   const user = await requireUser();
   if (user.role !== "admin") return <div className="admin-content"><PageHeader eyebrow="Área de trabalho" title={`Bem-vindo, ${user.name}`} description="Use a navegação para acessar os módulos liberados pelo administrador."/></div>;
@@ -58,7 +61,7 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
         <div className="status-summary">{propertyStatus.length ? propertyStatus.map((row) => <div key={row.status}><StatusBadge value={row.status}/><strong>{row.value}</strong></div>) : <p className="muted-copy">Nenhum imóvel cadastrado.</p>}</div>
       </SectionCard>
       <SectionCard title="Atividade recente" description="Últimas alterações registradas na plataforma." className="dashboard-wide">
-        <div className="activity-list">{recentActivity.length ? recentActivity.map((item) => <div key={item.id}><span className="activity-dot"/><div><strong>{item.action.replaceAll("_", " ")}</strong><small>{item.entityType} · {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(item.createdAt)}</small></div></div>) : <p className="muted-copy">Nenhuma atividade registrada.</p>}</div>
+        <div className="activity-list">{recentActivity.length ? recentActivity.map((item) => <div key={item.id}><span className="activity-dot"/><div><strong>{activityText(item.entityType,item.action)}</strong><small>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(item.createdAt)}</small></div></div>) : <p className="muted-copy">Nenhuma atividade registrada.</p>}</div>
       </SectionCard>
       <SectionCard title="WhatsApp" description="Cliques registrados no mês." className="dashboard-secondary"><div className="secondary-metric"><MessageCircle/><strong>{whatsappMonth.value}</strong><span>interações</span></div></SectionCard>
       <SectionCard title="Imóveis em destaque" description={`Métricas reais dos últimos ${days} dias.`} className="dashboard-wide" action={<div className="period-switch"><Link className={days===7?"active":""} href="/painel?period=7">7 dias</Link><Link className={days===30?"active":""} href="/painel?period=30">30 dias</Link></div>}><div className="analytics-columns">{[["Mais visualizados",topViews],["Mais interessados",topInterest],["Mais cliques no WhatsApp",topWhatsapp]].map(([title,rows])=><div key={title as string}><h3>{title as string}</h3>{(rows as typeof topViews).length?(rows as typeof topViews).map((item,index)=><Link href={`/painel/imoveis/${item.id}`} key={item.id}><span>{index+1}</span><div><strong>{item.title}</strong><small>{item.region}</small></div><b>{item.value}</b></Link>):<p className="muted-copy">Ainda sem dados no período.</p>}</div>)}</div></SectionCard>
