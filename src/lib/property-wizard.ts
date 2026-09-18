@@ -59,6 +59,10 @@ export function propertySlug(title: string) {
     .slice(0, 200)
     .replace(/-$/g, "");
 }
+
+export function propertyRecordId(stateId?: string, initialId?: string | number) {
+  return stateId || String(initialId || "");
+}
 const messages: Record<string, string> = {
   title: "Use entre 8 e 180 caracteres.",
   code: "Use entre 3 e 30 caracteres.",

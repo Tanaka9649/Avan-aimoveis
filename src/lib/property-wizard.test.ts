@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { propertyErrors, propertySlug, propertySteps } from "./property-wizard";
+import {
+  propertyErrors,
+  propertyRecordId,
+  propertySlug,
+  propertySteps,
+} from "./property-wizard";
 const values = {
   code: "AV-123",
   title: "Casa com jardim",
@@ -66,5 +71,10 @@ describe("property wizard", () => {
     const copy = { ...values };
     propertyErrors(copy, 1);
     expect(copy).toEqual(values);
+  });
+  it("keeps the saved draft id when a new property is published", () => {
+    const draftId = "20c1fe72-3a8d-4537-82a9-025d09714fe6";
+    expect(propertyRecordId(draftId, undefined)).toBe(draftId);
+    expect(propertyRecordId(undefined, draftId)).toBe(draftId);
   });
 });

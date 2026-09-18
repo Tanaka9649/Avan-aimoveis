@@ -22,6 +22,7 @@ import {
 import { saveProperty } from "@/app/painel/imoveis/actions";
 import {
   propertyErrors,
+  propertyRecordId,
   propertySlug,
   propertySteps,
 } from "@/lib/property-wizard";
@@ -153,7 +154,7 @@ export function PropertyEditor({
     [advanced, setAdvanced] = useState(false),
     [ownerOpen, setOwnerOpen] = useState(false);
   const [saveHint, setSaveHint] = useState("");
-  const propertyId = state.id || String(initial.id || "");
+  const propertyId = propertyRecordId(state.id, initial.id);
   const heading = useRef<HTMLHeadingElement>(null);
   const editing = !!initial.id;
   function change(name: string, value: string) {
@@ -217,7 +218,7 @@ export function PropertyEditor({
     }
     const data = new FormData();
     for (const [key, value] of Object.entries(values)) data.set(key, value);
-    data.set("id", String(initial.id || ""));
+    data.set("id", propertyId);
     data.set("status", intent === "draft" ? "rascunho" : values.status);
     data.set("intent", intent || "save");
     if (values.ownerId)

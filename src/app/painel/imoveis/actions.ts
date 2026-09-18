@@ -38,7 +38,18 @@ export async function saveProperty(_previous: { error: string; id?: string; save
         db.insert(activityLogs).values({ userId: user.id, entityType: "property", entityId: id, action: "create", details: { code: p.code } }),
       ]);
     }
-  } catch { return { error: "Não foi possível salvar. Verifique se o código ou slug já existe e tente novamente." }; }
+  } catch (error) {
+    const details = [error, error && typeof error === "object" && "cause" in error ? error.cause : null]
+      .filter(Boolean)
+      .map((item) => String(item instanceof Error ? item.message : item))
+      .join(" ");
+    if (details.includes("properties_code_uq"))
+      return { error: "O código informado já pertence a outro imóvel.", id };
+    if (details.includes("properties_slug_uq"))
+      return { error: "O endereço da página já pertence a outro imóvel.", id };
+    console.error("[saveProperty] failed", { id, error });
+    return { error: "Não foi possível salvar o imóvel. Tente novamente.", id };
+  }
   revalidatePath("/", "layout");
   if (formData.get("intent") === "draft") return { error: "", id, saved: true };
   redirect("/painel/imoveis");
