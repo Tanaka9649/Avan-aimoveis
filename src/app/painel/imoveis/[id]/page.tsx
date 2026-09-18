@@ -81,7 +81,7 @@ export default async function EditPropertyPage({
         >
           <div className="match-list">
             {matches.length ? matches.map((client) => (
-              <Link href={`/painel/clientes/${client.id}`} key={client.id}>
+              <Link href={`/painel/crm?view=clientes&cliente=${client.id}`} key={client.id}>
                 <b>{client.score}%</b><div><strong>{client.name}</strong><small>{client.reasons.map((reason) => `${reason.done ? "✓" : "✕"} ${reason.label}`).join(" · ")}</small></div>
               </Link>
             )) : <p className="muted-copy">Nenhum cliente atingiu os critérios mínimos ainda.</p>}

@@ -399,8 +399,8 @@ export default async function Page({
   );
   return (
     <div className="admin-content">
-      <Link className="back-link" href="/painel/clientes">
-        ← Clientes
+      <Link className="back-link" href="/painel/crm?view=clientes">
+        ← CRM · Clientes
       </Link>
       <PageHeader
         title={client.name}

@@ -97,7 +97,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
         <nav aria-label="Navegação do painel">
           <small>OPERAÇÃO</small>
           {item("/painel", "Visão geral", BarChart3)}
-          {modules.filter((module) => canAccess(user, module)).map((module) => {
+          {modules.filter((module) => module !== "clientes" && canAccess(user, module)).map((module) => {
             const meta = moduleMeta[module];
             return <div key={module}>{item(`/painel/${module}`, meta.label, meta.icon)}</div>;
           })}

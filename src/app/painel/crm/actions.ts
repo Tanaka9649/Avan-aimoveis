@@ -1,14 +1,16 @@
 "use server";
 import {randomUUID} from "node:crypto";
-import {and,eq,asc} from "drizzle-orm";
+import {and,eq,asc,ne,or} from "drizzle-orm";
 import {redirect} from "next/navigation";
 import {revalidatePath} from "next/cache";
 import {z} from "zod";
 import {getDb} from "@/db";
 import {clients,deals,stages,activities,dealProperties,properties,users} from "@/db/schema";
 import {requireModule,clientScope} from "@/lib/access";
-import {optionalMoney} from "@/lib/client-input";
+import {clientInput,optionalMoney} from "@/lib/client-input";
+import {dealPosition} from "@/lib/crm-input";
 type State={ok:boolean;message:string};
+export type CrmClientState={ok:boolean;message:string;clientId?:string;duplicate?:{id:string;name:string}};
 export async function saveDeal(_:State,form:FormData):Promise<State>{
  const user=await requireModule("crm");const db=getDb();
  const p=z.object({id:z.union([z.uuid(),z.literal("")]),clientId:z.uuid(),title:z.string().trim().min(3).max(180),stageId:z.uuid(),amount:optionalMoney,nextActionAt:z.string().max(40),nextActionType:z.string().trim().max(80),nextActionNote:z.string().trim().max(500),lostReason:z.string().trim().max(2000),note:z.string().trim().max(10000),assignedTo:z.union([z.uuid(),z.literal("")])}).safeParse(Object.fromEntries(form));
@@ -24,13 +26,42 @@ export async function saveDeal(_:State,form:FormData):Promise<State>{
  let stageChanged=true;if(v.id){const [existing]=await db.select({id:deals.id,stageId:deals.stageId}).from(deals).where(and(eq(deals.id,v.id),eq(deals.clientId,v.clientId)));if(!existing)return {ok:false,message:"Oportunidade indisponível."};stageChanged=existing.stageId!==v.stageId;}
  const id=v.id||randomUUID();const values={clientId:v.clientId,title:v.title,stageId:v.stageId,estimatedValueCents:v.amount,nextActionAt:next,nextActionType:v.nextActionType||null,nextActionNote:v.nextActionNote||null,...(stageChanged?{stageEnteredAt:new Date()}:{}),lostReason:stage.isLost?v.lostReason:null,updatedAt:new Date()};
  try{await db.batch([
-  v.id?db.update(deals).set(values).where(and(eq(deals.id,id),eq(deals.clientId,client.id))):db.insert(deals).values({id,...values,position:String(Date.now())}),
+  v.id?db.update(deals).set(values).where(and(eq(deals.id,id),eq(deals.clientId,client.id))):db.insert(deals).values({id,...values,position:dealPosition(Date.now())}),
   db.update(clients).set({assignedTo:v.assignedTo||null,updatedAt:new Date()}).where(and(eq(clients.id,client.id),clientScope(user))),
   db.delete(dealProperties).where(eq(dealProperties.dealId,id)),
   ...(links.data.length?[db.insert(dealProperties).values([...new Set(links.data)].map(propertyId=>({dealId:id,propertyId})))]:[]),
   db.insert(activities).values({clientId:client.id,dealId:id,userId:user.id,type:"deal_updated",description:`${v.id?"Oportunidade atualizada":"Oportunidade criada"}: ${v.title}. Etapa: ${stage.name}.${stage.isLost?" Motivo: "+v.lostReason:""}${v.note?"\n"+v.note:""}`}),
- ]);}catch{return {ok:false,message:"Não foi possível salvar a oportunidade."};}
+ ]);}catch(error){console.error("[crm/saveDeal] failed",{error:error instanceof Error?error.message:String(error),userId:user.id,clientId:client.id});return {ok:false,message:"Não foi possível salvar a oportunidade."};}
  revalidatePath("/painel","layout");redirect(`/painel/crm/${id}`);
+}
+
+export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmClientState>{
+ const user=await requireModule("crm");
+ const parsed=clientInput.safeParse(Object.fromEntries(form));
+ if(!parsed.success){
+  const field=String(parsed.error.issues[0]?.path[0]||"");
+  const messages:Record<string,string>={name:"Informe o nome completo do cliente.",phone:"Informe um telefone válido com DDD.",email:"Informe um e-mail válido.",origin:"Informe a origem do contato.",budgetMax:"O orçamento máximo deve ser maior que o mínimo.",minBedrooms:"Informe uma quantidade válida de quartos.",minBathrooms:"Informe uma quantidade válida de banheiros.",minParkingSpaces:"Informe uma quantidade válida de vagas."};
+  return{ok:false,message:messages[field]||"Revise os campos e tente novamente."};
+ }
+ const raw=String(form.get("id")||"");
+ if(raw&&!z.uuid().safeParse(raw).success)return{ok:false,message:"Cliente inválido."};
+ const db=getDb();
+ const duplicateIdentity=parsed.data.email?or(eq(clients.phone,parsed.data.phone),eq(clients.email,parsed.data.email)):eq(clients.phone,parsed.data.phone);
+ const [duplicate]=await db.select({id:clients.id,name:clients.name}).from(clients).where(and(clientScope(user),duplicateIdentity,raw?ne(clients.id,raw):undefined)).limit(1);
+ if(duplicate)return{ok:false,message:"Já existe um cliente com este telefone ou e-mail.",duplicate};
+ if(raw){const [allowed]=await db.select({id:clients.id}).from(clients).where(and(eq(clients.id,raw),clientScope(user))).limit(1);if(!allowed)return{ok:false,message:"Cliente indisponível."};}
+ const id=raw||randomUUID();
+ const{budgetMin,budgetMax,...rest}=parsed.data;
+ const values={...rest,budgetMinCents:budgetMin,budgetMaxCents:budgetMax,updatedAt:new Date()};
+ try{
+  await db.batch([
+   raw?db.update(clients).set(values).where(and(eq(clients.id,id),clientScope(user))):db.insert(clients).values({id,...values,assignedTo:user.id}),
+   db.insert(activities).values({clientId:id,userId:user.id,type:raw?"client_updated":"client_created",description:raw?"Cadastro e preferências atualizados no CRM.":"Cliente cadastrado pelo CRM."}),
+  ]);
+ }catch(error){console.error("[crm/saveClient] failed",{error:error instanceof Error?error.message:String(error),userId:user.id,clientId:id});return{ok:false,message:"Não foi possível salvar o cliente. Tente novamente."};}
+ revalidatePath("/painel/crm");
+ revalidatePath("/painel/busca");
+ return{ok:true,message:raw?"Alterações salvas com sucesso.":"Cliente cadastrado com sucesso.",clientId:id};
 }
 export async function dealChoices(){
  const user=await requireModule("crm");const db=getDb();return {user,stages:await db.select({id:stages.id,name:stages.name}).from(stages).orderBy(asc(stages.position)),clients:await db.select({id:clients.id,name:clients.name,assignedTo:clients.assignedTo}).from(clients).where(clientScope(user)).orderBy(asc(clients.name)),properties:await db.select({id:properties.id,title:properties.title,code:properties.code}).from(properties).orderBy(asc(properties.title)),team:user.role==="admin"?await db.select({id:users.id,name:users.name}).from(users).where(eq(users.active,true)):[]};
