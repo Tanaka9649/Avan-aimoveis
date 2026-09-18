@@ -17,9 +17,9 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
   const [total]=await db.select({value:count()}).from(deals).innerJoin(clients,eq(clients.id,deals.clientId)).where(where);
   const [stageRows, dealRows] = await Promise.all([
     db.select({ id: stages.id, name: stages.name, color: stages.color }).from(stages).orderBy(asc(stages.position)),
-    db.select({ id: deals.id, title: deals.title, client: clients.name, stageId: deals.stageId, value: deals.estimatedValueCents, tags: deals.tags, nextActionAt: deals.nextActionAt }).from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).where(where).orderBy(desc(deals.updatedAt)).limit(PAGE_SIZE).offset((page-1)*PAGE_SIZE),
+    db.select({ id: deals.id, title: deals.title, clientId:clients.id, client: clients.name, phone:clients.phone, email:clients.email, stageId: deals.stageId, value: deals.estimatedValueCents, tags: deals.tags, nextActionAt: deals.nextActionAt, nextActionType:deals.nextActionType,nextActionNote:deals.nextActionNote,stageEnteredAt:deals.stageEnteredAt }).from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).where(where).orderBy(desc(deals.updatedAt)).limit(PAGE_SIZE).offset((page-1)*PAGE_SIZE),
   ]);
-  const cards = dealRows.map((card) => ({ ...card, value: card.value === null ? "Valor não informado" : formatMoney(card.value), nextActionAt: card.nextActionAt?.toISOString() ?? null }));
+  const referenceTime=new Date().getTime();const cards = dealRows.map((card) => ({ ...card, value: card.value === null ? "Valor não informado" : formatMoney(card.value), nextActionAt: card.nextActionAt?.toISOString() ?? null, stageDays:Math.max(0,Math.floor((referenceTime-card.stageEnteredAt.getTime())/86400000)) }));
 
   return <div className="admin-content">
     <PageHeader eyebrow="Relacionamento" title="CRM comercial" description={`${cards.length} negócios no funil. Acompanhe cada oportunidade por etapa.`} action={<Link className="admin-button primary" href="/painel/crm/novo">Nova oportunidade</Link>} />

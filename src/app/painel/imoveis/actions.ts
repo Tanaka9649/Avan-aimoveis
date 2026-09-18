@@ -10,7 +10,7 @@ import { listInput } from "@/lib/client-input";
 import { requireModule } from "@/lib/access";
 import { propertyInput } from "@/lib/property-input";
 
-export async function saveProperty(_previous: { error: string }, formData: FormData): Promise<{ error: string }> {
+export async function saveProperty(_previous: { error: string; id?: string; saved?: boolean }, formData: FormData): Promise<{ error: string; id?: string; saved?: boolean }> {
   const user = await requireModule("imoveis");
   const parsed = propertyInput.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Revise os campos: " + [...new Set(parsed.error.issues.map((issue) => issue.path.join(".")))].join(", ") };
@@ -40,5 +40,18 @@ export async function saveProperty(_previous: { error: string }, formData: FormD
     }
   } catch { return { error: "Não foi possível salvar. Verifique se o código ou slug já existe e tente novamente." }; }
   revalidatePath("/", "layout");
+  if (formData.get("intent") === "draft") return { error: "", id, saved: true };
   redirect("/painel/imoveis");
+}
+
+export async function duplicateProperty(formData: FormData) {
+  const user = await requireModule("imoveis");
+  const parsed = z.uuid().safeParse(formData.get("id")); if (!parsed.success) return;
+  const db = getDb(); const [source] = await db.select().from(properties).where(eq(properties.id, parsed.data)).limit(1); if (!source) return;
+  const id = randomUUID(); const suffix = id.slice(0, 6).toUpperCase();
+  await db.batch([
+    db.insert(properties).values({ ...source, id, code: `${source.code.slice(0, 20)}-${suffix}`, slug: `${source.slug.slice(0, 190)}-${id.slice(0, 6)}`, title: `${source.title} — cópia`, status: "rascunho", publishedAt: null, createdAt: new Date(), updatedAt: new Date() }),
+    db.insert(activityLogs).values({ userId: user.id, entityType: "property", entityId: id, action: "duplicated", details: { sourceId: source.id, photosCopied: false } }),
+  ]);
+  revalidatePath("/painel/imoveis"); redirect(`/painel/imoveis/${id}`);
 }

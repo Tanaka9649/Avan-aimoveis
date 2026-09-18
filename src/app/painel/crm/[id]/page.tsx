@@ -46,7 +46,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
         action={<StatusBadge value={deal.stage} />}
       />
 
-      <SectionCard title="Gerenciar oportunidade" description="Etapa, responsável pelo cliente, próxima ação, imóveis e notas."><DealEditor choices={choices} initial={{id,clientId:record.clientId,title:record.title,stageId:record.stageId,amount:record.estimatedValueCents===null?"":String(record.estimatedValueCents/100),nextActionAt:record.nextActionAt?.toISOString()||"",lostReason:record.lostReason||""}} selected={linked.map(p=>p.id)}/></SectionCard>
+      <SectionCard title="Gerenciar oportunidade" description="Etapa, responsável pelo cliente, próxima ação, imóveis e notas."><DealEditor choices={choices} initial={{id,clientId:record.clientId,title:record.title,stageId:record.stageId,amount:record.estimatedValueCents===null?"":String(record.estimatedValueCents/100),nextActionAt:record.nextActionAt?.toISOString()||"",nextActionType:record.nextActionType||"",nextActionNote:record.nextActionNote||"",lostReason:record.lostReason||""}} selected={linked.map(p=>p.id)}/></SectionCard>
       <div className="deal-detail-grid">
         <SectionCard title="Contato e oportunidade" description="Dados usados durante o atendimento comercial.">
           <dl className="detail-list">

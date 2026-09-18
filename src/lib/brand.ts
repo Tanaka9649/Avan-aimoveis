@@ -1,8 +1,8 @@
 export const brand = {
   name: "Avança Imóveis",
   tagline: "Imóveis escolhidos com critério. Negócios conduzidos com clareza.",
-  phone: "",
-  whatsapp: "",
+  phone: "(34) 9990-0553",
+  whatsapp: "553499900553",
   instagram: "",
   address: "",
   email: "",

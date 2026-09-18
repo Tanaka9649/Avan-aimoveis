@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  ImagePlus,
   LockKeyhole,
   Loader2,
   Minus,
@@ -27,6 +26,7 @@ import {
   propertySteps,
 } from "@/lib/property-wizard";
 import "./property-wizard.css";
+import { PropertyMediaManager } from "./property-media-manager";
 
 type Values = Record<string, string>;
 const statuses: Values = {
@@ -112,11 +112,15 @@ function SummaryBlock({
 export function PropertyEditor({
   initial = {},
   owners = [],
+  photos = [],
+  documents = [],
 }: {
   initial?: Record<string, string | number>;
   owners?: { id: string; name: string }[];
+  photos?: { id: string; alt: string; position: number; isCover: boolean }[];
+  documents?: { id: string; originalName: string; mime: string; size: number }[];
 }) {
-  const [state, action, pending] = useActionState(saveProperty, { error: "" });
+  const [state, action, pending] = useActionState(saveProperty, { error: "", id: String(initial.id || "") });
   const [values, setValues] = useState<Values>(() => ({
     title: "",
     code: "",
@@ -149,6 +153,7 @@ export function PropertyEditor({
     [advanced, setAdvanced] = useState(false),
     [ownerOpen, setOwnerOpen] = useState(false);
   const [saveHint, setSaveHint] = useState("");
+  const propertyId = state.id || String(initial.id || "");
   const heading = useRef<HTMLHeadingElement>(null);
   const editing = !!initial.id;
   function change(name: string, value: string) {
@@ -214,6 +219,7 @@ export function PropertyEditor({
     for (const [key, value] of Object.entries(values)) data.set(key, value);
     data.set("id", String(initial.id || ""));
     data.set("status", intent === "draft" ? "rascunho" : values.status);
+    data.set("intent", intent || "save");
     if (values.ownerId)
       for (const key of ["ownerName", "ownerPhone", "ownerEmail"])
         data.set(key, "");
@@ -569,37 +575,7 @@ export function PropertyEditor({
               </>
             ) : null}
             {step === 4 ? (
-              <>
-                <div
-                  className="wizard-upload"
-                  aria-describedby="media-unavailable"
-                >
-                  <ImagePlus size={34} />
-                  <h3>Fotos do imóvel</h3>
-                  <p>Máximo de 10 fotos.</p>
-                  <button
-                    className="admin-button secondary"
-                    type="button"
-                    disabled
-                  >
-                    Adicionar fotos — indisponível
-                  </button>
-                  <small id="media-unavailable">
-                    O armazenamento no Neon ainda precisa ser conectado. Nenhum
-                    arquivo será enviado nesta etapa.
-                  </small>
-                </div>
-                <section className="wizard-documents">
-                  <LockKeyhole size={21} />
-                  <div>
-                    <h3>Documentos internos</h3>
-                    <p>Estes arquivos não aparecem no site.</p>
-                    <small>
-                      Envio indisponível até a conexão do armazenamento.
-                    </small>
-                  </div>
-                </section>
-              </>
+              <PropertyMediaManager propertyId={propertyId || undefined} initialPhotos={photos} initialDocuments={documents}/>
             ) : null}
             {step === 5 ? (
               <>
@@ -666,10 +642,10 @@ export function PropertyEditor({
                     </small>
                   </SummaryBlock>
                   <SummaryBlock title="Fotos" onEdit={() => go(4)}>
-                    <p>Envio pendente de configuração do armazenamento.</p>
+                    <p>{photos.length ? `${photos.length} foto(s) cadastrada(s).` : propertyId ? "Adicione fotos antes de publicar." : "Salve o rascunho para adicionar fotos."}</p>
                   </SummaryBlock>
                   <SummaryBlock title="Documentos" onEdit={() => go(4)}>
-                    <p>Área privada. Envio ainda indisponível.</p>
+                    <p>{documents.length ? `${documents.length} documento(s) privado(s).` : "Nenhum documento enviado."}</p>
                   </SummaryBlock>
                 </div>
                 <p className="wizard-private">
@@ -680,9 +656,9 @@ export function PropertyEditor({
               </>
             ) : null}
           </fieldset>
-          {saveHint ? (
+          {state.saved || saveHint ? (
             <p role="status" className="wizard-save-hint">
-              {saveHint}
+              {state.saved ? "Rascunho salvo. O envio de fotos e documentos está liberado." : saveHint}
             </p>
           ) : null}
           {state.error ? (
