@@ -25,8 +25,8 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  const[[dealCount],[clientCount],stageRows,dealRows,clientRows,available]=await Promise.all([
   db.select({value:count()}).from(deals).innerJoin(clients,eq(clients.id,deals.clientId)).where(dealWhere),
   db.select({value:count()}).from(clients).where(clientWhere),
-  db.select({id:stages.id,name:stages.name,color:stages.color}).from(stages).orderBy(asc(stages.position)),
-  db.select({id:deals.id,title:deals.title,clientId:clients.id,client:clients.name,phone:clients.phone,email:clients.email,stageId:deals.stageId,value:deals.estimatedValueCents,tags:deals.tags,nextActionAt:deals.nextActionAt,nextActionType:deals.nextActionType,nextActionNote:deals.nextActionNote,stageEnteredAt:deals.stageEnteredAt}).from(deals).innerJoin(clients,eq(clients.id,deals.clientId)).where(dealWhere).orderBy(desc(deals.updatedAt)).limit(PAGE_SIZE).offset((page-1)*PAGE_SIZE),
+  db.select({id:stages.id,name:stages.name,color:stages.color,isWon:stages.isWon,isLost:stages.isLost}).from(stages).orderBy(asc(stages.position)),
+  db.select({id:deals.id,title:deals.title,clientId:clients.id,client:clients.name,phone:clients.phone,email:clients.email,stageId:deals.stageId,value:deals.estimatedValueCents,tags:deals.tags,nextActionAt:deals.nextActionAt,nextActionType:deals.nextActionType,nextActionNote:deals.nextActionNote,stageEnteredAt:deals.stageEnteredAt}).from(deals).innerJoin(clients,eq(clients.id,deals.clientId)).where(dealWhere).orderBy(asc(deals.position),asc(deals.id)),
   db.select().from(clients).where(clientWhere).orderBy(desc(clients.updatedAt)).limit(PAGE_SIZE).offset((page-1)*PAGE_SIZE),
   db.select({priceCents:properties.priceCents,type:properties.type,neighborhood:properties.neighborhood,city:properties.city,bedrooms:properties.bedrooms,bathrooms:properties.bathrooms,parkingSpaces:properties.parkingSpaces,features:properties.features}).from(properties).where(eq(properties.status,"disponivel")).orderBy(desc(properties.updatedAt)).limit(200),
  ]);

@@ -1,6 +1,6 @@
 "use server";
 import {randomUUID} from "node:crypto";
-import {and,eq,asc,ne,or} from "drizzle-orm";
+import {and,eq,asc,ne,or,sql} from "drizzle-orm";
 import {redirect} from "next/navigation";
 import {revalidatePath} from "next/cache";
 import {z} from "zod";
@@ -18,6 +18,8 @@ export async function saveDeal(_:State,form:FormData):Promise<State>{
  const v=p.data;const [client]=await db.select().from(clients).where(and(eq(clients.id,v.clientId),clientScope(user)));if(!client)return {ok:false,message:"Cliente indisponível."};
  const [stage]=await db.select().from(stages).where(eq(stages.id,v.stageId));if(!stage)return {ok:false,message:"Etapa inválida."};
  if(stage.isLost&&!v.lostReason)return {ok:false,message:"Informe o motivo da perda."};
+ if(v.nextActionType&&!v.nextActionAt)return {ok:false,message:"Escolha uma data para a próxima ação."};
+ if(stage.isWon){const [current]=v.id?await db.select({stageId:deals.stageId}).from(deals).where(eq(deals.id,v.id)):[];if(current?.stageId!==stage.id)return{ok:false,message:"Conclua a venda pelo Kanban para mover a oportunidade para Ganho."};}
  const next=v.nextActionAt?new Date(v.nextActionAt):null;if(next&&!Number.isFinite(next.getTime()))return {ok:false,message:"Próxima ação inválida."};
  const links=z.array(z.uuid()).max(100).safeParse(form.getAll("propertyIds"));if(!links.success)return {ok:false,message:"Imóveis inválidos."};
  for(const id of links.data){const [property]=await db.select({id:properties.id}).from(properties).where(eq(properties.id,id));if(!property)return {ok:false,message:"Imóvel indisponível."};}
@@ -32,7 +34,7 @@ export async function saveDeal(_:State,form:FormData):Promise<State>{
   ...(links.data.length?[db.insert(dealProperties).values([...new Set(links.data)].map(propertyId=>({dealId:id,propertyId})))]:[]),
   db.insert(activities).values({clientId:client.id,dealId:id,userId:user.id,type:"deal_updated",description:`${v.id?"Oportunidade atualizada":"Oportunidade criada"}: ${v.title}. Etapa: ${stage.name}.${stage.isLost?" Motivo: "+v.lostReason:""}${v.note?"\n"+v.note:""}`}),
  ]);}catch(error){console.error("[crm/saveDeal] failed",{error:error instanceof Error?error.message:String(error),userId:user.id,clientId:client.id});return {ok:false,message:"Não foi possível salvar a oportunidade."};}
- revalidatePath("/painel","layout");redirect(`/painel/crm/${id}`);
+ revalidatePath("/painel","layout");if(form.get("returnToBoard")==="1")return{ok:true,message:"Oportunidade criada com sucesso."};redirect(`/painel/crm/${id}`);
 }
 
 export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmClientState>{
@@ -64,5 +66,5 @@ export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmC
  return{ok:true,message:raw?"Alterações salvas com sucesso.":"Cliente cadastrado com sucesso.",clientId:id};
 }
 export async function dealChoices(){
- const user=await requireModule("crm");const db=getDb();return {user,stages:await db.select({id:stages.id,name:stages.name}).from(stages).orderBy(asc(stages.position)),clients:await db.select({id:clients.id,name:clients.name,assignedTo:clients.assignedTo}).from(clients).where(clientScope(user)).orderBy(asc(clients.name)),properties:await db.select({id:properties.id,title:properties.title,code:properties.code}).from(properties).orderBy(asc(properties.title)),team:user.role==="admin"?await db.select({id:users.id,name:users.name}).from(users).where(eq(users.active,true)):[]};
+ const user=await requireModule("crm");const db=getDb();const [stageRows,clientRows,propertyRows,team]=await Promise.all([db.select({id:stages.id,name:stages.name,isWon:stages.isWon,isLost:stages.isLost}).from(stages).orderBy(asc(stages.position)),db.select({id:clients.id,name:clients.name,phone:clients.phone,assignedTo:clients.assignedTo}).from(clients).where(clientScope(user)).orderBy(asc(clients.name)),db.select({id:properties.id,title:properties.title,code:properties.code,priceCents:properties.priceCents,city:properties.city,neighborhood:properties.neighborhood,photoId:sql<string|null>`(select id from property_photos where property_id=${properties.id} order by is_cover desc, position limit 1)`}).from(properties).orderBy(asc(properties.title)),user.role==="admin"?db.select({id:users.id,name:users.name}).from(users).where(eq(users.active,true)):Promise.resolve([])]);return {stages:stageRows,clients:clientRows,properties:propertyRows,team};
 }
