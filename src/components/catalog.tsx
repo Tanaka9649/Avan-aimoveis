@@ -3,6 +3,7 @@ import { Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { PublicPropertyCard } from "@/data/properties";
 import { PropertyCard } from "./property-card";
+import { PublicEmptyState } from "./public-empty-state";
 
 type Filters = { q: string; type: string; city: string; neighborhood: string; bedrooms: string; max: string };
 const EMPTY: Filters = { q: "", type: "", city: "", neighborhood: "", bedrooms: "", max: "" };
@@ -48,7 +49,7 @@ export function Catalog({ properties, initial = {} }: { properties: PublicProper
           <span>Tipo</span>
           <select value={filters.type} onChange={set("type")}>
             <option value="">Todos</option>
-            {["Apartamento", "Casa", "Cobertura", "Studio"].map((type) => <option key={type}>{type}</option>)}
+            {[...new Set(["Apartamento", "Casa", "Cobertura", "Studio", "Terreno", ...properties.map(p => p.type)])].map((type) => <option key={type}>{type}</option>)}
           </select>
         </label>
         <label>
@@ -78,7 +79,8 @@ export function Catalog({ properties, initial = {} }: { properties: PublicProper
         </label>
       </div>
       <div className="catalog-meta">
-        <p><strong>{list.length}</strong> {list.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}</p>
+        <p role="status" aria-live="polite"><strong>{list.length}</strong> {list.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}</p>
+        {Object.values(filters).some(Boolean) ? <button className="catalog-clear" onClick={() => { setFilters(EMPTY); setSort("recentes"); }}>Limpar filtros</button> : null}
         <label>
           Ordenar por
           <select value={sort} onChange={(event) => setSort(event.target.value)}>
@@ -91,12 +93,9 @@ export function Catalog({ properties, initial = {} }: { properties: PublicProper
       {list.length ? (
         <div className="property-grid">{list.map((property, index) => <PropertyCard property={property} key={property.id} priority={index < 3} />)}</div>
       ) : (
-        <div className="empty-state">
-          <Search />
-          <h2>Nenhum imóvel encontrado</h2>
-          <p>Ajuste os filtros ou limpe a busca para ver todas as opções.</p>
+        <PublicEmptyState title="Nenhum imóvel encontrado" description="Tente ajustar os filtros para visualizar outras opções.">
           <button className="button button-dark" onClick={() => { setFilters(EMPTY); setSort("recentes"); }}><X /> Limpar filtros</button>
-        </div>
+        </PublicEmptyState>
       )}
     </>
   );

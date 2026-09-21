@@ -32,6 +32,7 @@ export function PropertyCard({ property, priority = false }: { property: PublicP
   return (
     <article className="property-card">
       <div className="property-image">
+        <Link href={href} aria-label={`Ver fotos e detalhes de ${property.title}`}>
         {property.cover ? (
           <Image
             src={property.cover.url}
@@ -47,7 +48,8 @@ export function PropertyCard({ property, priority = false }: { property: PublicP
         ) : (
           <span className="property-image-empty"><Building2 aria-hidden="true" /></span>
         )}
-        <button className={`favorite ${saved ? "saved" : ""}`} onClick={toggle} aria-label={saved ? "Remover dos favoritos" : "Adicionar aos favoritos"}>
+        </Link>
+        <button className={`favorite ${saved ? "saved" : ""}`} onClick={toggle} aria-pressed={saved} aria-label={saved ? "Remover dos favoritos" : "Adicionar aos favoritos"}>
           <Heart size={19} fill={saved ? "currentColor" : "none"} />
         </button>
         <span className="property-code">{property.code}</span>
@@ -56,9 +58,9 @@ export function PropertyCard({ property, priority = false }: { property: PublicP
         <div className="eyebrow"><MapPin size={14} />{property.neighborhood} · {property.city}</div>
         <h3><Link href={href}>{property.title}</Link></h3>
         <div className="property-specs">
-          <span><BedDouble /> {property.bedrooms}</span>
-          <span><Bath /> {property.bathrooms}</span>
-          <span><Car /> {property.parkingSpaces}</span>
+          <span aria-label={`${property.bedrooms} quartos`}><BedDouble aria-hidden="true"/> {property.bedrooms}</span>
+          <span aria-label={`${property.bathrooms} banheiros`}><Bath aria-hidden="true"/> {property.bathrooms}</span>
+          <span aria-label={`${property.parkingSpaces} vagas`}><Car aria-hidden="true"/> {property.parkingSpaces}</span>
           {property.area > 0 ? <span>{formatArea(property.area)}</span> : null}
         </div>
         <div className="property-price">

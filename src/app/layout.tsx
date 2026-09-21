@@ -6,6 +6,7 @@ import { brand, siteUrl } from "@/lib/brand";
 import "./globals.css";
 import "./evolution.css";
 import "./admin-refinement.css";
+import "./public-site.css";
 
 const sans = Manrope({ subsets: ["latin"], variable: "--font-sans" });
 

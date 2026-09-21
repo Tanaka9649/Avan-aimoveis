@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
 import type { PublicPhoto } from "@/data/properties";
 import { PHOTO_SIZES, photoUrl } from "@/lib/photos";
@@ -15,18 +15,18 @@ import "./property-gallery.css";
 export function PropertyGallery({ photos, title }: { photos: PublicPhoto[]; title: string }) {
   const [openAt, setOpenAt] = useState<number | null>(null);
   const total = photos.length;
+  const dialog = useRef<HTMLDialogElement>(null);
+  const isOpen = openAt !== null;
 
   useEffect(() => {
-    if (openAt === null) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpenAt(null);
-      if (event.key === "ArrowRight") setOpenAt((current) => (current === null ? null : (current + 1) % total));
-      if (event.key === "ArrowLeft") setOpenAt((current) => (current === null ? null : (current - 1 + total) % total));
-    }
-    document.addEventListener("keydown", onKey);
+    if (!isOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    const node = dialog.current;
+    node?.showModal();
     document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
-  }, [openAt, total]);
+    return () => { node?.close(); document.body.style.overflow = overflow; previous?.focus(); };
+  }, [isOpen]);
 
   if (!total) return <div className="gallery-empty"><p>As fotos deste imóvel serão publicadas em breve.</p></div>;
 
@@ -55,7 +55,10 @@ export function PropertyGallery({ photos, title }: { photos: PublicPhoto[]; titl
         </div>
       ) : null}
       {openAt !== null ? (
-        <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`Fotos de ${title}`}>
+        <dialog ref={dialog} className="gallery-lightbox" aria-label={`Fotos de ${title}`} onCancel={() => setOpenAt(null)} onKeyDown={event => {
+          if (event.key === "ArrowRight") { event.preventDefault(); setOpenAt((openAt + 1) % total); }
+          if (event.key === "ArrowLeft") { event.preventDefault(); setOpenAt((openAt - 1 + total) % total); }
+        }}>
           <button className="gallery-close" onClick={() => setOpenAt(null)} aria-label="Fechar galeria"><X /></button>
           <button className="gallery-previous" onClick={() => setOpenAt((openAt - 1 + total) % total)} aria-label="Foto anterior"><ChevronLeft /></button>
           <figure>
@@ -71,7 +74,7 @@ export function PropertyGallery({ photos, title }: { photos: PublicPhoto[]; titl
             <figcaption>{openAt + 1} de {total}</figcaption>
           </figure>
           <button className="gallery-next" onClick={() => setOpenAt((openAt + 1) % total)} aria-label="Próxima foto"><ChevronRight /></button>
-        </div>
+        </dialog>
       ) : null}
     </>
   );
