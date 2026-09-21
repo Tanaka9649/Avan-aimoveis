@@ -74,6 +74,12 @@ export const properties = pgTable("properties", {
 export const propertyPhotos = pgTable("property_photos", {
   id: uuid("id").defaultRandom().primaryKey(), propertyId: uuid("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(),
   storagePath: text("storage_path").notNull(), alt: varchar("alt", { length: 180 }).notNull(), position: integer("position").notNull(), isCover: boolean("is_cover").default(false).notNull(),
+  // Responsive variants generated at upload time: { thumb, medium, full } → Neon Object Storage keys.
+  // Empty for photos uploaded before the variant pipeline; those fall back to storagePath.
+  variants: jsonb("variants").$type<Record<string, string>>().default({}).notNull(),
+  blurData: text("blur_data"),
+  width: integer("width"),
+  height: integer("height"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index("property_photos_order_idx").on(t.propertyId, t.position)]);
 

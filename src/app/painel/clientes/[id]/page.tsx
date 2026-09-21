@@ -29,6 +29,7 @@ import {
 } from "../actions";
 import { formatMoney } from "@/lib/format";
 import { FavoriteComparison } from "@/components/client-properties";
+import { PropertyShareButton } from "@/components/property-admin-actions";
 import { propertyMatch } from "@/lib/property-match";
 export default async function Page({
   params,
@@ -119,6 +120,10 @@ export default async function Page({
         id: properties.id,
         title: properties.title,
         code: properties.code,
+        slug: properties.slug,
+        status: properties.status,
+        publishedAt: properties.publishedAt,
+        city: properties.city,
         price: properties.priceCents,
         region: properties.neighborhood,
         area: properties.privateArea,
@@ -302,12 +307,31 @@ export default async function Page({
               }))}
             />
             {favorites.map((f) => (
-              <form action={toggleFavorite} key={f.id}>
-                <input type="hidden" name="clientId" value={id} />
-                <input type="hidden" name="propertyId" value={f.id} />
-                <input type="hidden" name="remove" value="1" />
-                <button className="text-action">Remover {f.code}</button>
-              </form>
+              <div className="favorite-row" key={f.id}>
+                <PropertyShareButton
+                  label={`Compartilhar ${f.code}`}
+                  client={{ id: client.id, name: client.name, phone: client.phone }}
+                  property={{
+                    id: f.id,
+                    title: f.title,
+                    slug: f.slug,
+                    status: f.status,
+                    publishedAt: f.publishedAt?.toISOString() || null,
+                    priceCents: f.price,
+                    neighborhood: f.region,
+                    city: f.city,
+                    bedrooms: f.bedrooms,
+                    bathrooms: f.bathrooms,
+                    parkingSpaces: f.parking,
+                  }}
+                />
+                <form action={toggleFavorite}>
+                  <input type="hidden" name="clientId" value={id} />
+                  <input type="hidden" name="propertyId" value={f.id} />
+                  <input type="hidden" name="remove" value="1" />
+                  <button className="text-action">Remover {f.code}</button>
+                </form>
+              </div>
             ))}
           </SectionCard>
           <SectionCard

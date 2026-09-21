@@ -11,6 +11,9 @@ import {
   gte,
   lte,
   desc,
+  eq,
+  ne,
+  isNotNull,
   sql,
   inArray,
 } from "drizzle-orm";
@@ -25,7 +28,10 @@ import {
 import { formatMoney } from "@/lib/format";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/admin-ui";
 import { propertyCompleteness } from "@/lib/property-completeness";
-import { PropertyAdminActions } from "@/components/property-admin-actions";
+import { PropertyPublicationMenu, PropertyShareButton } from "@/components/property-admin-actions";
+import { SiteBadge } from "@/components/site-badge";
+import { PhotoOptimizer } from "@/components/photo-optimizer";
+import { PHOTO_SIZES, photoUrl } from "@/lib/photos";
 import { duplicateProperty } from "./actions";
 
 export default async function AdminPropertiesPage({
@@ -64,6 +70,12 @@ export default async function AdminPropertiesPage({
     Number.isFinite(high) && high > 0
       ? lte(properties.priceCents, Math.min(2147483647, Math.round(high * 100)))
       : undefined,
+    // "No site" is the publication switch, not the commercial status — they filter independently.
+    value(query, "site") === "publicado"
+      ? and(isNotNull(properties.publishedAt), eq(properties.status, "disponivel"))
+      : value(query, "site") === "fora"
+        ? or(sql`${properties.publishedAt} is null`, ne(properties.status, "disponivel"))
+        : undefined,
   );
   const db = getDb();
   const [[total], rows] = await Promise.all([
@@ -84,6 +96,7 @@ export default async function AdminPropertiesPage({
       bedrooms: properties.bedrooms,
       bathrooms: properties.bathrooms,
       parking: properties.parkingSpaces,
+      publishedAt: properties.publishedAt,
       updatedAt: properties.updatedAt,
     })
     .from(properties)
@@ -100,6 +113,8 @@ export default async function AdminPropertiesPage({
             id: propertyPhotos.id,
             propertyId: propertyPhotos.propertyId,
             isCover: propertyPhotos.isCover,
+            position: propertyPhotos.position,
+            blurData: propertyPhotos.blurData,
           })
           .from(propertyPhotos)
           .where(inArray(propertyPhotos.propertyId, ids)),
@@ -131,6 +146,7 @@ export default async function AdminPropertiesPage({
           </Link>
         }
       />
+      <PhotoOptimizer />
       <ListFilters scope="imoveis" userId={user.id} query={query}>
         <label className="filter-control filter-control-status">
           <span className="crm-visually-hidden">Status</span>
@@ -141,6 +157,14 @@ export default async function AdminPropertiesPage({
             <option value="reservado">Reservado</option>
             <option value="vendido">Vendido</option>
             <option value="pausado">Pausado</option>
+          </select>
+        </label>
+        <label className="filter-control filter-control-site">
+          <span className="crm-visually-hidden">Publicação</span>
+          <select name="site" defaultValue={value(query, "site")} aria-label="Publicação no site">
+            <option value="">No site e fora do site</option>
+            <option value="publicado">Somente publicados</option>
+            <option value="fora">Somente fora do site</option>
           </select>
         </label>
         <label className="filter-control filter-control-city">
@@ -171,7 +195,20 @@ export default async function AdminPropertiesPage({
         <section className="property-admin-grid">
           {rows.map((p) => {
             const media = photosByProperty.get(p.id) || [];
-            const cover = media.find((x) => x.isCover) || media[0];
+            const cover = media.find((x) => x.isCover) || [...media].sort((a, b) => a.position - b.position)[0];
+            const sharable = {
+              id: p.id,
+              title: p.title,
+              slug: p.slug,
+              status: p.status,
+              publishedAt: p.publishedAt?.toISOString() || null,
+              priceCents: p.price,
+              neighborhood: p.neighborhood,
+              city: p.city,
+              bedrooms: p.bedrooms,
+              bathrooms: p.bathrooms,
+              parkingSpaces: p.parking,
+            };
             const complete = propertyCompleteness({
               title: p.title,
               priceCents: p.price,
@@ -191,16 +228,21 @@ export default async function AdminPropertiesPage({
                 >
                   {cover ? (
                     <Image
-                      src={`/api/property-photos/${cover.id}`}
+                      src={photoUrl(cover.id, "thumb")}
                       alt={p.title}
                       fill
-                      sizes="320px"
+                      sizes={PHOTO_SIZES.adminCard}
+                      loading="lazy"
+                      {...(cover.blurData ? { placeholder: "blur" as const, blurDataURL: cover.blurData } : {})}
                       unoptimized
                     />
                   ) : (
                     <Building2 />
                   )}
-                  <StatusBadge value={p.status} />
+                  <span className="admin-property-flags">
+                    <StatusBadge value={p.status} />
+                    <SiteBadge property={p} />
+                  </span>
                 </Link>
                 <div className="admin-property-body">
                   <small>
@@ -255,14 +297,8 @@ export default async function AdminPropertiesPage({
                         <Copy /> Duplicar
                       </button>
                     </form>
-                    <PropertyAdminActions
-                      id={p.id}
-                      title={p.title}
-                      slug={p.slug}
-                      price={formatMoney(p.price)}
-                      region={`${p.neighborhood}, ${p.city}`}
-                      published={p.status === "disponivel"}
-                    />
+                    <PropertyShareButton property={sharable} />
+                    <PropertyPublicationMenu property={sharable} />
                   </footer>
                 </div>
               </article>

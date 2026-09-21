@@ -90,6 +90,7 @@
 .list-tools .filter-control-status { flex-basis: 160px; }
 .list-tools .filter-control-city { flex-basis: 175px; }
 .list-tools .filter-control-type { flex-basis: 155px; }
+.list-tools .filter-control-site { flex-basis: 200px; }
 
 .list-tools input::placeholder {
   color: var(--admin-muted);

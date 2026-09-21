@@ -1,4 +1,4 @@
-# Estado verificado — 17/09/2026
+# Estado verificado — 21/09/2026
 
 ## Entregue nesta etapa
 
@@ -19,9 +19,17 @@
 - Tratamento de falha de rede e validação de consentimento, telefone, e-mail e identificador.
 - Teste integrado em desenvolvimento com fixtures sintéticas e limpeza restrita ao UUID de cada execução.
 
+### 21/09/2026 — data/hora, fotos e publicação
+
+- Campos de data e horário unificados em `src/components/date-time-fields.tsx`: calendário DD/MM/AAAA com atalhos (hoje, amanhã, +2 dias, próxima semana) e horários de 30 em 30 minutos, aplicados em visitas, propostas, vendas e próxima ação do CRM. Não há mais `datetime-local` bruto no painel.
+- Fuso da operação corrigido: valores de parede são convertidos por `parseOperationDateTime` em `America/Sao_Paulo`. Uma visita marcada às 14:00 deixa de ser gravada como 14:00 UTC (11:00 em Brasília).
+- Fotos passam a ter três variantes WebP (480/1280/1920) geradas no upload, com placeholder blur, `ETag` e cache imutável de um ano. Cards, CRM e listas carregam apenas a miniatura da capa.
+- Fotos anteriores ao pipeline continuam funcionando e podem ser otimizadas pelo cartão "Otimizar fotos antigas" em Painel → Imóveis.
+- Publicação virou estado próprio (`published_at`), separada do status comercial, com controle na revisão do cadastro, ações Publicar/Despublicar no card, modal de compartilhamento com link, mensagem, WhatsApp e PDF, página pública completa, Open Graph, dados estruturados e sitemap vindo do banco.
+
 ## Ainda não pronto
 
-- Upload/galeria e documentos privados no Neon Object Storage (beta aceita pelo usuário; serviço ainda não provisionado).
+- Documentos privados no Neon Object Storage dependem de URLs assinadas; hoje passam pela rota autenticada.
 - Movimentação e edição de negócios, notas, perda/ganho, cadastro manual de clientes e preferências.
 - Criação e edição dos fluxos de visitas, propostas, vendas, comissões e proprietários; as consultas já estão disponíveis.
 - Relatórios avançados, filtros por período e exportações; os indicadores operacionais básicos já usam dados reais.
@@ -29,7 +37,8 @@
 - Alertas de busca, formulário geral de contato, lembretes e canais de envio.
 - Paginação do catálogo/CRM: atualmente limitados aos 200 registros mais recentes.
 - Favoritos fora dos 200 anúncios recentes precisam de consulta por IDs.
-- Imóveis reservados são ocultados; confirmar a regra comercial antes de alterar.
+- Imóveis reservados, pausados e vendidos são ocultados do site mesmo quando publicados; confirmar a regra comercial antes de alterar.
+- Imagens são entregues pela rota `/api/property-photos`, sem otimização adicional da Vercel: as variantes já saem no tamanho certo do Neon Object Storage.
 - Vercel, ambientes isolados, proteção da main, PR, E2E completo e procedimentos de restauração testados.
 - Release bloqueado por segurança: não promover configuração de Preview para Production.
 

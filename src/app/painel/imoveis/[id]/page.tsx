@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { clientScope, requireModule } from "@/lib/access";
 import { PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
+import { SiteBadge } from "@/components/site-badge";
 import { PropertyEditor } from "@/components/property-editor";
 import { propertyMatch } from "@/lib/property-match";
 import { canAccess } from "@/lib/permissions";
@@ -45,6 +46,7 @@ export default async function EditPropertyPage({
         alt: propertyPhotos.alt,
         position: propertyPhotos.position,
         isCover: propertyPhotos.isCover,
+        blurData: propertyPhotos.blurData,
       })
       .from(propertyPhotos)
       .where(eq(propertyPhotos.propertyId, id)),
@@ -72,7 +74,7 @@ export default async function EditPropertyPage({
         eyebrow="Portfólio"
         title="Editar imóvel"
         description={p.code}
-        action={<StatusBadge value={p.status} />}
+        action={<span className="page-header-badges"><StatusBadge value={p.status} /><SiteBadge property={p} /></span>}
       />
       {canAccess(user, "clientes") ? (
         <SectionCard
@@ -119,6 +121,7 @@ export default async function EditPropertyPage({
             address: p.addressPrivate,
             description: p.description,
             status: p.status,
+            published: p.publishedAt ? "1" : "0",
           }}
         />
       )}

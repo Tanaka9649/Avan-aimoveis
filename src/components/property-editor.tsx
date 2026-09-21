@@ -10,6 +10,7 @@ import {
   Plus,
   Pencil,
   Building2,
+  X,
 } from "lucide-react";
 import {
   startTransition,
@@ -19,7 +20,10 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import Image from "next/image";
 import { saveProperty } from "@/app/painel/imoveis/actions";
+import { publicationChecks, publicPropertyPath } from "@/lib/property-publication";
+import { PHOTO_SIZES, photoUrl } from "@/lib/photos";
 import {
   propertyErrors,
   propertyRecordId,
@@ -118,7 +122,7 @@ export function PropertyEditor({
 }: {
   initial?: Record<string, string | number>;
   owners?: { id: string; name: string }[];
-  photos?: { id: string; alt: string; position: number; isCover: boolean }[];
+  photos?: { id: string; alt: string; position: number; isCover: boolean; blurData?: string | null }[];
   documents?: { id: string; originalName: string; mime: string; size: number }[];
 }) {
   const [state, action, pending] = useActionState(saveProperty, { error: "", id: String(initial.id || "") });
@@ -154,6 +158,7 @@ export function PropertyEditor({
     [advanced, setAdvanced] = useState(false),
     [ownerOpen, setOwnerOpen] = useState(false);
   const [saveHint, setSaveHint] = useState("");
+  const [publish, setPublish] = useState(String(initial.published || "") === "1");
   const propertyId = propertyRecordId(state.id, initial.id);
   const heading = useRef<HTMLHeadingElement>(null);
   const editing = !!initial.id;
@@ -221,6 +226,8 @@ export function PropertyEditor({
     data.set("id", propertyId);
     data.set("status", intent === "draft" ? "rascunho" : values.status);
     data.set("intent", intent || "save");
+    // "Salvar rascunho" never changes the publication state; the review step owns that decision.
+    if (intent !== "draft") data.set("publish", publish ? "1" : "0");
     if (values.ownerId)
       for (const key of ["ownerName", "ownerPhone", "ownerEmail"])
         data.set(key, "");
@@ -240,6 +247,19 @@ export function PropertyEditor({
       {...props}
     />
   );
+  const cover = photos.find((photo) => photo.isCover) || photos[0];
+  // Same rules the server enforces, shown live so nobody presses "publicar" and gets bounced.
+  const publicationBlockers = publicationChecks({
+    status: values.status,
+    title: values.title,
+    priceCents: Math.round(Number(values.price || 0) * 100),
+    description: values.description,
+    neighborhood: values.neighborhood,
+    city: values.city,
+    state: values.state,
+    area: Number(values.area || 0),
+    photoCount: photos.length,
+  }).filter((check) => !check.done).map((check) => check.label);
   const ownerName =
     owners.find((o) => o.id === values.ownerId)?.name ||
     values.ownerName ||
@@ -358,7 +378,8 @@ export function PropertyEditor({
                       ))}
                     </select>
                     <small>
-                      Somente “Disponível” aparece no site após salvar.
+                      Situação comercial do imóvel. A publicação no site é
+                      escolhida na etapa de revisão.
                     </small>
                   </label>
                   {field("code", "Código interno", {
@@ -582,8 +603,20 @@ export function PropertyEditor({
               <>
                 <div className="wizard-preview">
                   <div className="wizard-preview-image">
-                    <Building2 size={38} />
-                    <span>Sem foto de capa</span>
+                    {cover ? (
+                      <Image
+                        src={photoUrl(cover.id, "thumb")}
+                        alt={cover.alt || values.title}
+                        fill
+                        sizes={PHOTO_SIZES.thumbnail}
+                        unoptimized
+                      />
+                    ) : (
+                      <>
+                        <Building2 size={38} />
+                        <span>Sem foto de capa</span>
+                      </>
+                    )}
                   </div>
                   <div>
                     <small>
@@ -649,11 +682,58 @@ export function PropertyEditor({
                     <p>{documents.length ? `${documents.length} documento(s) privado(s).` : "Nenhum documento enviado."}</p>
                   </SummaryBlock>
                 </div>
-                <p className="wizard-private">
-                  {values.status === "disponivel"
-                    ? "Ao publicar, o anúncio ficará visível no site, mesmo sem fotos."
-                    : "Este status mantém o imóvel fora do catálogo público."}
-                </p>
+                <section className="wizard-publication">
+                  <header>
+                    <h3>Publicação</h3>
+                    <p>
+                      Quando ativado, o imóvel ficará disponível no catálogo
+                      público e poderá ser compartilhado por link.
+                    </p>
+                  </header>
+                  <label className={publish ? "" : "is-selected"}>
+                    <input
+                      type="radio"
+                      name="publication-choice"
+                      checked={!publish}
+                      onChange={() => setPublish(false)}
+                    />
+                    <span>
+                      <strong>Salvar apenas como rascunho</strong>
+                      <small>O imóvel fica só no painel, fora do site.</small>
+                    </span>
+                  </label>
+                  <label className={publish ? "is-selected" : ""}>
+                    <input
+                      type="radio"
+                      name="publication-choice"
+                      checked={publish}
+                      onChange={() => setPublish(true)}
+                      disabled={!!publicationBlockers.length}
+                    />
+                    <span>
+                      <strong>Publicar no site após salvar</strong>
+                      <small>
+                        {publicationBlockers.length
+                          ? "Complete os itens abaixo para liberar a publicação."
+                          : `O anúncio fica em ${publicPropertyPath(values.slug || "seu-imovel")}.`}
+                      </small>
+                    </span>
+                  </label>
+                  {publicationBlockers.length ? (
+                    <ul className="wizard-publication-checks">
+                      {publicationBlockers.map((item) => (
+                        <li key={item}>
+                          <X size={13} /> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {values.status !== "disponivel" && publish ? (
+                    <p className="wizard-publication-note">
+                      Ao publicar, o status passa para “Disponível”.
+                    </p>
+                  ) : null}
+                </section>
               </>
             ) : null}
           </fieldset>
@@ -718,9 +798,9 @@ export function PropertyEditor({
               <>
                 <Loader2 className="spin" /> Salvando…
               </>
-            ) : values.status === "disponivel" ? (
+            ) : publish ? (
               <>
-                Publicar imóvel <Check />
+                Salvar e publicar <Check />
               </>
             ) : (
               <>

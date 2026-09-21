@@ -9,6 +9,7 @@ import {clients,deals,stages,activities,dealProperties,properties,users} from "@
 import {requireModule,clientScope} from "@/lib/access";
 import {clientInput,optionalMoney} from "@/lib/client-input";
 import {dealPosition} from "@/lib/crm-input";
+import { parseOperationDateTime } from "@/lib/datetime";
 type State={ok:boolean;message:string};
 export type CrmClientState={ok:boolean;message:string;clientId?:string;duplicate?:{id:string;name:string}};
 export async function saveDeal(_:State,form:FormData):Promise<State>{
@@ -20,7 +21,7 @@ export async function saveDeal(_:State,form:FormData):Promise<State>{
  if(stage.isLost&&!v.lostReason)return {ok:false,message:"Informe o motivo da perda."};
  if(v.nextActionType&&!v.nextActionAt)return {ok:false,message:"Escolha uma data para a próxima ação."};
  if(stage.isWon){const [current]=v.id?await db.select({stageId:deals.stageId}).from(deals).where(eq(deals.id,v.id)):[];if(current?.stageId!==stage.id)return{ok:false,message:"Conclua a venda pelo Kanban para mover a oportunidade para Ganho."};}
- const next=v.nextActionAt?new Date(v.nextActionAt):null;if(next&&!Number.isFinite(next.getTime()))return {ok:false,message:"Próxima ação inválida."};
+ const next=v.nextActionAt?parseOperationDateTime(v.nextActionAt):null;if(v.nextActionAt&&!next)return {ok:false,message:"Próxima ação inválida."};
  const links=z.array(z.uuid()).max(100).safeParse(form.getAll("propertyIds"));if(!links.success)return {ok:false,message:"Imóveis inválidos."};
  for(const id of links.data){const [property]=await db.select({id:properties.id}).from(properties).where(eq(properties.id,id));if(!property)return {ok:false,message:"Imóvel indisponível."};}
  if(user.role!=="admin"&&v.assignedTo!==(client.assignedTo||""))return {ok:false,message:"Apenas o administrador pode alterar o responsável."};

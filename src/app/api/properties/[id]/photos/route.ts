@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { count, eq, max } from "drizzle-orm";
-import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { properties, propertyPhotos } from "@/db/schema";
 import { requireModule } from "@/lib/access";
+import { processPropertyPhoto } from "@/lib/photo-pipeline";
 import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
 import { MAX_PROPERTY_PHOTOS, safeFileName, validateUpload } from "@/lib/upload";
 import { z } from "zod";
@@ -32,12 +32,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     for (const [index, file] of files.entries()) {
       const invalid = validateUpload(file, "photo");
       if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
-      const bytes = Buffer.from(await file.arrayBuffer());
-      const optimized = await sharp(bytes, { failOn: "error" }).rotate().resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true }).webp({ quality: 84, effort: 4 }).toBuffer();
+      const processed = await processPropertyPhoto(Buffer.from(await file.arrayBuffer()));
       const photoId = randomUUID();
-      const key = `properties/${id}/photos/${photoId}-${safeFileName(file.name).replace(/\.[^.]+$/, "")}.webp`;
-      await storageClient().send(new PutObjectCommand({ Bucket: PHOTO_BUCKET, Key: key, Body: optimized, ContentType: "image/webp", CacheControl: "public, max-age=31536000, immutable" }));
-      const [photo] = await db.insert(propertyPhotos).values({ id: photoId, propertyId: id, storagePath: key, alt: `${property.title} — foto ${Number(last || -1) + index + 2}`, position: Number(last || -1) + index + 1, isCover: Number(current) === 0 && index === 0 }).returning();
+      const base = `properties/${id}/photos/${photoId}-${safeFileName(file.name).replace(/\.[^.]+$/, "")}`;
+      const variants: Record<string, string> = {};
+      // Every variant is written under its own immutable key, so a replaced photo never
+      // collides with a cached URL and nothing has to be purged from the CDN.
+      await Promise.all(processed.variants.map(async (variant) => {
+        const key = `${base}-${variant.name}.webp`;
+        variants[variant.name] = key;
+        await storageClient().send(new PutObjectCommand({ Bucket: PHOTO_BUCKET, Key: key, Body: variant.body, ContentType: "image/webp", CacheControl: "public, max-age=31536000, immutable" }));
+      }));
+      const [photo] = await db.insert(propertyPhotos).values({
+        id: photoId,
+        propertyId: id,
+        storagePath: variants.full,
+        variants,
+        blurData: processed.blurData,
+        width: processed.width,
+        height: processed.height,
+        alt: `${property.title} — foto ${Number(last || -1) + index + 2}`,
+        position: Number(last || -1) + index + 1,
+        isCover: Number(current) === 0 && index === 0,
+      }).returning({ id: propertyPhotos.id, alt: propertyPhotos.alt, position: propertyPhotos.position, isCover: propertyPhotos.isCover, blurData: propertyPhotos.blurData });
       created.push(photo);
     }
     return NextResponse.json({ photos: created }, { status: 201 });

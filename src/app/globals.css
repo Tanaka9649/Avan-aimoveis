@@ -91,3 +91,17 @@ footer{background:#091d19;color:white;padding:70px 0 25px}.footer-grid{display:g
 @media(max-width:620px){.header-context{display:none!important}.admin-header{gap:8px}.header-theme{margin-left:auto}.admin-view-site{margin-left:0}.planned-action small{display:none}}
 @media(max-width:620px){.crm-stage-picker{display:block}.kanban{display:block;overflow:visible}.kanban-column{max-width:none;min-height:360px}.kanban-column.is-mobile-hidden{display:none}}
 .skeleton-heading{display:grid;gap:9px;margin-bottom:26px}.skeleton-heading span,.skeleton-heading strong,.skeleton-heading small,.skeleton-card span,.skeleton-card strong,.skeleton-card small,.skeleton-panel>span,.skeleton-panel>i{display:block;border-radius:5px;background:linear-gradient(90deg,var(--admin-surface-2),var(--admin-border-soft),var(--admin-surface-2));background-size:200% 100%;animation:skeleton-wave 1.3s ease-in-out infinite}.skeleton-heading span{width:90px;height:9px}.skeleton-heading strong{width:260px;height:30px}.skeleton-heading small{width:min(520px,70%);height:12px}.skeleton-card{min-height:140px;border:1px solid var(--admin-border-soft);border-radius:10px;background:var(--admin-surface);padding:18px;display:grid;align-content:space-between}.skeleton-card span{width:45%;height:11px}.skeleton-card strong{width:34%;height:28px}.skeleton-card small{width:70%;height:9px}.skeleton-panel{min-height:260px;margin-top:14px;border:1px solid var(--admin-border-soft);border-radius:10px;background:var(--admin-surface);padding:22px;display:grid;align-content:start;gap:25px}.skeleton-panel>span{width:180px;height:18px}.skeleton-panel>i{height:10px}@keyframes skeleton-wave{to{background-position:-200% 0}}
+
+/* Public listing page: gallery block, empty cover and the "similar properties" strip. */
+.gallery-section{padding-top:4px}
+.property-image-empty{position:absolute;inset:0;display:grid;place-items:center;background:#eeece7;color:#b4b0a6}
+.property-image-empty svg{width:34px;height:34px}
+.similar-properties{padding-block:20px 70px;border-top:1px solid var(--line)}
+.similar-properties .modern-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:26px}
+.detail-layout aside{display:grid;gap:14px;align-content:start}
+@media(max-width:900px){.detail-layout{grid-template-columns:1fr;gap:40px;padding-block:40px}.spec-grid{grid-template-columns:repeat(2,1fr);gap:16px}}
+
+/* Catalogue filters: tipo, cidade, bairro, quartos e preço máximo. */
+.catalog-toolbar{grid-template-columns:minmax(220px,2fr) repeat(5,minmax(0,1fr))}
+@media(max-width:1024px){.catalog-toolbar{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:700px){.catalog-toolbar{grid-template-columns:1fr 1fr}.catalog-toolbar .search-field{grid-column:1/-1}}

@@ -43,6 +43,13 @@
       "when": 1789750983778,
       "tag": "0005_commercial_workflows",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789992059558,
+      "tag": "0006_photo_variants",
+      "breakpoints": true
     }
   ]
 }
