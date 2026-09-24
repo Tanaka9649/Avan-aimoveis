@@ -5,11 +5,12 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { EmptyState, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 import { getDb } from "@/db";
-import { activities, clients, deals, stages, dealProperties } from "@/db/schema";
+import { activities, clients, deals, stages, dealProperties, opportunityAttachments } from "@/db/schema";
 import { DealEditor } from "@/components/deal-editor";
 import { dealChoices } from "../actions";
 import { clientScope, requireModule } from "@/lib/access";
 import { formatMoney } from "@/lib/format";
+import { OpportunityAttachments } from "@/components/opportunity-attachments";
 
 export default async function DealPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireModule("crm");
@@ -35,6 +36,16 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
     .where(eq(activities.dealId, id))
     .orderBy(desc(activities.occurredAt))
     .limit(100);
+  const attachmentRows = await db.select({
+    id: opportunityAttachments.id,
+    displayName: opportunityAttachments.displayName,
+    originalName: opportunityAttachments.originalName,
+    mimeType: opportunityAttachments.mimeType,
+    sizeBytes: opportunityAttachments.sizeBytes,
+    category: opportunityAttachments.category,
+    createdAt: opportunityAttachments.createdAt,
+  }).from(opportunityAttachments).where(and(eq(opportunityAttachments.opportunityId, id), eq(opportunityAttachments.uploadStatus, "ready"))).orderBy(desc(opportunityAttachments.createdAt));
+  const attachments = attachmentRows.map((attachment) => ({ ...attachment, createdAt: attachment.createdAt.toISOString() }));
 
   return (
     <div className="admin-content">
@@ -47,6 +58,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
       />
 
       <SectionCard title="Gerenciar oportunidade" description="Etapa, responsável pelo cliente, próxima ação, imóveis e notas."><DealEditor choices={choices} initial={{id,clientId:record.clientId,title:record.title,stageId:record.stageId,amount:record.estimatedValueCents===null?"":String(record.estimatedValueCents/100),nextActionAt:record.nextActionAt?.toISOString()||"",nextActionType:record.nextActionType||"",nextActionNote:record.nextActionNote||"",lostReason:record.lostReason||""}} selected={linked.map(p=>p.id)}/></SectionCard>
+      <SectionCard title="Arquivos da oportunidade" description="Documentos privados, disponíveis somente para pessoas autorizadas no CRM."><OpportunityAttachments opportunityId={id} initialAttachments={attachments}/></SectionCard>
       <div className="deal-detail-grid">
         <SectionCard title="Contato e oportunidade" description="Dados usados durante o atendimento comercial.">
           <dl className="detail-list">

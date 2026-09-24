@@ -4,7 +4,7 @@ Plataforma imobiliária full-stack em português, com catálogo público, capta�
 
 ## Estado da entrega
 
-Em desenvolvimento, não pronto para produção. Implementado: autenticação, criação/edição/publicação de imóveis, catálogo público conectado ao Neon, favoritos locais, captura atômica de leads e consulta do CRM com histórico. As fotos são otimizadas no upload em três tamanhos (miniatura, média e cheia) no Neon Object Storage. Consulte `docs/STATUS.md` para limites e pendências. Ter tabelas no banco não significa que cada módulo esteja funcional.
+Em desenvolvimento, não pronto para produção. Implementado: autenticação, criação/edição/publicação de imóveis, catálogo público conectado ao Neon, favoritos locais, captura atômica de leads e CRM com histórico e anexos privados. Fotos vão diretamente ao Neon Object Storage e são processadas em segundo plano em três tamanhos (miniatura, média e cheia), sem bloquear a interface. Consulte `docs/STATUS.md` para limites e pendências. Ter tabelas no banco não significa que cada módulo esteja funcional.
 
 ## Desenvolvimento local
 
@@ -78,7 +78,7 @@ Para publicar exige-se apenas o que aparece no site: título, preço, região p�
 
 ## Fotos dos imóveis
 
-Cada foto enviada gera três arquivos WebP em `property-photos`, com chaves imutáveis:
+O navegador envia cada original diretamente ao bucket `property-photos` por URL assinada. O servidor valida tamanho, tipo declarado e assinatura real do arquivo e responde antes da conversão; o processamento assíncrono gera três WebP com chaves imutáveis. JPG/JPEG, PNG, WebP, HEIF e HEIC são aceitos até 15 MB, com o original preservado para reprocessamento seguro.
 
 | Variante | Largura | Onde é usada |
 | --- | --- | --- |
@@ -86,7 +86,13 @@ Cada foto enviada gera três arquivos WebP em `property-photos`, com chaves imut
 | `medium` | 1280 px | página pública do imóvel e PDF |
 | `full` | 1920 px | galeria em tela cheia |
 
-A rota `/api/property-photos/{id}?v=thumb|medium|full` entrega a variante pedida com `Cache-Control` de um ano e `ETag`. Fotos enviadas antes desse pipeline continuam funcionando (a rota volta para o arquivo original); para gerar as miniaturas delas, abra **Painel → Imóveis** e use o cartão "Otimizar fotos antigas", que chama `/api/properties/photos/variants` em lotes. O arquivo original é preservado e reaproveitado como variante `full`, sem recompressão.
+A rota `/api/property-photos/{id}?v=thumb|medium|full` entrega a variante pedida com `Cache-Control` de um ano e `ETag`. Enquanto uma foto nova está sendo preparada, a API serve um placeholder e o painel acompanha o estado sem expor o original HEIF/HEIC ao navegador. Fotos antigas continuam funcionando por fallback ao original; para gerar variantes delas, abra **Painel → Imóveis** e use o cartão "Otimizar fotos antigas", que chama `/api/properties/photos/variants` em lotes.
+
+## Arquivos das oportunidades
+
+O CRM aceita múltiplos anexos PDF, JPG/JPEG, PNG e WebP de até 20 MB por arquivo. O upload é direto para `property-documents`, sempre por URL assinada de curta duração, e a confirmação no servidor valida metadados e assinatura real antes de liberar o arquivo. Visualização e download passam por autorização do CRM e recebem uma URL assinada por 60 segundos; o bucket deve permanecer privado. Nome de exibição e categoria são editáveis, e inclusão ou remoção gera evento na timeline da oportunidade.
+
+A migration `0007_naive_jackpot.sql` cria `opportunity_attachments`, registra o estado de processamento das fotos e adiciona a permissão `dashboard`. Antes de aplicá-la, confirme explicitamente o projeto e a branch Neon do ambiente-alvo e teste primeiro em Preview.
 
 ## Datas e horários
 

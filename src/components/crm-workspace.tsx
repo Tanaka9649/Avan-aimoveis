@@ -15,7 +15,7 @@ import type {Query} from "@/lib/list-query";
 import {maskPhone,moneyDigits} from "@/lib/crm-input";
 
 type Column={id:string;name:string;color:string;isWon:boolean;isLost:boolean};
-type DealCard={id:string;title:string;clientId:string;client:string;phone:string;email:string|null;stageId:string;value:string;tags:string[];nextActionAt:string|null;nextActionType:string|null;nextActionNote:string|null;stageDays:number};
+type DealCard={id:string;title:string;clientId:string;client:string;phone:string;email:string|null;stageId:string;value:string;tags:string[];nextActionAt:string|null;nextActionType:string|null;nextActionNote:string|null;stageDays:number;attachmentCount:number};
 export type CrmClient={id:string;name:string;phone:string;email:string|null;origin:string;budgetMin:number|null;budgetMax:number|null;desiredTypes:string[];desiredRegions:string[];desiredFeatures:string[];minBedrooms:number;minBathrooms:number;minParkingSpaces:number;opportunities:number;favorites:number;presented:number;visits:number;proposals:number;history:number;matches:number;nextActionAt:string|null;nextActionType:string|null};
 
 type Drawer={mode:"new"}|{mode:"view"|"edit";client:CrmClient};
