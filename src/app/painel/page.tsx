@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { and, asc, count, desc, eq, gte, lte, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { Building2, CalendarCheck, CircleDollarSign, Gauge, HandCoins, Handshake, MessageCircle, Users } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { clientScope, requireModule } from "@/lib/access";
 import { getDb } from "@/db";
 import { activityLogs, clients, deals, properties, proposals, sales, stages, visits, whatsappClicks, propertyViews, clientPropertyPresentations } from "@/db/schema";
 import { formatMoney } from "@/lib/format";
@@ -12,24 +12,24 @@ const activityAction:Record<string,string>={created:"cadastrado",create:"cadastr
 const activityEntity:Record<string,string>={property:"Imóvel",client:"Cliente",deal:"Oportunidade",owner:"Proprietário",visit:"Visita",proposal:"Proposta",sale:"Venda"};
 const activityText=(entity:string,action:string)=>`${activityEntity[entity]||"Registro"} ${activityAction[action]||"alterado"}`;
 export default async function DashboardPage({searchParams}:{searchParams:Promise<{period?:string}>}) {
-  const user = await requireUser();
-  if (user.role !== "admin") return <div className="admin-content"><PageHeader eyebrow="Área de trabalho" title={`Bem-vindo, ${user.name}`} description="Use a navegação para acessar os módulos liberados pelo administrador."/></div>;
+  const user = await requireModule("dashboard");
   const db = getDb();
+  const scope = clientScope(user);
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
   const now = new Date();
   const {period}=await searchParams;const days=period==="30"?30:7;const rangeStart=new Date(now.getTime()-days*86400000);const endToday=new Date();endToday.setHours(23,59,59,999);
   const [[clientTotal], [newClients], [activeProperties], [dealTotal], [futureVisits], [openProposals], [salesMonth], [whatsappMonth], funnel, propertyStatus, recentActivity] = await Promise.all([
-    db.select({ value: count() }).from(clients),
-    db.select({ value: count() }).from(clients).where(gte(clients.createdAt, monthStart)),
+    db.select({ value: count() }).from(clients).where(scope),
+    db.select({ value: count() }).from(clients).where(and(scope, gte(clients.createdAt, monthStart))),
     db.select({ value: count() }).from(properties).where(eq(properties.status, "disponivel")),
-    db.select({ value: count() }).from(deals),
-    db.select({ value: count() }).from(visits).where(and(gte(visits.scheduledAt, now), eq(visits.status, "agendada"))),
-    db.select({ value: count() }).from(proposals).where(eq(proposals.status, "aberta")),
-    db.select({ count: count(), amount: sum(sales.amountCents), commission: sum(sales.commissionCents) }).from(sales).where(gte(sales.soldAt, monthStart)),
+    db.select({ value: count() }).from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).where(scope),
+    db.select({ value: count() }).from(visits).innerJoin(clients, eq(clients.id, visits.clientId)).where(and(scope, gte(visits.scheduledAt, now), eq(visits.status, "agendada"))),
+    db.select({ value: count() }).from(proposals).innerJoin(deals, eq(deals.id, proposals.dealId)).innerJoin(clients, eq(clients.id, deals.clientId)).where(and(scope, eq(proposals.status, "aberta"))),
+    db.select({ count: count(), amount: sum(sales.amountCents), commission: sum(sales.commissionCents) }).from(sales).innerJoin(deals, eq(deals.id, sales.dealId)).innerJoin(clients, eq(clients.id, deals.clientId)).where(and(scope, gte(sales.soldAt, monthStart))),
     db.select({ value: count() }).from(whatsappClicks).where(gte(whatsappClicks.createdAt, monthStart)),
-    db.select({ id: stages.id, name: stages.name, color: stages.color, value: count(deals.id) }).from(stages).leftJoin(deals, eq(deals.stageId, stages.id)).groupBy(stages.id).orderBy(asc(stages.position)),
+    db.select({ id: stages.id, name: stages.name, color: stages.color, value: scope ? sql<number>`count(${deals.id}) filter (where ${scope})` : count(deals.id) }).from(stages).leftJoin(deals, eq(deals.stageId, stages.id)).leftJoin(clients, eq(clients.id, deals.clientId)).groupBy(stages.id).orderBy(asc(stages.position)),
     db.select({ status: properties.status, value: count() }).from(properties).groupBy(properties.status),
-    db.select({ id: activityLogs.id, entityType: activityLogs.entityType, action: activityLogs.action, createdAt: activityLogs.createdAt }).from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(6),
+    db.select({ id: activityLogs.id, entityType: activityLogs.entityType, action: activityLogs.action, createdAt: activityLogs.createdAt }).from(activityLogs).where(user.role === "admin" ? undefined : eq(activityLogs.userId, user.id)).orderBy(desc(activityLogs.createdAt)).limit(6),
   ]);
   const conversion = number(dealTotal.value) ? Math.round(number(salesMonth.count) / number(dealTotal.value) * 100) : 0;
   const metrics = [
@@ -43,9 +43,9 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
     { label: "Taxa de conversão", value: conversion + "%", helper: "vendas ÷ negócios", icon: Gauge, tone: "slate" as const },
   ];
   const [todayActions,topViews,topInterest,topWhatsapp]=await Promise.all([
-    db.select({id:deals.id,client:clients.name,type:deals.nextActionType,note:deals.nextActionNote,at:deals.nextActionAt}).from(deals).innerJoin(clients,eq(clients.id,deals.clientId)).where(and(lte(deals.nextActionAt,endToday))).orderBy(asc(deals.nextActionAt)).limit(12),
+    db.select({id:deals.id,client:clients.name,type:deals.nextActionType,note:deals.nextActionNote,at:deals.nextActionAt}).from(deals).innerJoin(clients,eq(clients.id,deals.clientId)).where(and(scope,lte(deals.nextActionAt,endToday))).orderBy(asc(deals.nextActionAt)).limit(12),
     db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(propertyViews.id)}).from(propertyViews).innerJoin(properties,eq(properties.id,propertyViews.propertyId)).where(gte(propertyViews.createdAt,rangeStart)).groupBy(properties.id).orderBy(desc(count(propertyViews.id))).limit(5),
-    db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(clientPropertyPresentations.id)}).from(clientPropertyPresentations).innerJoin(properties,eq(properties.id,clientPropertyPresentations.propertyId)).where(gte(clientPropertyPresentations.presentedAt,rangeStart)).groupBy(properties.id).orderBy(desc(count(clientPropertyPresentations.id))).limit(5),
+    db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(clientPropertyPresentations.id)}).from(clientPropertyPresentations).innerJoin(clients,eq(clients.id,clientPropertyPresentations.clientId)).innerJoin(properties,eq(properties.id,clientPropertyPresentations.propertyId)).where(and(scope,gte(clientPropertyPresentations.presentedAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(clientPropertyPresentations.id))).limit(5),
     db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(whatsappClicks.id)}).from(whatsappClicks).innerJoin(properties,eq(properties.id,whatsappClicks.propertyId)).where(gte(whatsappClicks.createdAt,rangeStart)).groupBy(properties.id).orderBy(desc(count(whatsappClicks.id))).limit(5),
   ]);
   const maxFunnel = Math.max(1, ...funnel.map((row) => number(row.value)));

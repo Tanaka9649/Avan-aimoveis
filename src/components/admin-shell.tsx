@@ -21,10 +21,11 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { canAccess, modules, type Access, type Module } from "@/lib/permissions";
+import { canAccess, firstAllowedRoute, modules, type Access, type Module } from "@/lib/permissions";
 import { BrandLogo } from "./brand-logo";
 
 const moduleMeta: Record<Module, { label: string; icon: typeof Building2 }> = {
+  dashboard: { label: "Visão geral", icon: BarChart3 },
   imoveis: { label: "Imóveis", icon: Building2 },
   clientes: { label: "Clientes", icon: Users },
   crm: { label: "CRM", icon: KanbanSquare },
@@ -47,6 +48,7 @@ const routeLabels: Record<string, string> = {
 
 export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; access: Access } }) {
   const pathname = usePathname();
+  const homeHref = firstAllowedRoute(user);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -90,14 +92,14 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
       <button className={`sidebar-backdrop${open ? " open" : ""}`} aria-label="Fechar menu" onClick={() => setOpen(false)} />
       <aside className={`admin-sidebar${open ? " open" : ""}`}>
         <div className="sidebar-brand">
-          <Link href="/painel" aria-label="Avança Imóveis — início do painel"><BrandLogo light={theme === "dark"} compact={collapsed && !open} /></Link>
+          <Link href={homeHref} aria-label="Avança Imóveis — início do painel"><BrandLogo light={theme === "dark"} compact={collapsed && !open} /></Link>
           <button className="sidebar-close" aria-label="Fechar menu" onClick={() => setOpen(false)}><X /></button>
           <button className="sidebar-collapse" aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"} title={collapsed ? "Expandir" : "Recolher"} onClick={toggleCollapsed}>{collapsed ? <ChevronRight /> : <ChevronLeft />}</button>
         </div>
         <nav aria-label="Navegação do painel">
           <small>OPERAÇÃO</small>
-          {item("/painel", "Visão geral", BarChart3)}
-          {modules.filter((module) => module !== "clientes" && canAccess(user, module)).map((module) => {
+          {canAccess(user, "dashboard") ? item("/painel", "Visão geral", BarChart3) : null}
+          {modules.filter((module) => module !== "dashboard" && module !== "clientes" && canAccess(user, module)).map((module) => {
             const meta = moduleMeta[module];
             return <div key={module}>{item(`/painel/${module}`, meta.label, meta.icon)}</div>;
           })}

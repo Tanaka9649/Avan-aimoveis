@@ -4,7 +4,7 @@ import { SettingsForm } from "@/components/settings-form";
 import { getDb } from "@/db";
 import { clients, reminderSettings, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
-import { modules } from "@/lib/permissions";
+import { moduleLabels, modules } from "@/lib/permissions";
 import { assignClient, createAccount, saveReminders, updateAccount } from "./actions";
 
 export default async function SettingsPage() {
@@ -52,7 +52,7 @@ export default async function SettingsPage() {
                 <input type="hidden" name="id" value={person.id} />
                 <label className="check"><input type="checkbox" name="active" defaultChecked={person.active} />Acesso aprovado</label>
                 <label>Clientes visíveis<select name="scope" defaultValue={person.access.clients}><option value="all">Todos os clientes disponíveis</option><option value="own">Somente clientes atribuídos</option></select></label>
-                <fieldset className="wide"><legend>Módulos liberados</legend>{modules.map((module) => <label className="check" key={module}><input type="checkbox" name="modules" value={module} defaultChecked={person.access.modules.includes(module)} />{module}</label>)}</fieldset>
+                <fieldset className="wide"><legend>Módulos liberados</legend>{modules.map((module) => <label className="check" key={module}><input type="checkbox" name="modules" value={module} defaultChecked={person.access.modules.includes(module)} />{moduleLabels[module]}</label>)}</fieldset>
               </SettingsForm>
             )}
           </article>
