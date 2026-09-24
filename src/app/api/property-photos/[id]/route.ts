@@ -8,6 +8,7 @@ import { isPhotoVariant, variantKey, type PhotoVariant } from "@/lib/photos";
 import { isPubliclyVisible } from "@/lib/property-publication";
 import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
 import { currentUser } from "@/lib/auth";
+import { canAccess } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -29,6 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .select({
       storagePath: propertyPhotos.storagePath,
       variants: propertyPhotos.variants,
+      processingStatus: propertyPhotos.processingStatus,
       status: properties.status,
       publishedAt: properties.publishedAt,
     })
@@ -39,7 +41,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!photo) return new NextResponse(null, { status: 404 });
 
   const isPublic = isPubliclyVisible(photo);
-  if (!isPublic && !(await currentUser())) return new NextResponse(null, { status: 404 });
+  if (!isPublic) {
+    const user = await currentUser();
+    if (!user || !canAccess(user, "imoveis")) return new NextResponse(null, { status: 404 });
+  }
+
+  if (photo.processingStatus !== "ready") return processingPlaceholder(photo.processingStatus);
 
   const key = variantKey(photo, variant);
   const etag = `"${id}-${variant}"`;
@@ -62,4 +69,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   } catch {
     return new NextResponse(null, { status: 404 });
   }
+}
+
+function processingPlaceholder(status: string) {
+  const label = status === "failed" ? "Visualização indisponível" : "Preparando visualização";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"><rect width="640" height="480" fill="#171a20"/><path d="M255 298l54-61 39 42 28-31 49 50H255z" fill="#303743"/><circle cx="286" cy="205" r="18" fill="#303743"/><text x="320" y="350" text-anchor="middle" fill="#a8b0bd" font-family="Arial,sans-serif" font-size="16">${label}</text></svg>`;
+  return new NextResponse(svg, { headers: { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "private, no-store", "X-Photo-Status": status } });
 }

@@ -34,7 +34,7 @@ export async function saveProperty(_previous: { error: string; id?: string; save
     let current: { publishedAt: Date | null } | undefined;
     if(rawId){const [found]=await db.select({id:properties.id,publishedAt:properties.publishedAt}).from(properties).where(and(eq(properties.id,id),ne(properties.status,"vendido")));if(!found)return {error:"Imóvel indisponível ou vendido."};current=found;}
     if (wantsPublication) {
-      const [photos] = rawId ? await db.select({ value: count() }).from(propertyPhotos).where(eq(propertyPhotos.propertyId, id)) : [{ value: 0 }];
+      const [photos] = rawId ? await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready"))) : [{ value: 0 }];
       const candidate = { status: p.status, title: p.title, priceCents: p.price, description: p.description, neighborhood: p.neighborhood, city: p.city, state: p.state, area: p.area, photoCount: Number(photos.value) };
       if (!canPublish(candidate))
         return { error: `Para publicar no site, complete: ${publicationBlockers(candidate).join(", ")}.`, id };
@@ -100,7 +100,7 @@ export async function publishProperty(id: string): Promise<PublicationResult> {
     .limit(1);
   if (!property) return { ok: false, message: "Imóvel não encontrado." };
   if (property.status === "vendido") return { ok: false, message: "Imóveis vendidos não podem ser publicados." };
-  const [photos] = await db.select({ value: count() }).from(propertyPhotos).where(eq(propertyPhotos.propertyId, id));
+  const [photos] = await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready")));
   const candidate = { ...property, area: property.area, photoCount: Number(photos.value) };
   if (!canPublish(candidate))
     return { ok: false, message: "Complete o cadastro antes de publicar.", missing: publicationBlockers(candidate) };

@@ -60,7 +60,7 @@ export async function publicProperty(slug: string): Promise<PublicPropertyDetail
   const photos = await getDb()
     .select({ id: propertyPhotos.id, alt: propertyPhotos.alt, blurData: propertyPhotos.blurData, isCover: propertyPhotos.isCover, position: propertyPhotos.position })
     .from(propertyPhotos)
-    .where(eq(propertyPhotos.propertyId, row.id));
+    .where(and(eq(propertyPhotos.propertyId, row.id), eq(propertyPhotos.processingStatus, "ready")));
   const ordered = photos.sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.position - b.position);
   const gallery = ordered.map((photo) => toPhoto(photo, "medium"));
   return {
@@ -95,7 +95,7 @@ async function coverPhotos(ids: string[]) {
   const photos = await getDb()
     .select({ id: propertyPhotos.id, propertyId: propertyPhotos.propertyId, alt: propertyPhotos.alt, blurData: propertyPhotos.blurData, isCover: propertyPhotos.isCover, position: propertyPhotos.position })
     .from(propertyPhotos)
-    .where(inArray(propertyPhotos.propertyId, ids));
+    .where(and(inArray(propertyPhotos.propertyId, ids), eq(propertyPhotos.processingStatus, "ready")));
   const covers = new Map<string, PublicPhoto>();
   for (const photo of photos.sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.position - b.position))
     if (!covers.has(photo.propertyId)) covers.set(photo.propertyId, toPhoto(photo, "thumb"));

@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  serverExternalPackages: ["heic-decode", "libheif-js"],
   experimental: { serverActions: { bodySizeLimit: "12mb" } },
   images: {
     remotePatterns: [

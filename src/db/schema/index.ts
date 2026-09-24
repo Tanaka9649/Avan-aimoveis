@@ -74,7 +74,11 @@ export const properties = pgTable("properties", {
 export const propertyPhotos = pgTable("property_photos", {
   id: uuid("id").defaultRandom().primaryKey(), propertyId: uuid("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(),
   storagePath: text("storage_path").notNull(), alt: varchar("alt", { length: 180 }).notNull(), position: integer("position").notNull(), isCover: boolean("is_cover").default(false).notNull(),
-  // Responsive variants generated at upload time: { thumb, medium, full } → Neon Object Storage keys.
+  originalName: varchar("original_name", { length: 240 }),
+  originalMime: varchar("original_mime", { length: 100 }),
+  sizeBytes: integer("size_bytes"),
+  processingStatus: varchar("processing_status", { length: 20 }).default("ready").notNull(),
+  // Responsive variants generated asynchronously after the direct upload: { thumb, medium, full } → Neon Object Storage keys.
   // Empty for photos uploaded before the variant pipeline; those fall back to storagePath.
   variants: jsonb("variants").$type<Record<string, string>>().default({}).notNull(),
   blurData: text("blur_data"),
@@ -101,6 +105,19 @@ export const clients = pgTable("clients", {
 
 export const stages = pgTable("stages", { id: uuid("id").defaultRandom().primaryKey(), name: varchar("name", { length: 80 }).notNull(), position: integer("position").notNull(), color: varchar("color", { length: 20 }).notNull(), isWon: boolean("is_won").default(false).notNull(), isLost: boolean("is_lost").default(false).notNull(), ...audit }, (t) => [uniqueIndex("stages_position_uq").on(t.position)]);
 export const deals = pgTable("deals", { id: uuid("id").defaultRandom().primaryKey(), clientId: uuid("client_id").references(() => clients.id).notNull(), stageId: uuid("stage_id").references(() => stages.id).notNull(), title: varchar("title", { length: 180 }).notNull(), estimatedValueCents: integer("estimated_value_cents"), position: numeric("position", { precision: 20, scale: 10 }).notNull(), tags: jsonb("tags").$type<string[]>().default([]).notNull(), nextActionAt: timestamp("next_action_at", { withTimezone: true }), nextActionType: varchar("next_action_type", { length: 80 }), nextActionNote: varchar("next_action_note", { length: 500 }), stageEnteredAt: timestamp("stage_entered_at", { withTimezone: true }).defaultNow().notNull(), lostReason: text("lost_reason"), ...audit }, (t) => [index("deals_board_idx").on(t.stageId, t.position), index("deals_next_action_idx").on(t.nextActionAt)]);
+export const opportunityAttachments = pgTable("opportunity_attachments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  opportunityId: uuid("opportunity_id").references(() => deals.id, { onDelete: "cascade" }).notNull(),
+  storageKey: text("storage_key").notNull(),
+  originalName: varchar("original_name", { length: 240 }).notNull(),
+  displayName: varchar("display_name", { length: 240 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  category: varchar("category", { length: 60 }),
+  uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+  uploadStatus: varchar("upload_status", { length: 20 }).default("uploading").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [index("opportunity_attachments_deal_idx").on(t.opportunityId, t.createdAt)]);
 export const dealProperties = pgTable("deal_properties", { dealId: uuid("deal_id").references(() => deals.id, { onDelete: "cascade" }).notNull(), propertyId: uuid("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull() }, (t) => [primaryKey({ columns: [t.dealId, t.propertyId] })]);
 export const activities = pgTable("activities", { id: uuid("id").defaultRandom().primaryKey(), dealId: uuid("deal_id").references(() => deals.id, { onDelete: "cascade" }), clientId: uuid("client_id").references(() => clients.id), userId: uuid("user_id").references(() => users.id), type: varchar("type", { length: 60 }).notNull(), description: text("description").notNull(), occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull() }, (t) => [index("activities_timeline_idx").on(t.clientId, t.occurredAt)]);
 export const clientFavorites = pgTable("client_favorites", { clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }).notNull(), propertyId: uuid("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(), createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull() }, (t) => [primaryKey({ columns: [t.clientId, t.propertyId] }), index("client_favorites_property_idx").on(t.propertyId)]);

@@ -1,5 +1,5 @@
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { propertyPhotos } from "@/db/schema";
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const BATCH = 4;
-const pendingFilter = sql`${propertyPhotos.variants} = '{}'::jsonb`;
+const pendingFilter = and(sql`${propertyPhotos.variants} = '{}'::jsonb`, eq(propertyPhotos.processingStatus, "ready"));
 
 /** How many photos uploaded before the variant pipeline still serve one oversized file. */
 export async function GET() {
@@ -31,7 +31,7 @@ export async function POST() {
   await requireModule("imoveis");
   const db = getDb();
   const photos = await db
-    .select({ id: propertyPhotos.id, storagePath: propertyPhotos.storagePath })
+    .select({ id: propertyPhotos.id, storagePath: propertyPhotos.storagePath, originalMime: propertyPhotos.originalMime })
     .from(propertyPhotos)
     .where(pendingFilter)
     .limit(BATCH);
@@ -43,7 +43,7 @@ export async function POST() {
       const object = await storageClient().send(new GetObjectCommand({ Bucket: PHOTO_BUCKET, Key: photo.storagePath }));
       if (!object.Body) throw new Error("objeto vazio");
       const original = Buffer.from(await object.Body.transformToByteArray());
-      const result = await processPropertyPhoto(original, ["thumb", "medium"]);
+      const result = await processPropertyPhoto(original, ["thumb", "medium"], photo.originalMime);
       const base = photo.storagePath.replace(/\.[^.]+$/, "");
       const variants: Record<string, string> = { full: photo.storagePath };
       await Promise.all(result.variants.map(async (variant) => {

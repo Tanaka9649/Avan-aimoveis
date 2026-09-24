@@ -566,3 +566,4 @@
 .wizard-publication-note{margin:0;color:var(--admin-muted);font-size:11px}
 .wizard-preview-image{position:relative;overflow:hidden}
 .wizard-preview-image img{object-fit:cover}
+.media-processing{position:absolute;left:8px;right:8px;top:50%;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px;border-radius:6px;background:rgba(10,13,18,.86);color:#e5e7eb;font-size:10px;font-weight:700}.media-processing svg{width:13px}.media-processing.is-error{color:#fca5a5}

@@ -122,7 +122,7 @@ export function PropertyEditor({
 }: {
   initial?: Record<string, string | number>;
   owners?: { id: string; name: string }[];
-  photos?: { id: string; alt: string; position: number; isCover: boolean; blurData?: string | null }[];
+  photos?: { id: string; alt: string; position: number; isCover: boolean; blurData?: string | null; processingStatus?: string }[];
   documents?: { id: string; originalName: string; mime: string; size: number }[];
 }) {
   const [state, action, pending] = useActionState(saveProperty, { error: "", id: String(initial.id || "") });

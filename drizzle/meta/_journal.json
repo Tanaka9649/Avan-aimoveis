@@ -50,6 +50,13 @@
       "when": 1789992059558,
       "tag": "0006_photo_variants",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790249712186,
+      "tag": "0007_naive_jackpot",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import "server-only";
-import { S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 let client: S3Client | null = null;
 
@@ -18,7 +19,17 @@ export function storageClient() {
     endpoint,
     region,
     forcePathStyle: true,
+    requestChecksumCalculation: "WHEN_REQUIRED",
     credentials: { accessKeyId, secretAccessKey },
   });
   return client;
+}
+
+export function signedUploadUrl(bucket: string, key: string, contentType: string, size: number) {
+  return getSignedUrl(storageClient(), new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: size }), { expiresIn: 5 * 60 });
+}
+
+export function signedDownloadUrl(bucket: string, key: string, fileName: string, inline: boolean) {
+  const disposition = `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+  return getSignedUrl(storageClient(), new GetObjectCommand({ Bucket: bucket, Key: key, ResponseContentDisposition: disposition }), { expiresIn: 60 });
 }

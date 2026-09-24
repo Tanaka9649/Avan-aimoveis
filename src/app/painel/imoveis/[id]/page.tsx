@@ -47,6 +47,7 @@ export default async function EditPropertyPage({
         position: propertyPhotos.position,
         isCover: propertyPhotos.isCover,
         blurData: propertyPhotos.blurData,
+        processingStatus: propertyPhotos.processingStatus,
       })
       .from(propertyPhotos)
       .where(eq(propertyPhotos.propertyId, id)),

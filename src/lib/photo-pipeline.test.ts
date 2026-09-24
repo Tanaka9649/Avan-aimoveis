@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
 
 vi.mock("server-only", () => ({}));
+vi.mock("heic-decode", () => ({ default: vi.fn(async () => ({ width: 2, height: 2, data: new Uint8ClampedArray(16).fill(180) })) }));
 
 import { processPropertyPhoto } from "./photo-pipeline";
 import { PHOTO_VARIANTS } from "./photos";
@@ -54,4 +55,10 @@ describe("processPropertyPhoto", () => {
     expect(full.height).toBeGreaterThan(full.width);
     expect(meta.exif).toBeUndefined();
   }, 30000);
+
+  it("turns decoded HEIF pixels into browser-compatible WebP variants", async () => {
+    const result = await processPropertyPhoto(Buffer.from("heif"), undefined, "image/heic");
+    expect(result.variants.map((variant) => variant.name).sort()).toEqual(["full", "medium", "thumb"]);
+    expect((await sharp(result.variants[0].body).metadata()).format).toBe("webp");
+  });
 });
