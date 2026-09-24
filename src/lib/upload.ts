@@ -17,6 +17,15 @@ const extensions: Record<string, Set<string>> = {
 export type UploadKind = "photo" | "document";
 export type UploadMetadata = { name: string; type: string; size: number };
 
+const HEIF_BROWSER_TYPES = new Set([
+  "",
+  "application/octet-stream",
+  "image/heic",
+  "image/heic-sequence",
+  "image/heif",
+  "image/heif-sequence",
+]);
+
 export function safeFileName(value: string) {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 120) || "arquivo";
 }
@@ -25,7 +34,19 @@ function extension(name: string) {
   return name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] || "";
 }
 
+export function normalizeUploadMetadata(file: UploadMetadata, kind: UploadKind): UploadMetadata {
+  const ext = extension(file.name);
+  let type = file.type.trim().toLowerCase();
+  if (kind === "photo" && HEIF_BROWSER_TYPES.has(type)) {
+    if (ext === "heic") type = "image/heic";
+    if (ext === "heif") type = "image/heif";
+  }
+  if (kind === "photo" && type === "image/jpg") type = "image/jpeg";
+  return { ...file, type };
+}
+
 export function validateUploadMetadata(file: UploadMetadata, kind: UploadKind) {
+  file = normalizeUploadMetadata(file, kind);
   const types = kind === "photo" ? PHOTO_TYPES : DOCUMENT_TYPES;
   const limit = kind === "photo" ? MAX_PHOTO_BYTES : MAX_DOCUMENT_BYTES;
   if (!types.has(file.type) || !extensions[file.type]?.has(extension(file.name))) {

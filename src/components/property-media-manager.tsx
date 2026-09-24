@@ -51,7 +51,7 @@ export function PropertyMediaManager({ propertyId, initialPhotos = [], initialDo
       const uploaded: Photo[] = [];
       for (const [index, reservation] of (reservationData.uploads as Reservation[]).entries()) {
         try {
-          await putFile(reservation.uploadUrl, files[index], (percent) => setMessage(`Enviando foto ${index + 1} de ${files.length} · ${percent}%`));
+          await putFile(reservation.uploadUrl, files[index], reservation.contentType, (percent) => setMessage(`Enviando foto ${index + 1} de ${files.length} · ${percent}%`));
           const complete = await fetch(`/api/properties/${propertyId}/photos/${reservation.photoId}/complete`, { method: "POST" });
           const completed = await complete.json();
           if (!complete.ok) throw new Error(completed.error || "Não foi possível confirmar a foto.");
@@ -138,11 +138,11 @@ export function PropertyMediaManager({ propertyId, initialPhotos = [], initialDo
   </div>;
 }
 
-function putFile(url: string, file: File, onProgress: (percent: number) => void) {
+function putFile(url: string, file: File, contentType: string, onProgress: (percent: number) => void) {
   return new Promise<void>((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("PUT", url);
-    request.setRequestHeader("Content-Type", file.type);
+    request.setRequestHeader("Content-Type", contentType);
     request.upload.onprogress = (event) => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
     request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error("O armazenamento recusou a foto."));
     request.onerror = () => reject(new Error("A conexão foi interrompida durante o envio."));

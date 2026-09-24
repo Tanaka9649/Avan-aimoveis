@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectMime, validateUploadBytes, validateUploadMetadata } from "./upload";
+import { detectMime, normalizeUploadMetadata, validateUploadBytes, validateUploadMetadata } from "./upload";
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 const text = (value: string) => new TextEncoder().encode(value);
@@ -15,6 +15,17 @@ describe("upload validation", () => {
   it("detects HEIC and HEIF brands in the ISO base media container", () => {
     expect(detectMime(text("\0\0\0\u0018ftypheic\0\0\0\0mif1"))).toBe("image/heic");
     expect(detectMime(text("\0\0\0\u0018ftypmif1\0\0\0\0msf1"))).toBe("image/heif");
+  });
+
+  it("normalizes HEIF MIME variants reported by browsers", () => {
+    expect(normalizeUploadMetadata({ name: "foto.HEIC", type: "", size: 1024 }, "photo").type).toBe("image/heic");
+    expect(normalizeUploadMetadata({ name: "foto.heic", type: "application/octet-stream", size: 1024 }, "photo").type).toBe("image/heic");
+    expect(normalizeUploadMetadata({ name: "foto.heic", type: "image/heic-sequence", size: 1024 }, "photo").type).toBe("image/heic");
+    expect(normalizeUploadMetadata({ name: "foto.heif", type: "image/heif-sequence", size: 1024 }, "photo").type).toBe("image/heif");
+  });
+
+  it("still rejects generic content types for non-HEIF extensions", () => {
+    expect(validateUploadMetadata({ name: "foto.jpg", type: "application/octet-stream", size: 1024 }, "photo")).toContain("imagem");
   });
 
   it("rejects a renamed executable even when MIME and extension claim JPEG", () => {

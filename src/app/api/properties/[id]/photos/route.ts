@@ -6,7 +6,7 @@ import { getDb } from "@/db";
 import { properties, propertyPhotos } from "@/db/schema";
 import { requireModule } from "@/lib/access";
 import { PHOTO_BUCKET, signedUploadUrl } from "@/lib/storage";
-import { MAX_PROPERTY_PHOTOS, safeFileName, validateUploadMetadata } from "@/lib/upload";
+import { MAX_PROPERTY_PHOTOS, normalizeUploadMetadata, safeFileName, validateUploadMetadata } from "@/lib/upload";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!z.uuid().safeParse(id).success) return NextResponse.json({ error: "Imóvel inválido." }, { status: 400 });
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revise as fotos selecionadas." }, { status: 400 });
-  const invalid = parsed.data.files.map((file) => validateUploadMetadata(file, "photo")).find(Boolean);
+  const files = parsed.data.files.map((file) => normalizeUploadMetadata(file, "photo"));
+  const invalid = files.map((file) => validateUploadMetadata(file, "photo")).find(Boolean);
   if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
   const db = getDb();
@@ -28,9 +29,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     db.select({ value: count() }).from(propertyPhotos).where(eq(propertyPhotos.propertyId, id)).then((rows) => rows[0]),
     db.select({ value: max(propertyPhotos.position) }).from(propertyPhotos).where(eq(propertyPhotos.propertyId, id)).then((rows) => rows[0]),
   ]);
-  if (Number(current) + parsed.data.files.length > MAX_PROPERTY_PHOTOS) return NextResponse.json({ error: "Cada imóvel pode ter no máximo 10 fotos." }, { status: 400 });
+  if (Number(current) + files.length > MAX_PROPERTY_PHOTOS) return NextResponse.json({ error: "Cada imóvel pode ter no máximo 10 fotos." }, { status: 400 });
 
-  const reservations = parsed.data.files.map((file, index) => {
+  const reservations = files.map((file, index) => {
     const photoId = randomUUID();
     const clean = safeFileName(file.name);
     const ext = clean.match(/\.[^.]+$/)?.[0].toLowerCase() || "";
