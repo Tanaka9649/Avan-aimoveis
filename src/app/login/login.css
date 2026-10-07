@@ -35,7 +35,10 @@ body:has(.login-page) main { min-height: 100dvh; }
 .login-visual-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(7 12 20 / 42%) 0%, rgb(7 12 20 / 10%) 35%, rgb(7 12 20 / 83%) 100%), linear-gradient(90deg, rgb(7 12 20 / 44%), transparent 66%); }
 .login-brand, .login-visual-content, .login-visual-note { position: relative; z-index: 1; }
 .login-brand { width: fit-content; border-radius: 8px; }
-.login-brand .avanca-logo { width: 126px; height: 78px; }
+.login-brand .brand-lockup { width: 268px; gap: 14px; }
+.login-brand .avanca-logo { width: 126px; height: 82px; }
+.login-brand .brand-lockup-divider { height: 48px; }
+.login-brand .broker-brand-mark { width: 113px; height: 82px; }
 .login-visual-content { max-width: 610px; padding-top: clamp(80px, 18vh, 210px); }
 
 .login-visual-kicker {
@@ -111,7 +114,10 @@ body:has(.login-page) main { min-height: 100dvh; }
   .login-access { padding: 22px clamp(20px, 6vw, 48px) 24px; background: radial-gradient(circle at 15% 0%, rgb(23 105 224 / 9%), transparent 32%), #fff; }
   .login-access-header { justify-content: space-between; }
   .login-mobile-brand { display: block; width: fit-content; }
-  .login-mobile-brand .avanca-logo { width: 96px; height: 62px; }
+  .login-mobile-brand .brand-lockup { width: 184px; gap: 9px; }
+  .login-mobile-brand .avanca-logo { width: 88px; height: 60px; }
+  .login-mobile-brand .brand-lockup-divider { height: 36px; }
+  .login-mobile-brand .broker-brand-mark { width: 68px; height: 60px; }
   .login-form-shell { padding-block: 50px; }
 }
 

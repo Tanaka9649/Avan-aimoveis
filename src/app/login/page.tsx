@@ -2,22 +2,23 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
-import { BrandLogo } from "@/components/brand-logo";
+import { BrandLockup } from "@/components/brand-lockup";
 import { LoginForm } from "@/components/login-form";
+import { brand } from "@/lib/brand";
 import "./login.css";
 
 export const metadata: Metadata = {
   title: "Acesso ao painel",
-  description: "Acesso seguro à plataforma da Avança Imóveis.",
+  description: `Acesso seguro à plataforma da ${brand.name}.`,
 };
 
 export default function LoginPage() {
   return (
     <section className="login-page">
-      <aside className="login-visual" aria-label="Avança Imóveis">
+      <aside className="login-visual" aria-label={brand.name}>
         <Image
           src="https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1800&q=88"
-          alt="Residência contemporânea representando o portfólio da Avança Imóveis"
+          alt={`Residência contemporânea representando o portfólio da ${brand.name}`}
           fill
           priority
           sizes="(max-width: 900px) 0px, 54vw"
@@ -26,9 +27,7 @@ export default function LoginPage() {
         />
         <div className="login-visual-overlay" />
 
-        <Link className="login-brand" href="/" aria-label="Avança Imóveis — página inicial">
-          <BrandLogo light />
-        </Link>
+        <BrandLockup className="login-brand" href="/" onDark eager />
 
         <div className="login-visual-content">
           <span className="login-visual-kicker"><ShieldCheck aria-hidden="true" /> Plataforma da equipe</span>
@@ -40,14 +39,12 @@ export default function LoginPage() {
           </ul>
         </div>
 
-        <p className="login-visual-note">Avança Imóveis · Plataforma interna</p>
+        <p className="login-visual-note">{brand.name} · Plataforma interna</p>
       </aside>
 
       <div className="login-access">
         <header className="login-access-header">
-          <Link className="login-mobile-brand" href="/" aria-label="Avança Imóveis — página inicial">
-            <BrandLogo />
-          </Link>
+          <BrandLockup className="login-mobile-brand" href="/" eager />
           <Link className="login-back-link" href="/">
             <ArrowLeft aria-hidden="true" /> Voltar ao site
           </Link>

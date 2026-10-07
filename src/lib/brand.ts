@@ -1,5 +1,5 @@
 export const brand = {
-  name: "Avança Imóveis",
+  name: "Avança Imóveis e Rogério Cortes",
   tagline: "Imóveis escolhidos com critério. Negócios conduzidos com clareza.",
   phone: "(34) 9990-0553",
   whatsapp: "553499900553",

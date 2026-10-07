@@ -1,36 +1,45 @@
 import Image from "next/image";
 import Link from "next/link";
+import { brand } from "@/lib/brand";
 import { BrandLogo } from "./brand-logo";
 
 type BrandLockupProps = {
   className?: string;
   compact?: boolean;
+  eager?: boolean;
   href: string;
-  light?: boolean;
+  onDark?: boolean;
 };
 
-export function BrandLockup({ className, compact = false, href, light = false }: BrandLockupProps) {
+const brokerLogo = {
+  dark: { src: "/rogerio-cortes-logo-dark.png", width: 801, height: 523 },
+  light: { src: "/rogerio-cortes-logo-light.png", width: 1150, height: 1031 },
+} as const;
+
+export function BrandLockup({ className, compact = false, eager = false, href, onDark = false }: BrandLockupProps) {
+  const logo = onDark ? brokerLogo.dark : brokerLogo.light;
+
   return (
     <Link
-      className={["brand-lockup-link", className].filter(Boolean).join(" ")}
+      className={["brand-lockup-link", onDark ? "brand-lockup-on-dark" : "brand-lockup-on-light", className].filter(Boolean).join(" ")}
       href={href}
-      aria-label={compact ? "Avança Imóveis — início" : "Avança Imóveis e Rogério Côrtes — início"}
+      aria-label={`${brand.name} — início`}
     >
       {compact ? (
-        <BrandLogo light={light} compact />
+        <BrandLogo alt="" compact eager={eager} onDark={onDark} />
       ) : (
         <span className="brand-lockup">
-          <BrandLogo light={light} />
+          <BrandLogo alt="" eager={eager} onDark={onDark} />
           <span className="brand-lockup-divider" aria-hidden="true" />
-          <span className="broker-brand-frame">
+          <span className="broker-brand-mark">
             <Image
               className="broker-brand-logo"
-              src="/rogerio-cortes-logo.png"
-              alt="Rogério Côrtes - Corretor de Imóveis"
-              width={799}
-              height={522}
-              sizes="72px"
-              priority
+              src={logo.src}
+              alt=""
+              width={logo.width}
+              height={logo.height}
+              sizes="(max-width: 640px) 76px, 100px"
+              loading={eager ? "eager" : "lazy"}
             />
           </span>
         </span>

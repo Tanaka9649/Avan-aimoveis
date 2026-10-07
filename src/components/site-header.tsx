@@ -13,7 +13,7 @@ export function SiteHeader() {
   const close = () => setOpen(false);
   return <header className="site-header" onKeyDown={event => { if (event.key === "Escape") { close(); toggle.current?.focus(); } }}>
     <div className="shell header-inner">
-      <BrandLockup className="brand" href="/" />
+      <BrandLockup className="brand" href="/" eager />
       <nav className="desktop-navigation" aria-label="Navegação principal">{links.map(link => <Link key={link.href} href={link.href} aria-current={pathname === link.href ? "page" : undefined}>{link.label}</Link>)}</nav>
       <div className="header-actions">
         <Link className="icon-link" href="/favoritos" aria-label="Favoritos" onClick={close}><Heart size={19}/><span>Favoritos</span></Link>

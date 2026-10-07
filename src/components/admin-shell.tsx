@@ -92,7 +92,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
       <button className={`sidebar-backdrop${open ? " open" : ""}`} aria-label="Fechar menu" onClick={() => setOpen(false)} />
       <aside className={`admin-sidebar${open ? " open" : ""}`}>
         <div className="sidebar-brand">
-          <BrandLockup href={homeHref} light={theme === "dark"} compact={collapsed && !open} />
+          <BrandLockup href={homeHref} onDark={theme === "dark"} compact={collapsed && !open} eager />
           <button className="sidebar-close" aria-label="Fechar menu" onClick={() => setOpen(false)}><X /></button>
           <button className="sidebar-collapse" aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"} title={collapsed ? "Expandir" : "Recolher"} onClick={toggleCollapsed}>{collapsed ? <ChevronRight /> : <ChevronLeft />}</button>
         </div>

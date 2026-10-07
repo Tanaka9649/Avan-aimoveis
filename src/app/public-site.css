@@ -84,14 +84,21 @@ body:not(:has(.admin-app, .login-page)) {
   & .final-cta p{color:var(--inverse-muted);max-width:630px}
   & .final-cta>.shell{align-items:center}
   & .final-cta>.shell>div:last-child{flex-direction:column;flex-shrink:0}
-  & .site-footer{background:var(--inverse);color:var(--background);padding:64px 0 24px;border-top:1px solid rgb(255 255 255 / 14%)}
-  & .footer-grid{grid-template-columns:1.6fr 1fr 1fr;gap:64px}
-  & .footer-grid p{color:var(--inverse-muted);font-size:15px}
-  & .footer-grid>div:not(:first-child){color:var(--inverse-muted);gap:0}
-  & .footer-grid strong{text-transform:uppercase;letter-spacing:.12em;font-size:11px;margin:18px 0 12px}
-  & .footer-grid a{display:flex;align-items:center;gap:8px;min-height:44px;width:fit-content}
-  & .footer-grid a:hover{color:#77aafa}
-  & .footer-bottom{color:var(--inverse-muted);margin-top:40px;gap:20px}
+  & .site-footer{background:#0d1117;color:var(--background);padding:72px 0 28px;border-top:1px solid rgb(255 255 255 / 10%)}
+  & .footer-grid{grid-template-columns:minmax(300px,1.55fr) minmax(130px,.7fr) minmax(230px,1fr);align-items:start;gap:clamp(38px,7vw,96px)}
+  & .footer-brand-column{display:block;min-width:0}
+  & .footer-brand-lockup .brand-lockup{width:250px;gap:14px}
+  & .footer-brand-lockup .avanca-logo{width:114px;height:76px}
+  & .footer-brand-lockup .brand-lockup-divider{height:46px}
+  & .footer-brand-lockup .broker-brand-mark{width:107px;height:76px}
+  & .footer-brand-column p{max-width:360px;margin:24px 0 0;color:#aeb8c6;font-size:15px;line-height:1.75}
+  & :is(.footer-links,.footer-contact){display:flex;flex-direction:column;align-items:flex-start;color:#aeb8c6;font-size:13px}
+  & :is(.footer-links,.footer-contact) strong{margin:6px 0 16px;color:#f7f9fc;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+  & :is(.footer-links,.footer-contact) a{display:inline-flex;align-items:center;gap:8px;min-height:38px;width:fit-content;transition:color .18s}
+  & :is(.footer-links,.footer-contact) a:hover{color:#8eb8ff}
+  & .footer-contact>a:first-of-type{color:#f7f9fc;font-weight:700}
+  & .footer-contact>span{margin-top:8px;line-height:1.6}
+  & .footer-bottom{margin-top:56px;padding-top:22px;border-top-color:rgb(255 255 255 / 10%);color:#7f8b9c;gap:20px;font-size:11px;letter-spacing:.01em}
   & .page-top{padding-top:64px}
   & .catalog-title{margin-bottom:32px;max-width:760px}
   & .catalog-title h1,& .editorial h1,& .contact-layout h1{font-size:clamp(32px,4vw,48px);margin:12px 0 16px}
@@ -172,7 +179,7 @@ body:not(:has(.admin-app, .login-page)) {
     & .detail-layout{grid-template-columns:1fr;gap:32px}
     & .detail-layout aside{order:initial}
     & .public-contact{grid-template-columns:1fr;gap:32px}
-    & .footer-grid{gap:32px}
+    & .footer-grid{grid-template-columns:1.25fr .7fr 1fr;gap:32px}
   }
   @media(max-width:640px){
     & .header-inner{height:72px;gap:12px}
@@ -185,8 +192,13 @@ body:not(:has(.admin-app, .login-page)) {
     & .catalog-meta select{max-width:65%}
     & .property-card-body{padding:20px}
     & .property-price strong{font-size:22px}
-    & .footer-grid{grid-template-columns:1fr 1fr;gap:24px}
-    & .footer-grid>div:first-child{grid-column:1/-1}
+    & .footer-grid{grid-template-columns:1fr 1fr;gap:32px 24px}
+    & .footer-brand-column{grid-column:1/-1}
+    & .footer-brand-column p{margin-top:18px}
+    & .footer-brand-lockup .brand-lockup{width:214px}
+    & .footer-brand-lockup .avanca-logo{width:98px;height:66px}
+    & .footer-brand-lockup .broker-brand-mark{width:90px;height:66px}
+    & .footer-bottom{margin-top:40px}
     & .footer-bottom{flex-direction:column;gap:10px}
     & .gallery:has(>.gallery-main:only-child){display:block}
     & .gallery .gallery-main{height:280px}

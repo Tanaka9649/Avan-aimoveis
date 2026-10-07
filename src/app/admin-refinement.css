@@ -383,19 +383,18 @@
 @media(max-width:780px){.crm-header-actions{width:100%;flex-wrap:wrap}.crm-header-actions .admin-button{flex:1}.crm-client-list>article{grid-template-columns:1fr auto}.crm-client-list .source-tag,.crm-client-list .client-row-meta{display:none}.client-row-actions{grid-column:1/-1;justify-content:flex-start;padding-left:48px}.crm-client-drawer{width:100vw;border-left:0}.crm-client-drawer-header,.crm-drawer-scroll{padding-right:18px;padding-left:18px}.crm-drawer-actions{padding:12px 18px}.crm-form-grid{grid-template-columns:1fr}.crm-form-grid .wide{grid-column:auto}.crm-small-fields{grid-template-columns:repeat(3,1fr)}.crm-small-fields .wide{grid-column:1/-1}}
 @media(max-width:480px){.crm-view-tabs{width:100%}.crm-view-tabs a{flex:1}.crm-small-fields{grid-template-columns:1fr}.crm-small-fields .wide{grid-column:auto}.crm-drawer-actions .admin-button{flex:1}.client-stat-grid{grid-template-columns:1fr 1fr}.crm-success-actions,.duplicate-client>div{flex-direction:column}}
 
-/* Shared co-branding: Avança remains primary; the associated broker mark stays intact. */
-.brand-lockup-link { display: block; min-width: 0; }
-.brand-lockup { display: flex; align-items: center; gap: 5px; width: 169px; max-width: 100%; }
-.brand-lockup .avanca-logo { flex: 0 0 auto; width: 82px; height: 54px; object-fit: contain; }
-.brand-lockup-divider { flex: 0 0 1px; width: 1px; height: 34px; background: var(--admin-border, #d7dee8); }
-.broker-brand-frame { flex: 0 0 auto; width: 76px; height: 51px; display: grid; place-items: center; border: 1px solid rgb(255 255 255 / 7%); border-radius: 6px; background: #08090b; padding: 2px; }
-.broker-brand-logo { display: block; width: 72px; height: 47px; object-fit: contain; }
-.theme-light .broker-brand-frame { border-color: #d7dee8; box-shadow: 0 2px 8px rgb(17 24 39 / 9%); }
-.theme-light .brand-lockup-divider { background: #d7dee8; }
+/* Shared co-branding uses transparent, surface-aware assets without a framed plaque. */
+.brand-lockup-link { display: block; min-width: 0; width: fit-content; border-radius: 8px; }
+.brand-lockup { display: flex; align-items: center; gap: 10px; width: 192px; max-width: 100%; }
+.brand-lockup .avanca-logo { flex: 0 0 auto; width: 88px; height: 58px; object-fit: contain; }
+.brand-lockup-divider { flex: 0 0 1px; width: 1px; height: 38px; background: #d7dee8; }
+.brand-lockup-on-dark .brand-lockup-divider { background: rgb(255 255 255 / 24%); }
+.broker-brand-mark { flex: 0 0 auto; display: grid; width: 83px; height: 60px; place-items: center; }
+.broker-brand-logo { display: block; width: 100%; height: 100%; object-fit: contain; }
 .sidebar-collapsed .sidebar-brand > .brand-lockup-link { width: 48px; height: 55px; display: grid; place-items: center; }
 
 .site-header .brand-lockup-link { flex: 0 0 auto; }
-.site-header .brand-lockup { width: 169px; }
+.site-header .brand-lockup { width: 192px; }
 
 @media(max-width:860px){
   .sidebar-collapsed .sidebar-brand > .brand-lockup-link { width: auto; height: auto; display: block; }
