@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { canAccess, firstAllowedRoute, modules, type Access, type Module } from "@/lib/permissions";
-import { BrandLogo } from "./brand-logo";
+import { AdminBrandLockup } from "./admin-brand-lockup";
 
 const moduleMeta: Record<Module, { label: string; icon: typeof Building2 }> = {
   dashboard: { label: "Visão geral", icon: BarChart3 },
@@ -92,7 +92,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
       <button className={`sidebar-backdrop${open ? " open" : ""}`} aria-label="Fechar menu" onClick={() => setOpen(false)} />
       <aside className={`admin-sidebar${open ? " open" : ""}`}>
         <div className="sidebar-brand">
-          <Link href={homeHref} aria-label="Avança Imóveis — início do painel"><BrandLogo light={theme === "dark"} compact={collapsed && !open} /></Link>
+          <AdminBrandLockup href={homeHref} light={theme === "dark"} compact={collapsed && !open} />
           <button className="sidebar-close" aria-label="Fechar menu" onClick={() => setOpen(false)}><X /></button>
           <button className="sidebar-collapse" aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"} title={collapsed ? "Expandir" : "Recolher"} onClick={toggleCollapsed}>{collapsed ? <ChevronRight /> : <ChevronLeft />}</button>
         </div>
