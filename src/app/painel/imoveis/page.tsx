@@ -46,6 +46,7 @@ export default async function AdminPropertiesPage({
   const low = Number(value(query, "min"));
   const high = Number(value(query, "max"));
   const where = and(
+    eq(properties.tenantId,user.tenantId),
     search
       ? or(
           ilike(properties.title, `%${search}%`),
@@ -117,15 +118,15 @@ export default async function AdminPropertiesPage({
             blurData: propertyPhotos.blurData,
           })
           .from(propertyPhotos)
-          .where(inArray(propertyPhotos.propertyId, ids)),
+          .where(and(eq(propertyPhotos.tenantId,user.tenantId),inArray(propertyPhotos.propertyId, ids))),
         db
           .select({ propertyId: propertyDocuments.propertyId })
           .from(propertyDocuments)
-          .where(inArray(propertyDocuments.propertyId, ids)),
+          .where(and(eq(propertyDocuments.tenantId,user.tenantId),inArray(propertyDocuments.propertyId, ids))),
         db
           .select({ propertyId: propertyOwners.propertyId })
           .from(propertyOwners)
-          .where(inArray(propertyOwners.propertyId, ids)),
+          .where(and(eq(propertyOwners.tenantId,user.tenantId),inArray(propertyOwners.propertyId, ids))),
       ])
     : [[], [], []];
   const photosByProperty = new Map<string, typeof photos>();
