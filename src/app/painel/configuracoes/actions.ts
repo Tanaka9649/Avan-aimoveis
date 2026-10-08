@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/access";
 import { defaultAccess, modules } from "@/lib/permissions";
 import { canCreateResource, getLimit } from "@/lib/entitlements";
 import { createTenantInvitation } from "@/lib/invitations";
+import { normalizeHostname } from "@/lib/tenant-routing";
 
 type State = { message: string; ok: boolean; inviteUrl?: string };
 
@@ -149,7 +150,8 @@ export async function saveTenantBranding(_: State, form: FormData): Promise<Stat
 
 export async function saveCustomDomain(_: State, form: FormData): Promise<State> {
   const admin = await requireAdmin();
-  const raw = String(form.get("customDomain") || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const submitted = String(form.get("customDomain") || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const raw = submitted ? normalizeHostname(submitted) || submitted : "";
   const parsed = z.union([z.literal(""), z.string().regex(/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/)]).safeParse(raw);
   if (!parsed.success) return { ok: false, message: "Informe apenas um domínio válido, sem caminho." };
   if (parsed.data && await getLimit(admin.tenantId, "custom_domain") === 0) {
