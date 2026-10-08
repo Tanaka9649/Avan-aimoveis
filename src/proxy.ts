@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ROOT_TENANT_SLUG, normalizeTenantSlug } from "@/lib/tenant-routing";
+import { ROOT_TENANT_SLUG, normalizeHostname, normalizeTenantSlug } from "@/lib/tenant-routing";
+
+function platformRequest(request: NextRequest) {
+  const host = normalizeHostname(request.headers.get("host"));
+  const configured = normalizeHostname(process.env.ROOT_DOMAIN || process.env.NEXT_PUBLIC_SITE_URL || null);
+  const preview = normalizeHostname(process.env.VERCEL_URL || null);
+  return !host || host === configured || host === preview || host === "localhost";
+}
 
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -18,12 +25,17 @@ export function proxy(request: NextRequest) {
     }
     return NextResponse.next({ request: { headers } });
   }
+
   if (pathname.startsWith("/painel")) {
-    const contextualSlug = normalizeTenantSlug(request.cookies.get("avan_tenant")?.value || ROOT_TENANT_SLUG);
-    if (contextualSlug !== ROOT_TENANT_SLUG) return NextResponse.redirect(new URL(`/empresa/${contextualSlug}${pathname}${request.nextUrl.search}`, request.url));
     if (!request.cookies.has("avan_session")) return NextResponse.redirect(new URL("/login", request.url));
     const headers = new Headers(request.headers);
-    headers.set("x-tenant-slug", ROOT_TENANT_SLUG);
+    if (platformRequest(request)) {
+      const contextualSlug = normalizeTenantSlug(request.cookies.get("avan_tenant")?.value || ROOT_TENANT_SLUG);
+      if (contextualSlug !== ROOT_TENANT_SLUG) {
+        return NextResponse.redirect(new URL(`/empresa/${contextualSlug}${pathname}${request.nextUrl.search}`, request.url));
+      }
+      headers.set("x-tenant-slug", ROOT_TENANT_SLUG);
+    }
     return NextResponse.next({ request: { headers } });
   }
   return NextResponse.next();
