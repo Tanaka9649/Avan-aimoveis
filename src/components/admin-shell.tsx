@@ -17,6 +17,7 @@ import {
   Moon,
   Search,
   Settings,
+  ShieldCheck,
   Sun,
   Users,
   X,
@@ -48,7 +49,7 @@ const routeLabels: Record<string, string> = {
   "/painel/busca": "Busca global",
 };
 
-export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; access: Access; tenant: { slug: string; name: string } } }) {
+export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; globalRole: "user" | "super_admin"; access: Access; tenant: { slug: string; name: string } } }) {
   const pathname = usePathname();
   const panelBase = user.tenant.slug === "avanca-imoveis" ? "/painel" : `/empresa/${user.tenant.slug}/painel`;
   const publicBase = user.tenant.slug === "avanca-imoveis" ? "/" : `/empresa/${user.tenant.slug}`;
@@ -110,7 +111,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
             const meta = moduleMeta[module];
             return <div key={module}>{item(`/painel/${module}`, meta.label, meta.icon)}</div>;
           })}
-          {user.role === "admin" ? <><small>ADMINISTRAÇÃO</small>{item("/painel/configuracoes", "Equipe e acessos", Settings)}</> : null}
+          {user.role === "admin" ? <><small>ADMINISTRAÇÃO</small>{item("/painel/configuracoes", "Equipe e acessos", Settings)}{user.globalRole === "super_admin" ? <Link href="/superadmin" title={collapsed ? "Voltar ao Super Admin" : undefined}><ShieldCheck /><span>Voltar ao Super Admin</span></Link> : null}</> : null}
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-profile"><span>{user.name.slice(0, 2).toUpperCase()}</span><div><strong>{user.name}</strong><small>{user.role === "admin" ? "Administrador" : "Equipe"}</small></div></div>
