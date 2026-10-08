@@ -1,5 +1,5 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -28,6 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const [photo] = await getDb()
     .select({
+      tenantId: propertyPhotos.tenantId,
       storagePath: propertyPhotos.storagePath,
       variants: propertyPhotos.variants,
       processingStatus: propertyPhotos.processingStatus,
@@ -35,15 +36,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       publishedAt: properties.publishedAt,
     })
     .from(propertyPhotos)
-    .innerJoin(properties, eq(properties.id, propertyPhotos.propertyId))
+    .innerJoin(
+      properties,
+      and(
+        eq(properties.id, propertyPhotos.propertyId),
+        eq(properties.tenantId, propertyPhotos.tenantId),
+      ),
+    )
     .where(eq(propertyPhotos.id, id))
     .limit(1);
-  if (!photo) return new NextResponse(null, { status: 404 });
+  if (!photo?.tenantId) return new NextResponse(null, { status: 404 });
 
   const isPublic = isPubliclyVisible(photo);
   if (!isPublic) {
     const user = await currentUser();
-    if (!user || !canAccess(user, "imoveis")) return new NextResponse(null, { status: 404 });
+    if (!user || user.tenantId !== photo.tenantId || !canAccess(user, "imoveis")) {
+      return new NextResponse(null, { status: 404 });
+    }
   }
 
   if (photo.processingStatus !== "ready") return processingPlaceholder(photo.processingStatus);
@@ -51,8 +60,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const key = variantKey(photo, variant);
   const etag = `"${id}-${variant}"`;
   const cacheControl = isPublic ? "public, max-age=31536000, immutable" : "private, max-age=86400, immutable";
-  if (request.headers.get("if-none-match") === etag)
+  if (request.headers.get("if-none-match") === etag) {
     return new NextResponse(null, { status: 304, headers: { ETag: etag, "Cache-Control": cacheControl } });
+  }
 
   try {
     const object = await storageClient().send(new GetObjectCommand({ Bucket: PHOTO_BUCKET, Key: key }));
