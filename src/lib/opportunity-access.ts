@@ -12,8 +12,8 @@ export async function requireOpportunity(opportunityId: string) {
   const [opportunity] = await getDb()
     .select({ id: deals.id, clientId: deals.clientId, title: deals.title })
     .from(deals)
-    .innerJoin(clients, eq(clients.id, deals.clientId))
-    .where(and(eq(deals.id, opportunityId), clientScope(user)))
+    .innerJoin(clients, and(eq(clients.id, deals.clientId), eq(clients.tenantId, user.tenantId)))
+    .where(and(eq(deals.id, opportunityId), eq(deals.tenantId, user.tenantId), clientScope(user)))
     .limit(1);
   return { user, opportunity };
 }
