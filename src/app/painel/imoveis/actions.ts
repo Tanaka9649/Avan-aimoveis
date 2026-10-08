@@ -9,6 +9,7 @@ import { properties, activityLogs, owners, propertyOwners, propertyPhotos } from
 import { listInput } from "@/lib/client-input";
 import { requireModule } from "@/lib/access";
 import { propertyInput } from "@/lib/property-input";
+import { canCreateResource } from "@/lib/entitlements";
 import { canPublish, publicationBlockers, publicPropertyUrl } from "@/lib/property-publication";
 
 export async function saveProperty(_previous: { error: string; id?: string; saved?: boolean }, formData: FormData): Promise<{ error: string; id?: string; saved?: boolean }> {
@@ -19,6 +20,7 @@ export async function saveProperty(_previous: { error: string; id?: string; save
   if (rawId && !z.uuid().safeParse(rawId).success) return { error: "Identificador inválido." };
   const id = typeof rawId === "string" && rawId ? rawId : randomUUID();
   const p = parsed.data;
+  if(!rawId&&!await canCreateResource(user.tenantId,"max_properties"))return {error:"O limite de imóveis do plano foi atingido."};
   const ownerInput=z.object({ownerId:z.union([z.uuid(),z.literal("")]),ownerName:z.string().trim().max(160),ownerPhone:z.string().trim().max(30),ownerEmail:z.union([z.email(),z.literal("")]),features:listInput}).safeParse({ownerId:formData.get("ownerId")||"",ownerName:formData.get("ownerName")||"",ownerPhone:formData.get("ownerPhone")||"",ownerEmail:formData.get("ownerEmail")||"",features:formData.get("features")||""});
   if(!ownerInput.success)return {error:"Revise os dados do proprietário e características."};
   const owner=ownerInput.data;
