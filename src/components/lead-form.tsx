@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
-export function LeadForm({ propertyId, propertyTitle }: { propertyId: string; propertyTitle: string }) {
+export function LeadForm({ propertyId, propertyTitle, tenantSlug }: { propertyId: string; propertyTitle: string; tenantSlug: string }) {
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -15,8 +15,6 @@ export function LeadForm({ propertyId, propertyTitle }: { propertyId: string; pr
       setState(response.ok ? "success" : "error");
       setMessage(response.ok ? data.message : data.error || "Não foi possível enviar.");
       if (response.ok) {
-        const match = window.location.pathname.match(/^\/empresa\/([^/]+)/);
-        const tenantSlug = match?.[1] || "avanca-imoveis";
         const anonymousSessionId = sessionStorage.getItem("avan:anonymous-session") || crypto.randomUUID();
         sessionStorage.setItem("avan:anonymous-session", anonymousSessionId);
         void fetch("/api/analytics", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tenantSlug, propertyId, eventType: "interest_submit", anonymousSessionId, path: window.location.pathname }), keepalive: true });
