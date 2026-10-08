@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { tenants } from "@/db/schema";
+import { tenantAuditLogs, tenants } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
 
 type VercelDomain = {
@@ -48,10 +48,50 @@ export async function POST() {
       data = await response.json() as VercelDomain;
     }
     const active = Boolean(response.ok && data.verified);
-    await db.update(tenants).set({ domainStatus: active ? "active" : "verifying", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId));
+    await db.batch([
+      db.update(tenants).set({ domainStatus: active ? "active" : "verifying", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
+      db.insert(tenantAuditLogs).values({
+        tenantId: admin.tenantId,
+        actorUserId: admin.id,
+        action: active ? "domain_activated" : "domain_verification_checked",
+        entityType: "tenant_domain",
+        entityId: tenant.domain,
+        metadata: { status: active ? "active" : "verifying" },
+      }),
+    ]);
     return NextResponse.json({ status: active ? "active" : "verifying", verification: data.verification || [] });
   } catch (error) {
     console.error("tenant_domain_verification_failed", { tenantId: admin.tenantId, reason: error instanceof Error ? error.message : "unknown" });
     return NextResponse.json({ error: "Não foi possível consultar a Vercel agora." }, { status: 502 });
+  }
+}
+
+export async function DELETE() {
+  const admin = await requireAdmin();
+  const db = getDb();
+  const [tenant] = await db.select({ domain: tenants.customDomain }).from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1);
+  if (!tenant?.domain) return NextResponse.json({ ok: true });
+  if (!vercelConfig()) return NextResponse.json({ error: "A integração da Vercel é necessária para remover o domínio com segurança." }, { status: 503 });
+
+  try {
+    const response = await vercelRequest(`/v9/projects/{project}/domains/${encodeURIComponent(tenant.domain)}`, { method: "DELETE" });
+    if (!response.ok && response.status !== 404) {
+      const data = await response.json() as VercelDomain;
+      return NextResponse.json({ error: data.error?.message || "A Vercel não removeu o domínio." }, { status: response.status });
+    }
+    await db.batch([
+      db.update(tenants).set({ customDomain: null, domainStatus: "pending", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
+      db.insert(tenantAuditLogs).values({
+        tenantId: admin.tenantId,
+        actorUserId: admin.id,
+        action: "domain_removed",
+        entityType: "tenant_domain",
+        entityId: tenant.domain,
+      }),
+    ]);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("tenant_domain_removal_failed", { tenantId: admin.tenantId, reason: error instanceof Error ? error.message : "unknown" });
+    return NextResponse.json({ error: "Não foi possível remover o domínio agora." }, { status: 502 });
   }
 }
