@@ -5,7 +5,7 @@ Atualizado em 08/10/2026.
 | Milestone | Estado | Evidência |
 |---|---|---|
 | 0 — Auditoria | Concluído | Inventário e documentos de arquitetura |
-| 1 — Data model | Pendente | — |
+| 1 — Data model | Concluído | Entidades SaaS e escopo tenant-owned no schema |
 | 2 — Migração Avança | Pendente | — |
 | 3 — Contexto/isolamento | Pendente | — |
 | 4 — Membership/convites | Pendente | — |
