@@ -6,11 +6,10 @@ import { getDb } from "@/db";
 import { opportunityAttachments } from "@/db/schema";
 import { attachmentCategories } from "@/lib/opportunity-attachments";
 import { requireOpportunity } from "@/lib/opportunity-access";
-import { DOCUMENT_BUCKET, signedUploadUrl } from "@/lib/storage";
+import { DOCUMENT_BUCKET, signedUploadUrl, tenantStorageKey } from "@/lib/storage";
 import { safeFileName, validateUploadMetadata } from "@/lib/upload";
 
 export const runtime = "nodejs";
-
 const input = z.object({ files: z.array(z.object({
   name: z.string().min(1).max(240),
   type: z.string().max(100),
@@ -22,8 +21,8 @@ const input = z.object({ files: z.array(z.object({
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) return NextResponse.json({ error: "Oportunidade inválida." }, { status: 400 });
-  const { opportunity } = await requireOpportunity(id);
-  if (!opportunity) return NextResponse.json({ error: "Oportunidade não encontrada." }, { status: 404 });
+  const { user, opportunity } = await requireOpportunity(id);
+  if (!opportunity || !user) return NextResponse.json({ error: "Oportunidade não encontrada." }, { status: 404 });
   const rows = await getDb().select({
     id: opportunityAttachments.id,
     displayName: opportunityAttachments.displayName,
@@ -32,7 +31,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     sizeBytes: opportunityAttachments.sizeBytes,
     category: opportunityAttachments.category,
     createdAt: opportunityAttachments.createdAt,
-  }).from(opportunityAttachments).where(and(eq(opportunityAttachments.opportunityId, id), eq(opportunityAttachments.uploadStatus, "ready"))).orderBy(desc(opportunityAttachments.createdAt));
+  }).from(opportunityAttachments).where(and(eq(opportunityAttachments.tenantId, user.tenantId), eq(opportunityAttachments.opportunityId, id), eq(opportunityAttachments.uploadStatus, "ready"))).orderBy(desc(opportunityAttachments.createdAt));
   return NextResponse.json({ attachments: rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() })) }, { headers: { "cache-control": "private, no-store" } });
 }
 
@@ -48,11 +47,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const reservations = parsed.data.files.map((file) => {
     const attachmentId = randomUUID();
-    const key = `opportunities/${id}/${attachmentId}-${safeFileName(file.name)}`;
+    const key = tenantStorageKey(user.tenantId, `opportunities/${id}/${attachmentId}-${safeFileName(file.name)}`);
     return { attachmentId, key, file };
   });
   try {
     await getDb().insert(opportunityAttachments).values(reservations.map(({ attachmentId, key, file }) => ({
+      tenantId: user.tenantId,
       id: attachmentId,
       opportunityId: id,
       storageKey: key,
@@ -67,16 +67,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   } catch {
     return NextResponse.json({ error: "Não foi possível preparar o envio dos arquivos." }, { status: 500 });
   }
-  let uploads: Array<{ attachmentId: string; uploadUrl: string; contentType: string }>;
   try {
-    uploads = await Promise.all(reservations.map(async ({ attachmentId, key, file }) => ({
-      attachmentId,
-      uploadUrl: await signedUploadUrl(DOCUMENT_BUCKET, key, file.type, file.size),
-      contentType: file.type,
-    })));
+    const uploads = await Promise.all(reservations.map(async ({ attachmentId, key, file }) => ({ attachmentId, uploadUrl: await signedUploadUrl(DOCUMENT_BUCKET, key, file.type, file.size), contentType: file.type })));
+    return NextResponse.json({ uploads }, { status: 201, headers: { "cache-control": "no-store" } });
   } catch {
-    await getDb().delete(opportunityAttachments).where(inArray(opportunityAttachments.id, reservations.map(({ attachmentId }) => attachmentId))).catch(() => undefined);
+    await getDb().delete(opportunityAttachments).where(and(eq(opportunityAttachments.tenantId, user.tenantId), inArray(opportunityAttachments.id, reservations.map(({ attachmentId }) => attachmentId)))).catch(() => undefined);
     return NextResponse.json({ error: "Não foi possível autorizar o envio dos arquivos." }, { status: 502 });
   }
-  return NextResponse.json({ uploads }, { status: 201, headers: { "cache-control": "no-store" } });
 }
