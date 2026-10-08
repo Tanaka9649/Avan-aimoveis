@@ -28,10 +28,10 @@ beforeAll(async () => {
       pg.transaction(async (tx) => { const results = []; for (const query of queries) { const q = query.toSQL(); results.push(await tx.query(q.sql, q.params)); } return results; }),
   });
   await pg.query("insert into users(id,name,email,password_hash,role) values($1,'Teste','agenda@example.invalid','unused','admin')", [mock.user.id]);
-  await pg.query("insert into stages(id,name,position,color,is_won,is_lost) values($1,'Novos leads',0,'#aaa',false,false)", [id(2)]);
-  await pg.query("insert into clients(id,name,phone,origin) values($1,'Cliente agenda','(34) 90000-0000','Site')", [id(3)]);
-  await pg.query("insert into properties(id,code,title,slug,type,price_cents,description,state,city,neighborhood,address_private) values($1,'AG-1','Casa agenda','casa-agenda','Casa',40000000,'Teste','MG','Frutal','Centro','Teste')", [id(4)]);
-  await pg.query("insert into deals(id,client_id,stage_id,title,position) values($1,$2,$3,'Negócio agenda','1')", [id(5), id(3), id(2)]);
+  await pg.query("insert into stages(tenant_id,id,name,position,color,is_won,is_lost) values($1,$2,'Novos leads',0,'#aaa',false,false)", [mock.user.tenantId, id(2)]);
+  await pg.query("insert into clients(tenant_id,id,name,phone,origin) values($1,$2,'Cliente agenda','(34) 90000-0000','Site')", [mock.user.tenantId, id(3)]);
+  await pg.query("insert into properties(tenant_id,id,code,title,slug,type,price_cents,description,state,city,neighborhood,address_private) values($1,$2,'AG-1','Casa agenda','casa-agenda','Casa',40000000,'Teste','MG','Frutal','Centro','Teste')", [mock.user.tenantId, id(4)]);
+  await pg.query("insert into deals(tenant_id,id,client_id,stage_id,title,position) values($1,$2,$3,$4,'Negócio agenda','1')", [mock.user.tenantId, id(5), id(3), id(2)]);
 }, 30000);
 
 afterAll(async () => { await pg.close(); });
