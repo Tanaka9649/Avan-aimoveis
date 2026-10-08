@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 
 const ROOT_TENANT = "00000000-0000-4000-8000-000000000001";
-const mock = vi.hoisted(() => ({ db: null as unknown, user: { id: "50000000-0000-4000-8000-000000000001", tenantId: "00000000-0000-4000-8000-000000000001", role: "admin", access: { clients: "all" } } }));
+const mock = vi.hoisted(() => ({ db: null as unknown, user: { id: "50000000-0000-4000-8000-000000000001", tenantId: "00000000-0000-4000-8000-000000000001", tenant: { slug: "avanca-imoveis" }, role: "admin", access: { clients: "all" } } }));
 vi.mock("@/db", () => ({ getDb: () => mock.db }));
 vi.mock("@/lib/access", () => ({ requireModule: async () => mock.user, clientScope: () => undefined }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -56,7 +56,7 @@ describe.sequential("fluxo de publicação ponta a ponta", () => {
   });
 
   it("publishes once the requirements are met and returns the shareable URL", async () => {
-    await pg.query("insert into property_photos(id,property_id,storage_path,alt,position,is_cover,variants) values($1,$2,'k/full.webp','Capa',0,true,$3)", [id(20), PROPERTY, JSON.stringify({ thumb: "k/thumb.webp", medium: "k/medium.webp", full: "k/full.webp" })]);
+    await pg.query("insert into property_photos(tenant_id,id,property_id,storage_path,alt,position,is_cover,variants) values($1,$2,$3,'k/full.webp','Capa',0,true,$4)", [ROOT_TENANT, id(20), PROPERTY, JSON.stringify({ thumb: "k/thumb.webp", medium: "k/medium.webp", full: "k/full.webp" })]);
     const result = await publishProperty(PROPERTY);
     expect(result.ok).toBe(true);
     expect(result.url).toContain("/imoveis/casa-cidade-das-aguas-cda-001");
