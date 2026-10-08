@@ -16,16 +16,23 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const period = ["1", "7", "30"].includes(params.period || "") ? Number(params.period) : 30;
   const validDate = /^\d{4}-\d{2}-\d{2}$/;
   const custom = params.period === "custom" && validDate.test(params.from || "") && validDate.test(params.to || "");
-  const from = custom ? new Date(`${params.from}T00:00:00.000Z`) : new Date(Date.now() - period * 86_400_000);
-  const to = custom ? new Date(`${params.to}T23:59:59.999Z`) : new Date();
+  const from = custom ? new Date(`${params.from}T00:00:00.000Z`) : null;
+  const to = custom ? new Date(`${params.to}T23:59:59.999Z`) : null;
   const db = getDb();
 
-  const [summaryResult, topResult, sourceResult] = await Promise.all([
+  const [summaryResult, uniqueResult, topResult, sourceResult] = await Promise.all([
     db.execute(sql`
       select event_type, count(*)::int as total, count(distinct anonymous_session_id)::int as visitors
       from analytics_events
-      where tenant_id = ${user.tenantId}::uuid and created_at between ${from} and ${to}
+      where tenant_id = ${user.tenantId}::uuid
+        and ((${custom} and created_at between ${from} and ${to}) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
       group by event_type
+    `),
+    db.execute(sql`
+      select count(distinct anonymous_session_id)::int as visitors
+      from analytics_events
+      where tenant_id = ${user.tenantId}::uuid
+        and ((${custom} and created_at between ${from} and ${to}) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
     `),
     db.execute(sql`
       select p.id, p.title,
@@ -34,7 +41,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         count(*) filter (where e.event_type = 'whatsapp_click')::int as whatsapp,
         count(*) filter (where e.event_type = 'interest_submit')::int as leads
       from properties p
-      left join analytics_events e on e.property_id = p.id and e.tenant_id = p.tenant_id and e.created_at between ${from} and ${to}
+      left join analytics_events e on e.property_id = p.id and e.tenant_id = p.tenant_id
+        and ((${custom} and e.created_at between ${from} and ${to}) or (${!custom} and e.created_at >= now() - make_interval(days => ${period})))
       where p.tenant_id = ${user.tenantId}::uuid
       group by p.id, p.title
       order by views desc, leads desc, whatsapp desc
@@ -43,7 +51,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     db.execute(sql`
       select coalesce(nullif(utm_source, ''), 'Direto / não informado') as source, count(*)::int as total
       from analytics_events
-      where tenant_id = ${user.tenantId}::uuid and created_at between ${from} and ${to}
+      where tenant_id = ${user.tenantId}::uuid
+        and ((${custom} and created_at between ${from} and ${to}) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
       group by coalesce(nullif(utm_source, ''), 'Direto / não informado')
       order by total desc
       limit 8
@@ -52,8 +61,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   const rows = summaryResult.rows as unknown as Summary[];
   const values = Object.fromEntries(rows.map((row) => [row.event_type, Number(row.total)]));
-  const visitors = new Set(rows.map((row) => Number(row.visitors)));
-  const uniqueVisitors = visitors.size ? Math.max(...visitors) : 0;
+  const uniqueVisitors = Number((uniqueResult.rows[0] as { visitors?: number } | undefined)?.visitors || 0);
   const contacts = (values.whatsapp_click || 0) + (values.interest_submit || 0);
   const propertyViews = values.property_view || 0;
   const conversion = propertyViews ? (contacts / propertyViews) * 100 : 0;
