@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Manrope } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { AnalyticsTracker } from "@/components/analytics-tracker";
 import { ROOT_TENANT_SLUG } from "@/lib/tenant-routing";
 import { rootTenant, tenantByHost, tenantBySlug, tenantOperational, tenantPublicBase, type TenantRecord } from "@/lib/tenant";
 import "./globals.css";
@@ -55,5 +56,5 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     ...(tenant.site?.secondaryColor ? { "--tenant-secondary": tenant.site.secondaryColor } : {}),
     ...(tenant.site?.accentColor ? { "--tenant-accent": tenant.site.accentColor } : {}),
   } as CSSProperties;
-  return <html lang="pt-BR"><body className={sans.variable} style={palette}><SiteHeader tenant={tenant} basePath={basePath}/><main>{children}</main><SiteFooter tenant={tenant} basePath={basePath}/></body></html>;
+  return <html lang="pt-BR"><body className={sans.variable} style={palette}><AnalyticsTracker tenantSlug={tenant.slug}/><SiteHeader tenant={tenant} basePath={basePath}/><main>{children}</main><SiteFooter tenant={tenant} basePath={basePath}/></body></html>;
 }
