@@ -7,6 +7,7 @@ import type { Access } from "@/lib/permissions";
 import { hashToken } from "./security";
 
 export const SESSION_COOKIE = "avan_session";
+export const TENANT_COOKIE = "avan_tenant";
 export type AuthenticatedUser = {
   id: string; name: string; email: string; role: "admin" | "equipe";
   globalRole: "user" | "super_admin"; access: Access; tenantId: string;
