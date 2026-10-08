@@ -136,6 +136,7 @@ BEGIN
  ] LOOP
   EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS tenant_id uuid', table_name);
   EXECUTE format('UPDATE %I SET tenant_id = %L WHERE tenant_id IS NULL', table_name, '00000000-0000-4000-8000-000000000001');
+  EXECUTE format('ALTER TABLE %I ALTER COLUMN tenant_id SET NOT NULL', table_name);
   BEGIN
    EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (tenant_id) REFERENCES tenants(id)', table_name, table_name || '_tenant_fk');
   EXCEPTION WHEN duplicate_object THEN NULL;
