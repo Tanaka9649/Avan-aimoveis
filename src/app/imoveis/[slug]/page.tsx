@@ -5,22 +5,18 @@ import { publicProperty, similarProperties } from "@/lib/public-properties";
 import { formatMoney } from "@/lib/format";
 import { photoUrl } from "@/lib/photos";
 import { publicPropertyUrl } from "@/lib/property-publication";
-import { rootTenant, tenantPublicBase } from "@/lib/tenant";
+import { tenantForRequest, tenantPublicBase, tenantPublicPathBase } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }> };
 
-/**
- * Only publicly visible properties are ever loaded here, so an unpublished, paused or sold
- * listing answers 404 for both the page and its metadata — nothing about it leaks.
- */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const tenant=await rootTenant();
+  const tenant = await tenantForRequest();
   const property = tenant ? await publicProperty(tenant.id, slug) : null;
-  if (!property) return { title: "Imóvel não encontrado", robots: { index: false, follow: false } };
+  if (!property || !tenant) return { title: "Imóvel não encontrado", robots: { index: false, follow: false } };
   const description = `${property.type} em ${property.neighborhood}, ${property.city}/${property.state} — ${formatMoney(property.priceCents)}. ${property.description.replace(/\s+/g, " ")}`.slice(0, 160);
-  const baseUrl=tenantPublicBase(tenant!);
+  const baseUrl = tenantPublicBase(tenant);
   const image = property.gallery[0] ? `${baseUrl}${photoUrl(property.gallery[0].id, "medium")}` : undefined;
   const canonical = publicPropertyUrl(property.slug, baseUrl);
   return {
@@ -30,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       type: "website",
       url: canonical,
-      siteName: tenant!.name,
+      siteName: tenant.name,
       title: `${property.title} — ${formatMoney(property.priceCents)}`,
       description,
       locale: "pt_BR",
@@ -42,10 +38,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PropertyPage({ params }: Props) {
   const { slug } = await params;
-  const tenant=await rootTenant();
+  const tenant = await tenantForRequest();
   const property = tenant ? await publicProperty(tenant.id, slug) : null;
-  if (!property) notFound();
-  const similar = await similarProperties(tenant!.id, property);
-  const baseUrl=tenantPublicBase(tenant!);
-  return <PublicPropertyView property={property} similar={similar} tenant={{name:tenant!.name,whatsapp:tenant!.whatsapp||"",baseUrl,basePath:""}}/>;
+  if (!property || !tenant) notFound();
+  const similar = await similarProperties(tenant.id, property);
+  return <PublicPropertyView property={property} similar={similar} tenant={{ name: tenant.name, whatsapp: tenant.whatsapp || "", baseUrl: tenantPublicBase(tenant), basePath: tenantPublicPathBase(tenant) }}/>;
 }
