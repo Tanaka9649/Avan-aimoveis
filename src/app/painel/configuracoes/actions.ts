@@ -8,6 +8,7 @@ import { users, sessions, activityLogs, reminderSettings, clients, tenantMembers
 import { requireAdmin } from "@/lib/access";
 import { defaultAccess, modules } from "@/lib/permissions";
 import { hashPassword } from "@/lib/security";
+import { canCreateResource } from "@/lib/entitlements";
 
 type State = { message: string; ok: boolean };
 
@@ -16,6 +17,7 @@ export async function createAccount(_: State, form: FormData): Promise<State> {
   const parsed = z.object({ name: z.string().trim().min(2).max(160), email: z.email().max(254), password: z.string().min(12).max(128) }).safeParse(Object.fromEntries(form));
   if (!parsed.success) return { ok: false, message: "Informe nome, e-mail válido e senha de 12 a 128 caracteres." };
   const email = parsed.data.email.toLowerCase();
+  if(!await canCreateResource(admin.tenantId,"max_users"))return {ok:false,message:"O limite de usuários do plano foi atingido."};
   const db = getDb();
   try {
     let [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
