@@ -21,19 +21,19 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
   const [deal] = await db
     .select({ title: deals.title, name: clients.name, email: clients.email, phone: clients.phone, value: deals.estimatedValueCents, stage: stages.name })
     .from(deals)
-    .innerJoin(clients, eq(clients.id, deals.clientId))
-    .innerJoin(stages, eq(stages.id, deals.stageId))
-    .where(and(eq(deals.id, id), clientScope(user)))
+    .innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,user.tenantId)))
+    .innerJoin(stages, and(eq(stages.id, deals.stageId),eq(stages.tenantId,user.tenantId)))
+    .where(and(eq(deals.id, id),eq(deals.tenantId,user.tenantId), clientScope(user)))
     .limit(1);
   if (!deal) notFound();
-  const [record] = await db.select().from(deals).where(eq(deals.id,id));
+  const [record] = await db.select().from(deals).where(and(eq(deals.id,id),eq(deals.tenantId,user.tenantId)));
   const choices=await dealChoices();
-  const linked=await db.select({id:dealProperties.propertyId}).from(dealProperties).where(eq(dealProperties.dealId,id));
+  const linked=await db.select({id:dealProperties.propertyId}).from(dealProperties).where(and(eq(dealProperties.tenantId,user.tenantId),eq(dealProperties.dealId,id)));
 
   const timeline = await db
     .select({ id: activities.id, description: activities.description, occurredAt: activities.occurredAt })
     .from(activities)
-    .where(eq(activities.dealId, id))
+    .where(and(eq(activities.tenantId,user.tenantId),eq(activities.dealId, id)))
     .orderBy(desc(activities.occurredAt))
     .limit(100);
   const attachmentRows = await db.select({
@@ -44,7 +44,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
     sizeBytes: opportunityAttachments.sizeBytes,
     category: opportunityAttachments.category,
     createdAt: opportunityAttachments.createdAt,
-  }).from(opportunityAttachments).where(and(eq(opportunityAttachments.opportunityId, id), eq(opportunityAttachments.uploadStatus, "ready"))).orderBy(desc(opportunityAttachments.createdAt));
+  }).from(opportunityAttachments).where(and(eq(opportunityAttachments.tenantId,user.tenantId),eq(opportunityAttachments.opportunityId, id), eq(opportunityAttachments.uploadStatus, "ready"))).orderBy(desc(opportunityAttachments.createdAt));
   const attachments = attachmentRows.map((attachment) => ({ ...attachment, createdAt: attachment.createdAt.toISOString() }));
 
   return (
