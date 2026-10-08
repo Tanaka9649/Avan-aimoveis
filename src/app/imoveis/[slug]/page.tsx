@@ -42,5 +42,5 @@ export default async function PropertyPage({ params }: Props) {
   const property = tenant ? await publicProperty(tenant.id, slug) : null;
   if (!property || !tenant) notFound();
   const similar = await similarProperties(tenant.id, property);
-  return <PublicPropertyView property={property} similar={similar} tenant={{ name: tenant.name, whatsapp: tenant.whatsapp || "", baseUrl: tenantPublicBase(tenant), basePath: tenantPublicPathBase(tenant) }}/>;
+  return <PublicPropertyView property={property} similar={similar} tenant={{ name: tenant.name, slug: tenant.slug, whatsapp: tenant.whatsapp || "", baseUrl: tenantPublicBase(tenant), basePath: tenantPublicPathBase(tenant) }}/>;
 }
