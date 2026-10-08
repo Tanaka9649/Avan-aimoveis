@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { count, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { properties, tenantMemberships, tenants } from "@/db/schema";
