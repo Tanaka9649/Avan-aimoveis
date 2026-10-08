@@ -5,7 +5,7 @@ import {redirect} from "next/navigation";
 import {revalidatePath} from "next/cache";
 import {z} from "zod";
 import {getDb} from "@/db";
-import {clients,deals,stages,activities,dealProperties,properties,users} from "@/db/schema";
+import {clients,deals,stages,activities,dealProperties,properties,users,tenantMemberships} from "@/db/schema";
 import {requireModule,clientScope} from "@/lib/access";
 import {clientInput,optionalMoney} from "@/lib/client-input";
 import {dealPosition} from "@/lib/crm-input";
@@ -29,7 +29,7 @@ export async function saveDeal(_:State,form:FormData):Promise<State>{
  let stageChanged=true;if(v.id){const [existing]=await db.select({id:deals.id,stageId:deals.stageId}).from(deals).where(and(eq(deals.id,v.id),eq(deals.tenantId,user.tenantId),eq(deals.clientId,v.clientId)));if(!existing)return {ok:false,message:"Oportunidade indisponível."};stageChanged=existing.stageId!==v.stageId;}
  const id=v.id||randomUUID();const values={clientId:v.clientId,title:v.title,stageId:v.stageId,estimatedValueCents:v.amount,nextActionAt:next,nextActionType:v.nextActionType||null,nextActionNote:v.nextActionNote||null,...(stageChanged?{stageEnteredAt:new Date()}:{}),lostReason:stage.isLost?v.lostReason:null,updatedAt:new Date()};
  try{await db.batch([
-  v.id?db.update(deals).set(values).where(and(eq(deals.id,id),eq(deals.clientId,client.id))):db.insert(deals).values({tenantId:user.tenantId,id,...values,position:dealPosition(Date.now())}),
+  v.id?db.update(deals).set(values).where(and(eq(deals.id,id),eq(deals.tenantId,user.tenantId),eq(deals.clientId,client.id))):db.insert(deals).values({tenantId:user.tenantId,id,...values,position:dealPosition(Date.now())}),
   db.update(clients).set({assignedTo:v.assignedTo||null,updatedAt:new Date()}).where(and(eq(clients.id,client.id),clientScope(user))),
   db.delete(dealProperties).where(and(eq(dealProperties.tenantId,user.tenantId),eq(dealProperties.dealId,id))),
   ...(links.data.length?[db.insert(dealProperties).values([...new Set(links.data)].map(propertyId=>({tenantId:user.tenantId,dealId:id,propertyId})))]:[]),
