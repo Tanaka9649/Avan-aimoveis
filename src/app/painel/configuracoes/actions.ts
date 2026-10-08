@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { users, sessions, activityLogs, reminderSettings, clients, tenantMemberships } from "@/db/schema";
+import { users, sessions, activityLogs, reminderSettings, clients, tenantMemberships, tenants } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
 import { defaultAccess, modules } from "@/lib/permissions";
 import { hashPassword } from "@/lib/security";
@@ -97,4 +97,61 @@ export async function assignClient(_: State, form: FormData): Promise<State> {
   }
   revalidatePath("/painel", "layout");
   return { ok: true, message: "Responsável atualizado." };
+}
+
+
+export async function saveTenantBranding(_: State, form: FormData): Promise<State> {
+  const admin = await requireAdmin();
+  const parsed = z.object({
+    name: z.string().trim().min(2).max(180),
+    phone: z.string().trim().max(30),
+    whatsapp: z.string().trim().max(30),
+    email: z.union([z.literal(""), z.email().max(254)]),
+    logoLight: z.union([z.literal(""), z.url().max(2000)]),
+    logoDark: z.union([z.literal(""), z.url().max(2000)]),
+    favicon: z.union([z.literal(""), z.url().max(2000)]),
+    primaryColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+    secondaryColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+    accentColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+    siteTitle: z.string().trim().max(180),
+    siteDescription: z.string().trim().max(320),
+  }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { ok: false, message: "Revise a identidade visual e os dados de contato." };
+  const data = parsed.data;
+  try {
+    await getDb().batch([
+      getDb().update(tenants).set({
+        name: data.name,
+        phone: data.phone || null,
+        whatsapp: data.whatsapp || null,
+        email: data.email || null,
+        branding: { logoLight: data.logoLight || undefined, logoDark: data.logoDark || undefined, favicon: data.favicon || undefined },
+        site: { primaryColor: data.primaryColor, secondaryColor: data.secondaryColor, accentColor: data.accentColor, title: data.siteTitle || undefined, description: data.siteDescription || undefined },
+        updatedAt: new Date(),
+      }).where(eq(tenants.id, admin.tenantId)),
+      getDb().insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant", entityId: admin.tenantId, action: "branding_updated" }),
+    ]);
+  } catch {
+    return { ok: false, message: "Não foi possível salvar a identidade visual." };
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/painel", "layout");
+  return { ok: true, message: "Identidade visual e contatos atualizados." };
+}
+
+export async function saveCustomDomain(_: State, form: FormData): Promise<State> {
+  const admin = await requireAdmin();
+  const raw = String(form.get("customDomain") || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const parsed = z.union([z.literal(""), z.string().regex(/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/)]).safeParse(raw);
+  if (!parsed.success) return { ok: false, message: "Informe apenas um domínio válido, sem caminho." };
+  try {
+    await getDb().batch([
+      getDb().update(tenants).set({ customDomain: parsed.data || null, domainStatus: parsed.data ? "verifying" : "pending", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
+      getDb().insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant_domain", entityId: admin.tenantId, action: parsed.data ? "domain_verification_requested" : "domain_removed", details: { domain: parsed.data || null } }),
+    ]);
+  } catch {
+    return { ok: false, message: "Não foi possível salvar. Verifique se o domínio já pertence a outra empresa." };
+  }
+  revalidatePath("/painel/configuracoes");
+  return { ok: true, message: parsed.data ? "Domínio salvo. A verificação DNS está pendente." : "Domínio personalizado removido." };
 }
