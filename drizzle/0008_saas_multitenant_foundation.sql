@@ -145,3 +145,9 @@ CREATE UNIQUE INDEX properties_code_uq ON properties(tenant_id,code);
 CREATE UNIQUE INDEX properties_slug_uq ON properties(tenant_id,slug);
 CREATE UNIQUE INDEX stages_position_uq ON stages(tenant_id,position);
 CREATE UNIQUE INDEX property_views_dedupe_uq ON property_views(tenant_id,property_id,visitor_hash,viewed_on);
+
+
+-- Tenant-local reminder keys replace the legacy global primary key.
+ALTER TABLE reminder_settings ALTER COLUMN tenant_id SET NOT NULL;
+ALTER TABLE reminder_settings DROP CONSTRAINT IF EXISTS reminder_settings_pkey;
+ALTER TABLE reminder_settings ADD CONSTRAINT reminder_settings_pkey PRIMARY KEY (tenant_id, key);
