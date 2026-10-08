@@ -6,7 +6,7 @@ import { getDb } from "@/db";
 import { sessions, tenantMemberships, tenants, users } from "@/db/schema";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { hashToken, issueToken, verifyPassword } from "@/lib/security";
-import { SESSION_COOKIE } from "@/lib/auth";
+import { SESSION_COOKIE, TENANT_COOKIE } from "@/lib/auth";
 import { firstAllowedRoute } from "@/lib/permissions";
 import { ROOT_TENANT_SLUG, normalizeTenantSlug } from "@/lib/tenant";
 
@@ -32,6 +32,7 @@ export async function POST(request:Request){
     const redirectTo=slug===ROOT_TENANT_SLUG?base:`/empresa/${slug}${base}`;
     const response=NextResponse.json({ok:true,redirectTo});
     response.cookies.set(SESSION_COOKIE,token,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",expires:expiresAt});
+    response.cookies.set(TENANT_COOKIE,slug,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",expires:expiresAt});
     return response;
   }catch{return NextResponse.json({error:"Não foi possível entrar agora."},{status:503})}
 }
