@@ -153,19 +153,19 @@ export async function saveCustomDomain(_: State, form: FormData): Promise<State>
   const submitted = String(form.get("customDomain") || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
   const raw = submitted ? normalizeHostname(submitted) || submitted : "";
   const parsed = z.union([z.literal(""), z.string().regex(/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/)]).safeParse(raw);
-  if (!parsed.success) return { ok: false, message: "Informe apenas um domínio válido, sem caminho." };
-  if (parsed.data && await getLimit(admin.tenantId, "custom_domain") === 0) {
+  if (!parsed.success || !parsed.data) return { ok: false, message: "Informe apenas um domínio válido, sem caminho. Para desvincular, use Remover domínio." };
+  if (await getLimit(admin.tenantId, "custom_domain") === 0) {
     return { ok: false, message: "O plano atual não permite domínio personalizado." };
   }
   try {
     const db = getDb();
     await db.batch([
-      db.update(tenants).set({ customDomain: parsed.data || null, domainStatus: parsed.data ? "verifying" : "pending", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
-      db.insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant_domain", entityId: admin.tenantId, action: parsed.data ? "domain_verification_requested" : "domain_removed", details: { domain: parsed.data || null } }),
+      db.update(tenants).set({ customDomain: parsed.data, domainStatus: "verifying", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
+      db.insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant_domain", entityId: admin.tenantId, action: "domain_verification_requested", details: { domain: parsed.data } }),
     ]);
   } catch {
     return { ok: false, message: "Não foi possível salvar. Verifique se o domínio já pertence a outra empresa." };
   }
   revalidatePath("/painel/configuracoes");
-  return { ok: true, message: parsed.data ? "Domínio salvo. A verificação DNS está pendente." : "Domínio personalizado removido." };
+  return { ok: true, message: "Domínio salvo. A verificação DNS está pendente." };
 }
