@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { SettingsForm } from "@/components/settings-form";
 import { getDb } from "@/db";
@@ -42,13 +42,12 @@ export default async function TenantDetailPage({ params, searchParams }: { param
   const [tenant] = await db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
   if (!tenant) notFound();
 
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const [[memberCount], [propertyCount], [clientCount], [dealCount], [traffic], moduleRows, members, provisioning, audits] = await Promise.all([
     db.select({ value: count() }).from(tenantMemberships).where(and(eq(tenantMemberships.tenantId, id), eq(tenantMemberships.status, "active"))),
     db.select({ value: count() }).from(properties).where(eq(properties.tenantId, id)),
     db.select({ value: count() }).from(clients).where(eq(clients.tenantId, id)),
     db.select({ value: count() }).from(deals).where(eq(deals.tenantId, id)),
-    db.select({ value: count() }).from(analyticsEvents).where(and(eq(analyticsEvents.tenantId, id), gte(analyticsEvents.createdAt, since))),
+    db.select({ value: count() }).from(analyticsEvents).where(and(eq(analyticsEvents.tenantId, id), sql.raw("analytics_events.created_at >= now() - interval '30 days'"))),
     db.select({ module: tenantModules.module, enabled: tenantModules.enabled }).from(tenantModules).where(eq(tenantModules.tenantId, id)),
     db.select({ id: tenantMemberships.id, name: users.name, email: users.email, role: tenantMemberships.role, status: tenantMemberships.status }).from(tenantMemberships).innerJoin(users, eq(users.id, tenantMemberships.userId)).where(eq(tenantMemberships.tenantId, id)).orderBy(users.name),
     db.select().from(tenantProvisioning).where(eq(tenantProvisioning.tenantId, id)).orderBy(tenantProvisioning.step),
