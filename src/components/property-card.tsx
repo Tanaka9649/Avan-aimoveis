@@ -38,6 +38,16 @@ export function PropertyCard({ property, priority = false, basePath = "", tenant
       : [...current, property.id];
     localStorage.setItem(favoritesStorageKey(favoriteScope), JSON.stringify(next));
     window.dispatchEvent(new Event(eventName));
+    if (!saved) {
+      const anonymousSessionId = sessionStorage.getItem("avan:anonymous-session") || crypto.randomUUID();
+      sessionStorage.setItem("avan:anonymous-session", anonymousSessionId);
+      void fetch("/api/analytics", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tenantSlug: favoriteScope, propertyId: property.id, eventType: "favorite_add", anonymousSessionId, path: window.location.pathname }),
+        keepalive: true,
+      });
+    }
   };
   const href = publicPropertyPath(property.slug, basePath);
   return (
