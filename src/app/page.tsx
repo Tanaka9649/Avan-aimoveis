@@ -14,11 +14,12 @@ export default function HomePage() {
 async function HomeContent() {
   const tenant = await tenantForRequest();
   if (!tenant) return <PublicError/>;
+  let properties;
   try {
-    const properties = await publicPropertyCards(tenant.id, 24);
-    return <TenantPublicHome tenant={tenant} properties={properties} basePath={tenantPublicPathBase(tenant)}/>;
+    properties = await publicPropertyCards(tenant.id, 24);
   } catch {
     console.error("public_home_load_failed");
     return <PublicError/>;
   }
+  return <TenantPublicHome tenant={tenant} properties={properties} basePath={tenantPublicPathBase(tenant)}/>;
 }
