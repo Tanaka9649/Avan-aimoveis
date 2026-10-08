@@ -1,9 +1,9 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, gt, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import { sessions, tenantMemberships, tenants, users } from "@/db/schema";
-import type { Access } from "@/lib/permissions";
+import { defaultAccess, type Access } from "@/lib/permissions";
 import { hashToken } from "./security";
 
 export const SESSION_COOKIE = "avan_session";
@@ -25,15 +25,17 @@ export async function currentUser(): Promise<AuthenticatedUser | null> {
     tenantName: tenants.name, tenantSlug: tenants.slug, tenantStatus: tenants.status,
   }).from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
-    .innerJoin(tenantMemberships, and(eq(tenantMemberships.userId, users.id), eq(tenantMemberships.tenantId, sessions.tenantId)))
+    .leftJoin(tenantMemberships, and(eq(tenantMemberships.userId, users.id), eq(tenantMemberships.tenantId, sessions.tenantId)))
     .innerJoin(tenants, eq(tenants.id, sessions.tenantId))
-    .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, new Date()), eq(users.active, true), eq(tenantMemberships.status, "active"), inArray(tenants.status, ["active", "trial"])))
+    .where(and(eq(sessions.tokenHash, hashToken(token)), gt(sessions.expiresAt, new Date()), eq(users.active, true), or(eq(tenantMemberships.status, "active"), eq(users.globalRole, "super_admin")), inArray(tenants.status, ["active", "trial"])))
     .limit(1);
   if (!row || !row.tenantId || (row.tenantStatus !== "active" && row.tenantStatus !== "trial")) return null;
   const requestedSlug = (await headers()).get("x-tenant-slug");
   if (requestedSlug && requestedSlug !== row.tenantSlug) return null;
-  const admin = row.membershipRole === "owner" || row.membershipRole === "admin";
-  return { id: row.id, name: row.name, email: row.email, globalRole: row.globalRole, tenantId: row.tenantId, membershipRole: row.membershipRole, role: admin ? "admin" : "equipe", access: row.access, tenant: { id: row.tenantId, name: row.tenantName, slug: row.tenantSlug, status: row.tenantStatus } };
+  const membershipRole = row.membershipRole ?? (row.globalRole === "super_admin" ? "admin" : null);
+  if (!membershipRole) return null;
+  const admin = membershipRole === "owner" || membershipRole === "admin";
+  return { id: row.id, name: row.name, email: row.email, globalRole: row.globalRole, tenantId: row.tenantId, membershipRole, role: admin ? "admin" : "equipe", access: row.access ?? defaultAccess, tenant: { id: row.tenantId, name: row.tenantName, slug: row.tenantSlug, status: row.tenantStatus } };
 }
 export async function requireUser() {
   const user = await currentUser();
