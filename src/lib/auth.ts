@@ -34,4 +34,11 @@ export async function currentUser(): Promise<AuthenticatedUser | null> {
   const admin = row.membershipRole === "owner" || row.membershipRole === "admin";
   return { id: row.id, name: row.name, email: row.email, globalRole: row.globalRole, tenantId: row.tenantId, membershipRole: row.membershipRole, role: admin ? "admin" : "equipe", access: row.access, tenant: { id: row.tenantId, name: row.tenantName, slug: row.tenantSlug, status: row.tenantStatus } };
 }
-export async function requireUser(){const user=await currentUser();if(!user)redirect("/login");return user}
+export async function requireUser() {
+  const user = await currentUser();
+  if (!user) {
+    const slug = (await headers()).get("x-tenant-slug");
+    redirect(slug ? `/empresa/${slug}/painel/login` : "/login");
+  }
+  return user;
+}
