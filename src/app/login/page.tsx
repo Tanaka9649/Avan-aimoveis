@@ -1,3 +1,5 @@
-import { LoginForm } from "@/components/login-form";
-export const metadata={title:"Acesso ao painel"};
-export default function LoginPage(){return <section className="login-page"><div className="login-copy"><span>AVANÇA IMÓVEIS</span><blockquote>“Uma operação organizada cria espaço para relações melhores.”</blockquote></div><LoginForm/></section>}
+import type { Metadata } from "next";
+import { TenantLoginPage } from "@/components/tenant-login-page";
+import { rootTenant } from "@/lib/tenant";
+export const metadata:Metadata={title:"Acesso ao painel | Avança Imóveis e Rogério Cortes"};
+export default async function LoginPage(){return <TenantLoginPage tenant={await rootTenant()}/>}
