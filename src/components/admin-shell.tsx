@@ -32,6 +32,7 @@ const moduleMeta: Record<Module, { label: string; icon: typeof Building2 }> = {
   visitas: { label: "Visitas", icon: CalendarDays },
   propostas: { label: "Propostas e vendas", icon: HandCoins },
   proprietarios: { label: "Proprietários", icon: Contact },
+  analytics: { label: "Analytics", icon: BarChart3 },
 };
 
 const routeLabels: Record<string, string> = {
@@ -42,13 +43,18 @@ const routeLabels: Record<string, string> = {
   "/painel/visitas": "Visitas",
   "/painel/propostas": "Propostas e vendas",
   "/painel/proprietarios": "Proprietários",
+  "/painel/analytics": "Analytics",
   "/painel/configuracoes": "Equipe e acessos",
   "/painel/busca": "Busca global",
 };
 
-export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; access: Access } }) {
+export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; access: Access; tenant: { slug: string; name: string } } }) {
   const pathname = usePathname();
-  const homeHref = firstAllowedRoute(user);
+  const panelBase = user.tenant.slug === "avanca-imoveis" ? "/painel" : `/empresa/${user.tenant.slug}/painel`;
+  const publicBase = user.tenant.slug === "avanca-imoveis" ? "/" : `/empresa/${user.tenant.slug}`;
+  const scoped = (href: string) => href.replace(/^\\/painel/, panelBase);
+  const panelPath = pathname.replace(/^\\/empresa\\/[^/]+/, "");
+  const homeHref = scoped(firstAllowedRoute(user));
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -63,7 +69,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
   }, []);
   useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){event.preventDefault();searchRef.current?.focus();}};window.addEventListener("keydown",shortcut);return()=>window.removeEventListener("keydown",shortcut)},[]);
 
-  const active = (href: string) => href === "/painel" ? pathname === href : pathname.startsWith(href);
+  const active = (href: string) => { const target = scoped(href); return href === "/painel" ? pathname === target : pathname.startsWith(target); };
   const toggleCollapsed = () => setCollapsed((current) => {
     const next = !current;
     localStorage.setItem("avanca:sidebar", next ? "collapsed" : "expanded");
@@ -78,21 +84,21 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
     <Link
       aria-current={active(href) ? "page" : undefined}
       className={active(href) ? "active" : ""}
-      href={href}
+      href={scoped(href)}
       onClick={() => setOpen(false)}
       title={collapsed ? label : undefined}
     >
       <Icon /><span>{label}</span>
     </Link>
   );
-  const pageLabel = Object.entries(routeLabels).sort(([a], [b]) => b.length - a.length).find(([route]) => route === "/painel" ? pathname === route : pathname.startsWith(route))?.[1] ?? "Painel";
+  const pageLabel = Object.entries(routeLabels).sort(([a], [b]) => b.length - a.length).find(([route]) => route === "/painel" ? panelPath === route : panelPath.startsWith(route))?.[1] ?? "Painel";
 
   return (
     <div className={`admin-app theme-${theme}${collapsed ? " sidebar-collapsed" : ""}`}>
       <button className={`sidebar-backdrop${open ? " open" : ""}`} aria-label="Fechar menu" onClick={() => setOpen(false)} />
       <aside className={`admin-sidebar${open ? " open" : ""}`}>
         <div className="sidebar-brand">
-          <Link href={homeHref} aria-label="Avança Imóveis — início do painel"><BrandLogo light={theme === "dark"} compact={collapsed && !open} /></Link>
+          <Link href={homeHref} aria-label={`${user.tenant.name} — início do painel`}><BrandLogo light={theme === "dark"} compact={collapsed && !open} /></Link>
           <button className="sidebar-close" aria-label="Fechar menu" onClick={() => setOpen(false)}><X /></button>
           <button className="sidebar-collapse" aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"} title={collapsed ? "Expandir" : "Recolher"} onClick={toggleCollapsed}>{collapsed ? <ChevronRight /> : <ChevronLeft />}</button>
         </div>
@@ -115,9 +121,9 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
         <header className="admin-header">
           <button className="admin-menu" aria-label="Abrir menu" onClick={() => setOpen(true)}><Menu /></button>
           <div className="header-context"><span>Painel</span><small>{pageLabel}</small></div>
-          <form className="admin-global-search" action="/painel/busca" role="search"><Search /><input ref={searchRef} name="q" type="search" placeholder="Buscar clientes, imóveis e oportunidades" aria-label="Busca global"/><kbd>⌘ K</kbd></form>
+          <form className="admin-global-search" action={scoped("/painel/busca")} role="search"><Search /><input ref={searchRef} name="q" type="search" placeholder="Buscar clientes, imóveis e oportunidades" aria-label="Busca global"/><kbd>⌘ K</kbd></form>
           <button className="header-theme" aria-label={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"} onClick={toggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
-          <Link className="admin-view-site" href="/" target="_blank">Ver site <ChevronRight /></Link>
+          <Link className="admin-view-site" href={publicBase} target="_blank">Ver site <ChevronRight /></Link>
         </header>
         {children}
       </div>
