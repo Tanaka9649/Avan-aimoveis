@@ -4,14 +4,14 @@ import type { PublicPropertyCard, PublicPropertyDetail } from "@/data/properties
 import { formatArea, formatMoney } from "@/lib/format";
 import { photoUrl } from "@/lib/photos";
 import { publicPropertyUrl, sharePropertyMessage } from "@/lib/property-publication";
-import { brand, siteUrl } from "@/lib/brand";
+
 import { LeadForm } from "./lead-form";
 import { PropertyCard } from "./property-card";
 import { PropertyEvents } from "./property-events";
 import { PropertyGallery } from "./property-gallery";
 
-export function PublicPropertyView({ property, similar }: { property: PublicPropertyDetail; similar: PublicPropertyCard[] }) {
-  const message = sharePropertyMessage(property);
+export function PublicPropertyView({ property, similar, tenant }: { property: PublicPropertyDetail; similar: PublicPropertyCard[]; tenant: { name: string; whatsapp: string; baseUrl: string; basePath: string } }) {
+  const message = sharePropertyMessage(property, tenant.baseUrl);
   const region = `${property.neighborhood}, ${property.city} — ${property.state}`;
   const specs = [
     { icon: BedDouble, value: property.bedrooms, label: property.bedrooms === 1 ? "quarto" : "quartos", show: property.bedrooms > 0 },
@@ -26,11 +26,11 @@ export function PublicPropertyView({ property, similar }: { property: PublicProp
     "@type": "RealEstateListing",
     name: property.title,
     description: property.description.slice(0, 500),
-    url: publicPropertyUrl(property.slug),
+    url: publicPropertyUrl(property.slug, tenant.baseUrl),
     sku: property.code,
     datePosted: property.publishedAt,
-    ...(property.gallery.length ? { image: property.gallery.slice(0, 6).map((photo) => siteUrl(photoUrl(photo.id, "medium"))) } : {}),
-    offers: { "@type": "Offer", price: (property.priceCents / 100).toFixed(2), priceCurrency: "BRL", availability: "https://schema.org/InStock", url: publicPropertyUrl(property.slug) },
+    ...(property.gallery.length ? { image: property.gallery.slice(0, 6).map((photo) => `${tenant.baseUrl}${photoUrl(photo.id, "medium")}`) } : {}),
+    offers: { "@type": "Offer", price: (property.priceCents / 100).toFixed(2), priceCurrency: "BRL", availability: "https://schema.org/InStock", url: publicPropertyUrl(property.slug, tenant.baseUrl) },
     numberOfBedrooms: property.bedrooms,
     numberOfBathroomsTotal: property.bathrooms,
     ...(property.area > 0 ? { floorSize: { "@type": "QuantitativeValue", value: property.area, unitCode: "MTK" } } : {}),
@@ -40,7 +40,7 @@ export function PublicPropertyView({ property, similar }: { property: PublicProp
   return <>
     <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
     <section className="detail-top shell">
-      <Link href="/imoveis">← Todos os imóveis</Link>
+      <Link href={`${tenant.basePath}/imoveis`}>← Todos os imóveis</Link>
       <div className="detail-title">
         <div>
           <span className="eyebrow">{property.type} · {property.code}</span>
@@ -80,13 +80,13 @@ export function PublicPropertyView({ property, similar }: { property: PublicProp
         </div>
       </article>
       <aside>
-        <PropertyEvents propertyId={property.id} whatsapp={brand.whatsapp} message={message} />
+        <PropertyEvents propertyId={property.id} whatsapp={tenant.whatsapp} message={message} />
         <LeadForm propertyId={property.id} propertyTitle={property.title} />
       </aside>
     </section>
     {similar.length ? (
       <section className="section shell similar-properties">
-        <div className="modern-heading"><div><span>Talvez combine com você</span><h2>Imóveis semelhantes</h2></div><Link href="/imoveis">Ver todo o portfólio →</Link></div>
+        <div className="modern-heading"><div><span>Talvez combine com você</span><h2>Imóveis semelhantes</h2></div><Link href={`${tenant.basePath}/imoveis`}>Ver todo o portfólio →</Link></div>
         <div className="property-grid">{similar.map((item) => <PropertyCard property={item} key={item.id} />)}</div>
       </section>
     ) : null}
