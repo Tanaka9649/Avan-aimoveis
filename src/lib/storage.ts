@@ -7,14 +7,22 @@ let client: S3Client | null = null;
 export const PHOTO_BUCKET = process.env.NEON_STORAGE_PHOTOS_BUCKET || "property-photos";
 export const DOCUMENT_BUCKET = process.env.NEON_STORAGE_DOCUMENTS_BUCKET || "property-documents";
 
+export function tenantStorageKey(tenantId: string, key: string) {
+  const clean = key.replace(/^\/+/, "");
+  if (!/^[0-9a-f-]{36}$/i.test(tenantId) || clean.includes("..")) throw new Error("storage namespace inválido");
+  return `tenants/${tenantId}/${clean}`;
+}
+
+export function storageKeyBelongsToTenant(tenantId: string, key: string) {
+  return key.startsWith(`tenants/${tenantId}/`);
+}
+
 export function storageClient() {
   const endpoint = process.env.AWS_ENDPOINT_URL_S3;
   const region = process.env.AWS_REGION;
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-  if (!endpoint || !region || !accessKeyId || !secretAccessKey) {
-    throw new Error("Neon Object Storage não configurado");
-  }
+  if (!endpoint || !region || !accessKeyId || !secretAccessKey) throw new Error("Neon Object Storage não configurado");
   client ??= new S3Client({
     endpoint,
     region,
