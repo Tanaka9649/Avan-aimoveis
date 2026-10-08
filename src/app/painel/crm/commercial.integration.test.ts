@@ -3,7 +3,7 @@ import {resolve} from "node:path";
 import {beforeAll,afterAll,describe,expect,it,vi} from "vitest";
 import {PGlite} from "@electric-sql/pglite";
 import {drizzle} from "drizzle-orm/pglite";
-const mock=vi.hoisted(()=>({db:null as unknown,user:{id:"30000000-0000-4000-8000-000000000001",role:"admin",access:{clients:"all"}}}));
+const mock=vi.hoisted(()=>({db:null as unknown,user:{id:"30000000-0000-4000-8000-000000000001",tenantId:"00000000-0000-4000-8000-000000000001",role:"admin",access:{clients:"all"}}}));
 vi.mock("@/db",()=>({getDb:()=>mock.db}));vi.mock("@/lib/access",()=>({requireModule:async()=>mock.user,clientScope:()=>undefined}));vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));vi.mock("next/navigation",()=>({redirect:vi.fn()}));
 import {saveCrmClient,saveDeal} from "./actions";
 import {saveSale} from "../propostas/actions";
@@ -13,8 +13,9 @@ const form=(values:Record<string,string>)=>{const f=new FormData();for(const[k,v
 beforeAll(async()=>{pg=new PGlite();for(const file of readdirSync(resolve("drizzle")).filter(f=>f.endsWith(".sql")).sort()){for(const statement of readFileSync(resolve("drizzle",file),"utf8").split("--> statement-breakpoint"))if(statement.trim())await pg.exec(statement);}
  const db=drizzle(pg);mock.db=Object.assign(db,{batch:async(queries:{toSQL:()=>{sql:string;params:unknown[]}}[])=>pg.transaction(async tx=>{const results=[];for(const query of queries){const q=query.toSQL();results.push(await tx.query(q.sql,q.params));}return results;})});
  await pg.query("insert into users(id,name,email,password_hash,role) values($1,'Teste','teste@example.invalid','unused','admin')",[mock.user.id]);
- await pg.query("insert into stages(id,name,position,color,is_won,is_lost) values($1,'Novos leads',0,'#aaa',false,false),($2,'Ganho',1,'#aaa',true,false),($3,'Perdido',2,'#aaa',false,true)",[id(2),id(3),id(4)]);
- await pg.query("insert into properties(id,code,title,slug,type,price_cents,description,state,city,neighborhood,address_private) values($1,'TEST-1','Casa teste','casa-teste','Casa',40000000,'Teste','MG','Frutal','Centro','Teste')",[id(5)]);
+ await pg.query("insert into tenant_memberships(tenant_id,user_id,role,status,permissions,activated_at) values($1,$2,'owner','active',$3,now())",[mock.user.tenantId,mock.user.id,JSON.stringify({modules:["dashboard","imoveis","clientes","crm","visitas","propostas","proprietarios","analytics"],clients:"all"})]);
+ await pg.query("insert into stages(tenant_id,id,name,position,color,is_won,is_lost) values($1,$2,'Novos leads',0,'#aaa',false,false),($1,$3,'Ganho',1,'#aaa',true,false),($1,$4,'Perdido',2,'#aaa',false,true)",[mock.user.tenantId,id(2),id(3),id(4)]);
+ await pg.query("insert into properties(tenant_id,id,code,title,slug,type,price_cents,description,state,city,neighborhood,address_private) values($1,$2,'TEST-1','Casa teste','casa-teste','Casa',40000000,'Teste','MG','Frutal','Centro','Teste')",[mock.user.tenantId,id(5)]);
 },30000);
 afterAll(async()=>{await pg.close();});
 describe.sequential("client → opportunity → sale",()=>{
