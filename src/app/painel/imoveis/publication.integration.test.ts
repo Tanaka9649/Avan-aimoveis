@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 
 const ROOT_TENANT = "00000000-0000-4000-8000-000000000001";
-const mock = vi.hoisted(() => ({ db: null as unknown, user: { id: "50000000-0000-4000-8000-000000000001", tenantId: ROOT_TENANT, role: "admin", access: { clients: "all" } } }));
+const mock = vi.hoisted(() => ({ db: null as unknown, user: { id: "50000000-0000-4000-8000-000000000001", tenantId: "00000000-0000-4000-8000-000000000001", role: "admin", access: { clients: "all" } } }));
 vi.mock("@/db", () => ({ getDb: () => mock.db }));
 vi.mock("@/lib/access", () => ({ requireModule: async () => mock.user, clientScope: () => undefined }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
