@@ -9,33 +9,19 @@ import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
 const BATCH = 4;
-const pendingFilter = and(sql`${propertyPhotos.variants} = '{}'::jsonb`, eq(propertyPhotos.processingStatus, "ready"));
+const pendingFilter = (tenantId: string) => and(eq(propertyPhotos.tenantId, tenantId), sql`${propertyPhotos.variants} = '{}'::jsonb`, eq(propertyPhotos.processingStatus, "ready"));
 
-/** How many photos uploaded before the variant pipeline still serve one oversized file. */
 export async function GET() {
-  await requireModule("imoveis");
-  const [pending] = await getDb().select({ value: count() }).from(propertyPhotos).where(pendingFilter);
+  const user = await requireModule("imoveis");
+  const [pending] = await getDb().select({ value: count() }).from(propertyPhotos).where(pendingFilter(user.tenantId));
   return NextResponse.json({ pending: Number(pending.value) }, { headers: { "cache-control": "no-store" } });
 }
 
-/**
- * Generates the missing thumbnail and medium sizes for photos uploaded before the pipeline existed.
- *
- * The original file is kept untouched and reused as the "full" variant, so nothing is re-encoded,
- * no quality is lost and no existing URL changes. Runs in small batches so it fits comfortably in
- * one serverless invocation; the panel calls it until nothing is pending.
- */
 export async function POST() {
-  await requireModule("imoveis");
+  const user = await requireModule("imoveis");
   const db = getDb();
-  const photos = await db
-    .select({ id: propertyPhotos.id, storagePath: propertyPhotos.storagePath, originalMime: propertyPhotos.originalMime })
-    .from(propertyPhotos)
-    .where(pendingFilter)
-    .limit(BATCH);
-
+  const photos = await db.select({ id: propertyPhotos.id, storagePath: propertyPhotos.storagePath, originalMime: propertyPhotos.originalMime }).from(propertyPhotos).where(pendingFilter(user.tenantId)).limit(BATCH);
   let processed = 0;
   const failed: string[] = [];
   for (const photo of photos) {
@@ -51,14 +37,13 @@ export async function POST() {
         variants[variant.name] = key;
         await storageClient().send(new PutObjectCommand({ Bucket: PHOTO_BUCKET, Key: key, Body: variant.body, ContentType: "image/webp", CacheControl: "public, max-age=31536000, immutable" }));
       }));
-      await db.update(propertyPhotos).set({ variants, blurData: result.blurData }).where(eq(propertyPhotos.id, photo.id));
+      await db.update(propertyPhotos).set({ variants, blurData: result.blurData }).where(and(eq(propertyPhotos.tenantId, user.tenantId), eq(propertyPhotos.id, photo.id)));
       processed += 1;
     } catch (error) {
-      console.error("photo_variant_backfill_failed", photo.id, error instanceof Error ? error.message : "unknown");
+      console.error("photo_variant_backfill_failed", { tenantId: user.tenantId, photoId: photo.id, reason: error instanceof Error ? error.message : "unknown" });
       failed.push(photo.id);
     }
   }
-
-  const [pending] = await db.select({ value: count() }).from(propertyPhotos).where(pendingFilter);
+  const [pending] = await db.select({ value: count() }).from(propertyPhotos).where(pendingFilter(user.tenantId));
   return NextResponse.json({ processed, failed, pending: Number(pending.value) }, { headers: { "cache-control": "no-store" } });
 }
