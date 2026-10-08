@@ -13,11 +13,12 @@ export default async function TenantHomePage({ params }: { params: Promise<{ ten
   if (resolution.redirectSlug) redirect(`/empresa/${resolution.redirectSlug}`);
   const tenant = resolution.tenant;
   if (!tenantOperational(tenant.status)) notFound();
+  let properties;
   try {
-    const properties = await publicPropertyCards(tenant.id, 24);
-    return <TenantPublicHome tenant={tenant} properties={properties} basePath={`/empresa/${tenant.slug}`}/>;
+    properties = await publicPropertyCards(tenant.id, 24);
   } catch {
     console.error("tenant_public_home_load_failed", { tenantId: tenant.id });
     return <PublicError/>;
   }
+  return <TenantPublicHome tenant={tenant} properties={properties} basePath={`/empresa/${tenant.slug}`}/>;
 }
