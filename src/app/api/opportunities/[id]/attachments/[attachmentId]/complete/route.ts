@@ -16,7 +16,8 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const { user, opportunity } = await requireOpportunity(id);
   if (!opportunity || !user) return NextResponse.json({ error: "Oportunidade não encontrada." }, { status: 404 });
   const db = getDb();
-  const [attachment] = await db.select().from(opportunityAttachments).where(and(eq(opportunityAttachments.id, attachmentId), eq(opportunityAttachments.opportunityId, id))).limit(1);
+  const scope = and(eq(opportunityAttachments.tenantId, user.tenantId), eq(opportunityAttachments.id, attachmentId), eq(opportunityAttachments.opportunityId, id));
+  const [attachment] = await db.select().from(opportunityAttachments).where(scope).limit(1);
   if (!attachment) return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
   if (attachment.uploadStatus === "ready") return NextResponse.json({ attachment: serialize(attachment) });
 
@@ -30,12 +31,12 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
       : validateUploadBytes({ name: attachment.originalName, type: attachment.mimeType, size: actualSize }, await firstBytes.Body.transformToByteArray(), "document");
     if (invalid) {
       await storageClient().send(new DeleteObjectCommand({ Bucket: DOCUMENT_BUCKET, Key: attachment.storageKey })).catch(() => undefined);
-      await db.delete(opportunityAttachments).where(eq(opportunityAttachments.id, attachment.id));
+      await db.delete(opportunityAttachments).where(scope);
       return NextResponse.json({ error: invalid }, { status: 400 });
     }
     await db.batch([
-      db.update(opportunityAttachments).set({ uploadStatus: "ready" }).where(eq(opportunityAttachments.id, attachment.id)),
-      db.insert(activities).values({ dealId: id, clientId: opportunity.clientId, userId: user.id, type: "attachment_added", description: activityDescription(attachment.category) }),
+      db.update(opportunityAttachments).set({ uploadStatus: "ready" }).where(scope),
+      db.insert(activities).values({ tenantId: user.tenantId, dealId: id, clientId: opportunity.clientId, userId: user.id, type: "attachment_added", description: activityDescription(attachment.category) }),
     ]);
     return NextResponse.json({ attachment: serialize({ ...attachment, uploadStatus: "ready" }) }, { headers: { "cache-control": "no-store" } });
   } catch {
@@ -46,7 +47,6 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
 function serialize(attachment: typeof opportunityAttachments.$inferSelect) {
   return { id: attachment.id, displayName: attachment.displayName, originalName: attachment.originalName, mimeType: attachment.mimeType, sizeBytes: attachment.sizeBytes, category: attachment.category, createdAt: attachment.createdAt.toISOString() };
 }
-
 function activityDescription(category: string | null) {
   if (category === "Contrato") return "Contrato anexado.";
   if (category === "Simulação de financiamento") return "Simulação de financiamento adicionada.";
