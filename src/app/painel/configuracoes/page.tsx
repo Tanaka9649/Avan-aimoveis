@@ -2,6 +2,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { SettingsForm } from "@/components/settings-form";
 import { DomainVerificationButton } from "@/components/domain-verification-button";
+import { TenantInviteForm } from "@/components/tenant-invite-form";
 import { getDb } from "@/db";
 import { clients, reminderSettings, tenantMemberships, tenants, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
@@ -65,13 +66,9 @@ export default async function SettingsPage() {
       </section>
 
       <section className="admin-card">
-        <h2>Criar acesso</h2>
-        <p>Novas contas ficam pendentes até a aprovação neste tenant.</p>
-        <SettingsForm action={createAccount} label="Criar conta pendente">
-          <label>Nome<input name="name" required minLength={2}/></label>
-          <label>E-mail de login<input name="email" type="email" required/></label>
-          <label className="wide">Senha inicial<input name="password" type="password" minLength={12} maxLength={128} autoComplete="new-password" required/></label>
-        </SettingsForm>
+        <h2>Convidar pessoa</h2>
+        <p>A pessoa recebe um link temporário e define a própria senha. O link expira em sete dias.</p>
+        <TenantInviteForm action={createAccount}/>
       </section>
 
       <section className="admin-card">
@@ -97,6 +94,12 @@ export default async function SettingsPage() {
           <label>Cliente<select name="clientId" required><option value="">Selecione</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name}</option>)}</select></label>
           <label>Responsável<select name="userId" required><option value="">Selecione</option>{team.filter((person) => person.status === "active").map((person) => <option value={person.userId} key={person.id}>{person.name}</option>)}</select></label>
         </SettingsForm>
+      </section>
+
+      <section className="admin-card">
+        <h2>Exportação da empresa</h2>
+        <p>Baixe uma cópia JSON dos dados deste tenant. Senhas, sessões e tokens de convite nunca entram no arquivo.</p>
+        <a className="admin-primary" href="/api/tenant/export" download>Baixar exportação</a>
       </section>
 
       <section className="admin-card">
