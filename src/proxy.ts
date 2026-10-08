@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ROOT_TENANT_SLUG, normalizeTenantSlug } from "@/lib/tenant";
+import { ROOT_TENANT_SLUG, normalizeTenantSlug } from "@/lib/tenant-routing";
 
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
