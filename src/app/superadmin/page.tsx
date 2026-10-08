@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { count, countDistinct, desc, eq, gte } from "drizzle-orm";
+import { count, countDistinct, desc, eq, sql } from "drizzle-orm";
 import { BarChart3, Building2, Globe2, Home, Users } from "lucide-react";
 import { getDb } from "@/db";
 import { analyticsEvents, properties, tenantAuditLogs, tenantMemberships, tenants } from "@/db/schema";
@@ -10,14 +10,13 @@ export const dynamic = "force-dynamic";
 export default async function SuperAdminPage() {
   await requireSuperAdmin();
   const db = getDb();
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const [[tenantCount], [activeCount], [userCount], [propertyCount], [domainCount], [traffic], recentTenants, recentAudit] = await Promise.all([
     db.select({ value: count() }).from(tenants),
     db.select({ value: count() }).from(tenants).where(eq(tenants.status, "active")),
     db.select({ value: count() }).from(tenantMemberships).where(eq(tenantMemberships.status, "active")),
     db.select({ value: count() }).from(properties),
     db.select({ value: count() }).from(tenants).where(eq(tenants.domainStatus, "active")),
-    db.select({ views: count(), visitors: countDistinct(analyticsEvents.anonymousSessionId) }).from(analyticsEvents).where(gte(analyticsEvents.createdAt, since)),
+    db.select({ views: count(), visitors: countDistinct(analyticsEvents.anonymousSessionId) }).from(analyticsEvents).where(sql.raw("analytics_events.created_at >= now() - interval '30 days'")),
     db.select({ id: tenants.id, name: tenants.name, slug: tenants.slug, status: tenants.status, plan: tenants.plan }).from(tenants).orderBy(desc(tenants.createdAt)).limit(6),
     db.select({ id: tenantAuditLogs.id, action: tenantAuditLogs.action, entityType: tenantAuditLogs.entityType, createdAt: tenantAuditLogs.createdAt }).from(tenantAuditLogs).orderBy(desc(tenantAuditLogs.createdAt)).limit(8),
   ]);
