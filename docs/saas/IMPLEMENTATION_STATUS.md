@@ -6,7 +6,7 @@ Atualizado em 08/10/2026.
 |---|---|---|
 | 0 — Auditoria | Concluído | Inventário e documentos de arquitetura |
 | 1 — Data model | Concluído | Entidades SaaS e escopo tenant-owned no schema |
-| 2 — Migração Avança | Pendente | — |
+| 2 — Migração Avança | Pronta para Preview | Migration aditiva/backfill + relatório; não aplicada sem restore point Neon |
 | 3 — Contexto/isolamento | Pendente | — |
 | 4 — Membership/convites | Pendente | — |
 | 5 — Super Admin | Pendente | — |
