@@ -1,10 +1,21 @@
-# Avan Imóveis
+# Avança Imóveis e Rogério Cortes
 
-Plataforma imobiliária full-stack em português, com catálogo público, captação de leads, favoritos locais, painel autenticado, CRM, visitas, propostas, vendas, auditoria e estrutura de dados preparada para Neon.
+Plataforma imobiliária SaaS multi-tenant em português, com site público e branding por empresa, painel autenticado, CRM, visitas, propostas, vendas, Super Admin, analytics próprio, auditoria e dados isolados no Neon.
 
 ## Estado da entrega
 
 Em desenvolvimento, não pronto para produção. Implementado: autenticação, criação/edição/publicação de imóveis, catálogo público conectado ao Neon, favoritos locais, captura atômica de leads e CRM com histórico e anexos privados. Fotos vão diretamente ao Neon Object Storage e são processadas em segundo plano em três tamanhos (miniatura, média e cheia), sem bloquear a interface. Consulte `docs/STATUS.md` para limites e pendências. Ter tabelas no banco não significa que cada módulo esteja funcional.
+
+## Arquitetura SaaS
+
+A fonte de verdade do escopo é docs/saas/MASTER_SPEC.md. O estado da implementação e os únicos bloqueios externos restantes estão em docs/saas/IMPLEMENTATION_STATUS.md.
+
+- Tenant raiz Avança: domínio base e slug avanca-imoveis.
+- Demais tenants: /empresa/{slug} ou domínio personalizado ativo.
+- Operação autenticada: sessão, membership, plano, módulo, permissão e tenant_id.
+- Novas empresas: wizard do Super Admin, dados vazios e convite seguro do administrador.
+- Migração Production: exige restore point Neon e contagens antes/depois; nunca use drizzle-kit push.
+- Nenhuma dependência nova foi adicionada para a transformação.
 
 ## Desenvolvimento local
 
@@ -16,7 +27,7 @@ Requisitos: Node.js 22+, npm e um banco Neon de desenvolvimento.
 4. Para criar o primeiro administrador no seed, defina temporariamente `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` apenas no ambiente local; remova-os depois.
 5. Rode `npm run dev`.
 
-Variáveis de ambiente: nenhuma nova é obrigatória. `NEXT_PUBLIC_SITE_URL` passa a ser usada também para montar o link público compartilhável e as tags Open Graph — em Production ela precisa apontar para `https://avan-aimoveis.vercel.app` (ou o domínio final), sem barra no fim.
+Para a operação SaaS, revise também PLATFORM_BASE_URL, ROOT_DOMAIN, CRON_SECRET, ANALYTICS_RETENTION_DAYS e as variáveis VERCEL_API_TOKEN, VERCEL_PROJECT_ID ou VERCEL_PROJECT_NAME e VERCEL_TEAM_ID. Todas estão documentadas em .env.example; tokens e URLs reais nunca devem ser commitados. NEXT_PUBLIC_SITE_URL continua sendo a origem pública padrão, sem barra final.
 
 Nunca use `drizzle-kit push` em produção. Scripts fora do Next.js não carregam `.env.local` automaticamente; execute-os com as variáveis já disponíveis no processo ou por um gerenciador seguro.
 
