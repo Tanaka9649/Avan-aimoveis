@@ -13,11 +13,12 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
-  await requireModule("imoveis");
+  const user = await requireModule("imoveis");
   const { id, photoId } = await params;
   if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(photoId).success) return NextResponse.json({ error: "Foto inválida." }, { status: 400 });
   const db = getDb();
-  const [photo] = await db.select().from(propertyPhotos).where(and(eq(propertyPhotos.id, photoId), eq(propertyPhotos.propertyId, id))).limit(1);
+  const scope = and(eq(propertyPhotos.tenantId, user.tenantId), eq(propertyPhotos.id, photoId), eq(propertyPhotos.propertyId, id));
+  const [photo] = await db.select().from(propertyPhotos).where(scope).limit(1);
   if (!photo) return NextResponse.json({ error: "Foto não encontrada." }, { status: 404 });
   if (photo.processingStatus === "ready") return NextResponse.json({ photo: publicPhoto(photo) });
 
@@ -31,11 +32,11 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
       : validateUploadBytes({ name: photo.originalName, type: photo.originalMime, size: actualSize }, await firstBytes.Body.transformToByteArray(), "photo");
     if (invalid) {
       await storageClient().send(new DeleteObjectCommand({ Bucket: PHOTO_BUCKET, Key: photo.storagePath })).catch(() => undefined);
-      await db.delete(propertyPhotos).where(eq(propertyPhotos.id, photo.id));
+      await db.delete(propertyPhotos).where(scope);
       return NextResponse.json({ error: invalid }, { status: 400 });
     }
-    await db.update(propertyPhotos).set({ processingStatus: "processing" }).where(eq(propertyPhotos.id, photo.id));
-    after(() => generatePhotoVariants(photo.id));
+    await db.update(propertyPhotos).set({ processingStatus: "processing" }).where(scope);
+    after(() => generatePhotoVariants(photo.id, user.tenantId));
     return NextResponse.json({ photo: publicPhoto({ ...photo, processingStatus: "processing" }) }, { status: 202, headers: { "cache-control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Não foi possível confirmar a foto enviada." }, { status: 502 });
