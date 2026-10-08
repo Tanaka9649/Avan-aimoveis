@@ -6,15 +6,30 @@ import { getDb } from "@/db";
 import { analyticsEvents, properties, propertyViews, whatsappClicks } from "@/db/schema";
 import { hashIdentifier } from "@/lib/security";
 import { publiclyVisible } from "@/lib/public-properties";
+import { tenantBySlug, tenantOperational } from "@/lib/tenant";
 
-const input = z.object({ propertyId: z.uuid(), type: z.enum(["view", "whatsapp"]), source: z.string().max(50).default("property") });
+const input = z.object({
+  propertyId: z.uuid(),
+  tenantSlug: z.string().min(1).max(120),
+  type: z.enum(["view", "whatsapp"]),
+  source: z.string().max(50).default("property"),
+});
 
 export async function POST(request: Request) {
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Evento inválido." }, { status: 400 });
+  const resolution = await tenantBySlug(parsed.data.tenantSlug);
+  const tenant = resolution?.tenant;
+  if (!tenant || !tenantOperational(tenant.status)) return new NextResponse(null, { status: 404 });
+
   const db = getDb();
-  const [property] = await db.select({ id: properties.id, tenantId: properties.tenantId }).from(properties).where(and(eq(properties.id, parsed.data.propertyId), publiclyVisible())).limit(1);
+  const [property] = await db
+    .select({ id: properties.id, tenantId: properties.tenantId })
+    .from(properties)
+    .where(and(eq(properties.id, parsed.data.propertyId), publiclyVisible(tenant.id)))
+    .limit(1);
   if (!property?.tenantId) return NextResponse.json({ error: "Imóvel não encontrado." }, { status: 404 });
+
   const requestHeaders = await headers();
   const visitorHash = hashIdentifier(`${requestHeaders.get("x-forwarded-for")?.split(",")[0] || "unknown"}:${requestHeaders.get("user-agent") || "unknown"}`);
   const today = new Date();
