@@ -5,8 +5,7 @@ import { publicProperty, similarProperties } from "@/lib/public-properties";
 import { formatMoney } from "@/lib/format";
 import { photoUrl } from "@/lib/photos";
 import { publicPropertyUrl } from "@/lib/property-publication";
-import { brand, siteUrl } from "@/lib/brand";
-import { rootTenant } from "@/lib/tenant";
+import { rootTenant, tenantPublicBase } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }> };
@@ -21,8 +20,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const property = tenant ? await publicProperty(tenant.id, slug) : null;
   if (!property) return { title: "Imóvel não encontrado", robots: { index: false, follow: false } };
   const description = `${property.type} em ${property.neighborhood}, ${property.city}/${property.state} — ${formatMoney(property.priceCents)}. ${property.description.replace(/\s+/g, " ")}`.slice(0, 160);
-  const image = property.gallery[0] ? siteUrl(photoUrl(property.gallery[0].id, "medium")) : undefined;
-  const canonical = publicPropertyUrl(property.slug);
+  const baseUrl=tenantPublicBase(tenant!);
+  const image = property.gallery[0] ? `${baseUrl}${photoUrl(property.gallery[0].id, "medium")}` : undefined;
+  const canonical = publicPropertyUrl(property.slug, baseUrl);
   return {
     title: `${property.title} — ${property.neighborhood}, ${property.city}`,
     description,
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       type: "website",
       url: canonical,
-      siteName: brand.name,
+      siteName: tenant!.name,
       title: `${property.title} — ${formatMoney(property.priceCents)}`,
       description,
       locale: "pt_BR",
@@ -46,5 +46,6 @@ export default async function PropertyPage({ params }: Props) {
   const property = tenant ? await publicProperty(tenant.id, slug) : null;
   if (!property) notFound();
   const similar = await similarProperties(tenant!.id, property);
-  return <PublicPropertyView property={property} similar={similar}/>;
+  const baseUrl=tenantPublicBase(tenant!);
+  return <PublicPropertyView property={property} similar={similar} tenant={{name:tenant!.name,whatsapp:tenant!.whatsapp||"",baseUrl,basePath:""}}/>;
 }
