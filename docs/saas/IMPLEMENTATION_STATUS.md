@@ -6,7 +6,7 @@ Atualizado em 08/10/2026.
 |---|---|---|
 | 0 — Auditoria | Concluído | Inventário do projeto real, arquitetura, plano de execução e riscos documentados |
 | 1 — Data model | Concluído | Tenants, planos, memberships, convites, módulos, provisioning, analytics e auditoria; entidades operacionais com tenant obrigatório |
-| 2 — Migração Avança | Código concluído; execução Production bloqueada por segurança | Migration 0008_saas_multitenant_foundation.sql, backfill determinístico e script de contagens; falta restore point e acesso ao Neon de Production |
+| 2 — Migração Avança | Código e checkpoint concluídos; execução Production bloqueada por segurança | Migration 0008_saas_multitenant_foundation.sql, backfill determinístico e relatório pré/pós-migração; falta restore point e acesso ao Neon de Production |
 | 3 — Contexto/isolamento | Concluído | Resolução por sessão, slug e hostname; consultas, APIs, storage, PDF e dados públicos escopados |
 | 4 — Membership/convites | Concluído | Memberships, convite com token hash/expiração/uso único e ativação sem senha definida por administrador |
 | 5 — Super Admin | Concluído | Dashboard global, busca/filtros, detalhe da empresa, status, plano, quotas, módulos e acesso auditado |
@@ -18,14 +18,49 @@ Atualizado em 08/10/2026.
 | 11 — Analytics | Concluído | Eventos públicos, UTM separado do CRM, deduplicação, filtros, agregação e retenção configurável |
 | 12 — Auditoria/exportação | Concluído | Ações sensíveis auditadas e exportação JSON tenant-aware sem hashes ou segredos |
 | 13 — Hardening | Concluído | Fail-closed, host normalizado, rate limit, cookies seguros, tenant obrigatório e sessão invalidada na suspensão |
-| 14 — Testes | Concluído | CI verde: npm ci, typecheck, lint, 104 testes e build |
-| 15 — Preview/revisão | Revisão concluída; Preview bloqueado externamente | GitHub CI verde; Vercel recusou novo build por limite de builds e a integração não permite listar deployments (403) |
+| 14 — Testes | Concluído | CI verde: npm ci, typecheck, lint, testes e build |
+| 15 — Preview/revisão | Preview READY; smoke test hospedado bloqueado externamente | Deployment dpl_FuATJ5EcLKfDijYqUkMPzJm2h1NC no commit f731116; Vercel SSO ativo e conexão recusou bypass autenticado com 403 |
 
 ## Checkpoint técnico
 
-Última validação integral antes desta atualização: GitHub Actions quality, run 37776604529, commit c931eea884db4b415188432218d70b6aae398c31, conclusão success.
+Validação integral: GitHub Actions quality, run 37818736495, commit f731116ff6f297cb8bf73acd3de678ea20bbfc08, conclusão success.
 
-A revisão React/TypeScript manteve componentes server-first, consultas independentes em paralelo, estados vazios/erro, labels acessíveis e nenhuma dependência nova.
+Etapas confirmadas no CI:
+
+1. npm ci;
+2. npm run typecheck;
+3. npm run lint;
+4. npm test;
+5. npm run build.
+
+O Preview final do mesmo commit foi criado e está READY na região gru1, sem erro de alias.
+
+## Correções operacionais adicionais
+
+A auditoria de execução identificou e corrigiu dois problemas no checkpoint de migração:
+
+- o comando documentado npm run saas:counts não estava registrado no package.json;
+- scripts/saas-counts.ts consultava tenant_id em tabelas que não possuem a coluna antes da migration e também em users, que é global.
+
+O relatório agora:
+
+- funciona antes e depois da migration;
+- detecta tabelas e colunas por introspecção;
+- cobre as tabelas legadas e SaaS exigidas pelo plano;
+- diferencia tabelas globais de tabelas tenant-owned;
+- continua protegido por ALLOW_SAAS_COUNT_REPORT=true.
+
+## Configuração Vercel confirmada
+
+As seguintes variáveis foram registradas para Preview e Production:
+
+- PLATFORM_BASE_URL;
+- VERCEL_PROJECT_ID;
+- VERCEL_PROJECT_NAME;
+- VERCEL_TEAM_ID;
+- ANALYTICS_RETENTION_DAYS.
+
+ROOT_DOMAIN não foi inventado porque ainda não há domínio raiz definitivo conectado. VERCEL_API_TOKEN não foi inventado nem exposto por ser um segredo operacional real.
 
 ## Migração de Production não executada
 
@@ -37,24 +72,29 @@ A migration não foi aplicada ao Neon de Production porque a especificação exi
 4. validar migration em Preview;
 5. repetir contagens e comparar depois.
 
-Nenhuma credencial foi lida, registrada ou solicitada no chat.
+Nenhuma credencial foi registrada no repositório ou exposta no chat.
 
 ## Bloqueios externos reais
 
 ### Neon
 
 - Serviço: Neon PostgreSQL
-- Projeto: não exposto à sessão
+- Projeto/branch: não expostos às ferramentas conectadas desta sessão
 - Permissão necessária: criar/confirmar restore point, consultar branch e executar migration
-- Etapa bloqueada: aplicação e validação antes/depois da migration em Production
+- Etapa bloqueada: contagens, aplicação e validação da migration em Preview e Production
 
 ### Vercel
 
 - Serviço: Vercel
 - Projeto: avan-aimoveis (prj_UIoKDpgp9BxiORlABsmY60LlZJvE)
-- Permissão/condição necessária: cota de build disponível e permissão de leitura de deployments
-- Etapa bloqueada: Preview final e smoke test hospedado
-- Evidência: status GitHub/Vercel failure com upgradeToPro=build-rate-limit; API de deployments respondeu 403
+- Preview final: READY
+- Proteção: Vercel SSO
+- Etapa bloqueada: smoke test HTTP autenticado
+- Evidência: web_fetch_vercel_url recebeu 403 em read_protection_bypass porque a conexão atual não possui acesso ao projeto/equipe para o bypass
+
+### Executor local
+
+O terminal e o navegador autenticado desta sessão falham antes de iniciar com helper_unknown_error: setup refresh had errors. Esse erro impede usar a sessão local já autenticada para operar o Neon Console ou executar os scripts existentes.
 
 ## Baseline preservada
 
