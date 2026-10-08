@@ -19,6 +19,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.next({ request: { headers } });
   }
   if (pathname.startsWith("/painel")) {
+    const contextualSlug = normalizeTenantSlug(request.cookies.get("avan_tenant")?.value || ROOT_TENANT_SLUG);
+    if (contextualSlug !== ROOT_TENANT_SLUG) return NextResponse.redirect(new URL(`/empresa/${contextualSlug}${pathname}${request.nextUrl.search}`, request.url));
     if (!request.cookies.has("avan_session")) return NextResponse.redirect(new URL("/login", request.url));
     const headers = new Headers(request.headers);
     headers.set("x-tenant-slug", ROOT_TENANT_SLUG);
