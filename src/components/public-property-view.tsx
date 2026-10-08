@@ -10,7 +10,7 @@ import { PropertyCard } from "./property-card";
 import { PropertyEvents } from "./property-events";
 import { PropertyGallery } from "./property-gallery";
 
-export function PublicPropertyView({ property, similar, tenant }: { property: PublicPropertyDetail; similar: PublicPropertyCard[]; tenant: { name: string; whatsapp: string; baseUrl: string; basePath: string } }) {
+export function PublicPropertyView({ property, similar, tenant }: { property: PublicPropertyDetail; similar: PublicPropertyCard[]; tenant: { name: string; slug: string; whatsapp: string; baseUrl: string; basePath: string } }) {
   const message = sharePropertyMessage(property, tenant.baseUrl);
   const region = `${property.neighborhood}, ${property.city} — ${property.state}`;
   const specs = [
@@ -80,14 +80,14 @@ export function PublicPropertyView({ property, similar, tenant }: { property: Pu
         </div>
       </article>
       <aside>
-        <PropertyEvents propertyId={property.id} whatsapp={tenant.whatsapp} message={message} />
-        <LeadForm propertyId={property.id} propertyTitle={property.title} />
+        <PropertyEvents propertyId={property.id} tenantSlug={tenant.slug} whatsapp={tenant.whatsapp} message={message} />
+        <LeadForm propertyId={property.id} propertyTitle={property.title} tenantSlug={tenant.slug} />
       </aside>
     </section>
     {similar.length ? (
       <section className="section shell similar-properties">
         <div className="modern-heading"><div><span>Talvez combine com você</span><h2>Imóveis semelhantes</h2></div><Link href={`${tenant.basePath}/imoveis`}>Ver todo o portfólio →</Link></div>
-        <div className="property-grid">{similar.map((item) => <PropertyCard property={item} key={item.id} />)}</div>
+        <div className="property-grid">{similar.map((item) => <PropertyCard property={item} key={item.id} basePath={tenant.basePath} tenantKey={tenant.slug} />)}</div>
       </section>
     ) : null}
   </>;
