@@ -1,6 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { SettingsForm } from "@/components/settings-form";
+import { DomainVerificationButton } from "@/components/domain-verification-button";
 import { getDb } from "@/db";
 import { clients, reminderSettings, tenantMemberships, tenants, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
@@ -60,6 +61,7 @@ export default async function SettingsPage() {
           <label className="wide">Domínio<input name="customDomain" placeholder="imoveis.suaempresa.com.br" defaultValue={tenant.customDomain || ""}/></label>
           <div className="wide"><StatusBadge value={tenant.domainStatus}/></div>
         </SettingsForm>
+        {tenant.customDomain ? <DomainVerificationButton/> : null}
       </section>
 
       <section className="admin-card">
