@@ -1,5 +1,5 @@
 import {
-  boolean, index, integer, jsonb, numeric, pgEnum, pgTable,
+  boolean, date, index, integer, jsonb, numeric, pgEnum, pgTable,
   primaryKey, text, timestamp, uniqueIndex, uuid, varchar,
 } from "drizzle-orm/pg-core";
 import { defaultAccess, type Access } from "../../lib/permissions";
@@ -56,13 +56,13 @@ export const plans = pgTable("plans", {
 });
 
 export const reminderSettings = pgTable("reminder_settings", {
-  tenantId: uuid("tenant_id").references(() => tenants.id),
-  key: text("key").primaryKey(),
+  tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
+  key: text("key").notNull(),
   panel: boolean("panel").default(true).notNull(),
   email: boolean("email").default(true).notNull(),
   recipients: jsonb("recipients").$type<string[]>().default([]).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [primaryKey({ columns: [t.tenantId, t.key] })]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -261,7 +261,7 @@ export const analyticsEvents = pgTable("analytics_events", {
 
 export const analyticsDaily = pgTable("analytics_daily", {
   tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
-  day: timestamp("day", { mode: "date" }).notNull(),
+  day: date("day", { mode: "date" }).notNull(),
   eventType: varchar("event_type", { length: 40 }).notNull(),
   propertyId: uuid("property_id").references(() => properties.id, { onDelete: "set null" }),
   total: integer("total").default(0).notNull(),
