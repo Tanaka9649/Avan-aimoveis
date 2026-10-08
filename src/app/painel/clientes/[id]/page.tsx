@@ -64,8 +64,8 @@ export default async function Page({
             next: deals.nextActionAt,
           })
           .from(deals)
-          .innerJoin(stages, eq(stages.id, deals.stageId))
-          .where(eq(deals.clientId, id))
+          .innerJoin(stages,and(eq(stages.id,deals.stageId),eq(stages.tenantId,user.tenantId)))
+          .where(and(eq(deals.tenantId,user.tenantId),eq(deals.clientId, id)))
           .orderBy(desc(deals.updatedAt))
       : [],
     canAccess(user, "imoveis")
@@ -77,8 +77,8 @@ export default async function Page({
             status: properties.status,
           })
           .from(dealProperties)
-          .innerJoin(deals, eq(deals.id, dealProperties.dealId))
-          .innerJoin(properties, eq(properties.id, dealProperties.propertyId))
+          .innerJoin(deals,and(eq(deals.id,dealProperties.dealId),eq(deals.tenantId,user.tenantId)))
+          .innerJoin(properties,and(eq(properties.id,dealProperties.propertyId),eq(properties.tenantId,user.tenantId)))
           .where(eq(deals.clientId, id))
       : [],
     canAccess(user, "visitas")
@@ -90,8 +90,8 @@ export default async function Page({
             status: visits.status,
           })
           .from(visits)
-          .innerJoin(properties, eq(properties.id, visits.propertyId))
-          .where(eq(visits.clientId, id))
+          .innerJoin(properties,and(eq(properties.id,visits.propertyId),eq(properties.tenantId,user.tenantId)))
+          .where(and(eq(visits.tenantId,user.tenantId),eq(visits.clientId, id)))
           .orderBy(desc(visits.scheduledAt))
       : [],
     canAccess(user, "propostas")
@@ -112,7 +112,7 @@ export default async function Page({
         date: activities.occurredAt,
       })
       .from(activities)
-      .where(eq(activities.clientId, id))
+      .where(and(eq(activities.tenantId,user.tenantId),eq(activities.clientId, id)))
       .orderBy(desc(activities.occurredAt))
       .limit(200),
     db
@@ -134,15 +134,16 @@ export default async function Page({
         photoId: propertyPhotos.id,
       })
       .from(clientFavorites)
-      .innerJoin(properties, eq(properties.id, clientFavorites.propertyId))
+      .innerJoin(properties,and(eq(properties.id,clientFavorites.propertyId),eq(properties.tenantId,user.tenantId)))
       .leftJoin(
         propertyPhotos,
         and(
+          eq(propertyPhotos.tenantId,user.tenantId),
           eq(propertyPhotos.propertyId, properties.id),
           eq(propertyPhotos.isCover, true),
         ),
       )
-      .where(eq(clientFavorites.clientId, id)),
+      .where(and(eq(clientFavorites.tenantId,user.tenantId),eq(clientFavorites.clientId, id))),
     db
       .select({
         id: clientPropertyPresentations.id,
@@ -155,16 +156,17 @@ export default async function Page({
       .from(clientPropertyPresentations)
       .innerJoin(
         properties,
-        eq(properties.id, clientPropertyPresentations.propertyId),
+        and(eq(properties.id,clientPropertyPresentations.propertyId),eq(properties.tenantId,user.tenantId)),
       )
       .leftJoin(
         propertyPhotos,
         and(
+          eq(propertyPhotos.tenantId,user.tenantId),
           eq(propertyPhotos.propertyId, properties.id),
           eq(propertyPhotos.isCover, true),
         ),
       )
-      .where(eq(clientPropertyPresentations.clientId, id))
+      .where(and(eq(clientPropertyPresentations.tenantId,user.tenantId),eq(clientPropertyPresentations.clientId, id)))
       .orderBy(desc(clientPropertyPresentations.presentedAt))
       .limit(50),
     db
@@ -182,6 +184,7 @@ export default async function Page({
         features: properties.features,
       })
       .from(properties)
+      .where(eq(properties.tenantId,user.tenantId))
       .orderBy(desc(properties.updatedAt))
       .limit(200),
   ]);
