@@ -17,10 +17,10 @@ export default async function GlobalSearchPage({ searchParams }: { searchParams:
       ? db.select({ id: clients.id, name: clients.name, phone: clients.phone, email: clients.email }).from(clients).where(and(clientScope(user), or(ilike(clients.name, `%${q}%`), ilike(clients.phone, `%${q}%`), ilike(clients.email, `%${q}%`)))).limit(12)
       : Promise.resolve([]),
     canAccess(user, "imoveis")
-      ? db.select({ id: properties.id, title: properties.title, code: properties.code, status: properties.status }).from(properties).where(or(ilike(properties.title, `%${q}%`), ilike(properties.code, `%${q}%`), ilike(properties.city, `%${q}%`), ilike(properties.neighborhood, `%${q}%`))).limit(12)
+      ? db.select({ id: properties.id, title: properties.title, code: properties.code, status: properties.status }).from(properties).where(and(eq(properties.tenantId,user.tenantId),or(ilike(properties.title, `%${q}%`), ilike(properties.code, `%${q}%`), ilike(properties.city, `%${q}%`), ilike(properties.neighborhood, `%${q}%`)))).limit(12)
       : Promise.resolve([]),
     canAccess(user, "crm")
-      ? db.select({ id: deals.id, title: deals.title }).from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).where(and(clientScope(user), ilike(deals.title, `%${q}%`))).limit(12)
+      ? db.select({ id: deals.id, title: deals.title }).from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).where(and(eq(deals.tenantId,user.tenantId),clientScope(user), ilike(deals.title, `%${q}%`))).limit(12)
       : Promise.resolve([]),
   ]) : [[], [], []];
   const total = clientRows.length + propertyRows.length + dealRows.length;
