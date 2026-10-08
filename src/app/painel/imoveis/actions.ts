@@ -30,11 +30,11 @@ export async function saveProperty(_previous: { error: string; id?: string; save
   let publication: { publishedAt?: Date | null; status?: typeof values.status } = {};
   try {
     const db = getDb();
-    if(owner.ownerId){const [found]=await db.select({id:owners.id}).from(owners).where(eq(owners.id,owner.ownerId));if(!found)return {error:"Proprietário indisponível."};}
+    if(owner.ownerId){const [found]=await db.select({id:owners.id}).from(owners).where(and(eq(owners.id,owner.ownerId),eq(owners.tenantId,user.tenantId)));if(!found)return {error:"Proprietário indisponível."};}
     let current: { publishedAt: Date | null } | undefined;
-    if(rawId){const [found]=await db.select({id:properties.id,publishedAt:properties.publishedAt}).from(properties).where(and(eq(properties.id,id),ne(properties.status,"vendido")));if(!found)return {error:"Imóvel indisponível ou vendido."};current=found;}
+    if(rawId){const [found]=await db.select({id:properties.id,publishedAt:properties.publishedAt}).from(properties).where(and(eq(properties.id,id),eq(properties.tenantId,user.tenantId),ne(properties.status,"vendido")));if(!found)return {error:"Imóvel indisponível ou vendido."};current=found;}
     if (wantsPublication) {
-      const [photos] = rawId ? await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready"))) : [{ value: 0 }];
+      const [photos] = rawId ? await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.tenantId,user.tenantId),eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready"))) : [{ value: 0 }];
       const candidate = { status: p.status, title: p.title, priceCents: p.price, description: p.description, neighborhood: p.neighborhood, city: p.city, state: p.state, area: p.area, photoCount: Number(photos.value) };
       if (!canPublish(candidate))
         return { error: `Para publicar no site, complete: ${publicationBlockers(candidate).join(", ")}.`, id };
@@ -44,14 +44,14 @@ export async function saveProperty(_previous: { error: string; id?: string; save
       publication = { publishedAt: null };
     }
     const ownerId=owner.ownerId||(owner.ownerName?randomUUID():null);
-    const ownerQueries=[...(!owner.ownerId&&ownerId?[db.insert(owners).values({id:ownerId,name:owner.ownerName,phone:owner.ownerPhone,email:owner.ownerEmail||null})]:[]),...(ownerId?[db.insert(propertyOwners).values({propertyId:id,ownerId}).onConflictDoNothing()]:[])];
+    const ownerQueries=[...(!owner.ownerId&&ownerId?[db.insert(owners).values({tenantId:user.tenantId,id:ownerId,name:owner.ownerName,phone:owner.ownerPhone,email:owner.ownerEmail||null})]:[]),...(ownerId?[db.insert(propertyOwners).values({tenantId:user.tenantId,propertyId:id,ownerId}).onConflictDoNothing()]:[])];
     if (rawId) {
-      await db.batch([db.update(properties).set({...values,...publication,features:owner.features}).where(and(eq(properties.id,id),ne(properties.status,"vendido"))),...ownerQueries,db.insert(activityLogs).values({userId:user.id,entityType:"property",entityId:id,action:wantsPublication?"published":formData.get("publish")==="0"?"unpublished":"updated"})]);
+      await db.batch([db.update(properties).set({...values,...publication,features:owner.features}).where(and(eq(properties.id,id),eq(properties.tenantId,user.tenantId),ne(properties.status,"vendido"))),...ownerQueries,db.insert(activityLogs).values({tenantId:user.tenantId,userId:user.id,entityType:"property",entityId:id,action:wantsPublication?"published":formData.get("publish")==="0"?"unpublished":"updated"})]);
     } else {
       await db.batch([
-        db.insert(properties).values({ id, ...values, ...publication, features:owner.features }),
+        db.insert(properties).values({ tenantId:user.tenantId, id, ...values, ...publication, features:owner.features }),
         ...ownerQueries,
-        db.insert(activityLogs).values({ userId: user.id, entityType: "property", entityId: id, action: "create", details: { code: p.code, published: wantsPublication } }),
+        db.insert(activityLogs).values({tenantId:user.tenantId, userId: user.id, entityType: "property", entityId: id, action: "create", details: { code: p.code, published: wantsPublication } }),
       ]);
     }
   } catch (error) {
@@ -74,11 +74,11 @@ export async function saveProperty(_previous: { error: string; id?: string; save
 export async function duplicateProperty(formData: FormData) {
   const user = await requireModule("imoveis");
   const parsed = z.uuid().safeParse(formData.get("id")); if (!parsed.success) return;
-  const db = getDb(); const [source] = await db.select().from(properties).where(eq(properties.id, parsed.data)).limit(1); if (!source) return;
+  const db = getDb(); const [source] = await db.select().from(properties).where(and(eq(properties.id, parsed.data),eq(properties.tenantId,user.tenantId))).limit(1); if (!source) return;
   const id = randomUUID(); const suffix = id.slice(0, 6).toUpperCase();
   await db.batch([
     db.insert(properties).values({ ...source, id, code: `${source.code.slice(0, 20)}-${suffix}`, slug: `${source.slug.slice(0, 190)}-${id.slice(0, 6)}`, title: `${source.title} — cópia`, status: "rascunho", publishedAt: null, createdAt: new Date(), updatedAt: new Date() }),
-    db.insert(activityLogs).values({ userId: user.id, entityType: "property", entityId: id, action: "duplicated", details: { sourceId: source.id, photosCopied: false } }),
+    db.insert(activityLogs).values({tenantId:user.tenantId, userId: user.id, entityType: "property", entityId: id, action: "duplicated", details: { sourceId: source.id, photosCopied: false } }),
   ]);
   revalidatePath("/painel/imoveis"); redirect(`/painel/imoveis/${id}`);
 }
@@ -96,20 +96,22 @@ export async function publishProperty(id: string): Promise<PublicationResult> {
   const [property] = await db
     .select({ id: properties.id, slug: properties.slug, status: properties.status, publishedAt: properties.publishedAt, title: properties.title, priceCents: properties.priceCents, description: properties.description, neighborhood: properties.neighborhood, city: properties.city, state: properties.state, area: properties.privateArea })
     .from(properties)
-    .where(eq(properties.id, id))
+    .where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId)))
     .limit(1);
   if (!property) return { ok: false, message: "Imóvel não encontrado." };
   if (property.status === "vendido") return { ok: false, message: "Imóveis vendidos não podem ser publicados." };
-  const [photos] = await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready")));
+  const [photos] = await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.tenantId,user.tenantId),eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready")));
   const candidate = { ...property, area: property.area, photoCount: Number(photos.value) };
   if (!canPublish(candidate))
     return { ok: false, message: "Complete o cadastro antes de publicar.", missing: publicationBlockers(candidate) };
   await db.batch([
-    db.update(properties).set({ status: "disponivel", publishedAt: property.publishedAt ?? new Date(), updatedAt: new Date() }).where(eq(properties.id, id)),
-    db.insert(activityLogs).values({ userId: user.id, entityType: "property", entityId: id, action: "published", details: { slug: property.slug } }),
+    db.update(properties).set({ status: "disponivel", publishedAt: property.publishedAt ?? new Date(), updatedAt: new Date() }).where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId))),
+    db.insert(activityLogs).values({tenantId:user.tenantId, userId: user.id, entityType: "property", entityId: id, action: "published", details: { slug: property.slug } }),
   ]);
   revalidatePath("/", "layout");
-  return { ok: true, message: "Imóvel publicado no site.", url: publicPropertyUrl(property.slug) };
+  const platformBase=(process.env.NEXT_PUBLIC_SITE_URL||"http://localhost:3000").replace(/\/$/,"");
+  const tenantBase=user.tenant.slug==="avanca-imoveis"?platformBase:`${platformBase}/empresa/${user.tenant.slug}`;
+  return { ok: true, message: "Imóvel publicado no site.", url: publicPropertyUrl(property.slug,tenantBase) };
 }
 
 /** Removes the listing from the public catalogue without touching the record or its photos. */
@@ -117,11 +119,11 @@ export async function unpublishProperty(id: string): Promise<PublicationResult> 
   const user = await requireModule("imoveis");
   if (!z.uuid().safeParse(id).success) return { ok: false, message: "Imóvel inválido." };
   const db = getDb();
-  const [property] = await db.select({ id: properties.id }).from(properties).where(eq(properties.id, id)).limit(1);
+  const [property] = await db.select({ id: properties.id }).from(properties).where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId))).limit(1);
   if (!property) return { ok: false, message: "Imóvel não encontrado." };
   await db.batch([
-    db.update(properties).set({ publishedAt: null, updatedAt: new Date() }).where(eq(properties.id, id)),
-    db.insert(activityLogs).values({ userId: user.id, entityType: "property", entityId: id, action: "unpublished" }),
+    db.update(properties).set({ publishedAt: null, updatedAt: new Date() }).where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId))),
+    db.insert(activityLogs).values({tenantId:user.tenantId, userId: user.id, entityType: "property", entityId: id, action: "unpublished" }),
   ]);
   revalidatePath("/", "layout");
   return { ok: true, message: "Imóvel removido do site." };
