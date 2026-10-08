@@ -24,12 +24,13 @@ export async function tenantBySlug(slug: string) {
   const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, normalized)).limit(1);
   if (tenant) return { tenant, redirectSlug: null as string | null };
   const [legacy] = await db
-    .select({ tenant })
+    .select({ tenantId: tenantSlugHistory.tenantId })
     .from(tenantSlugHistory)
-    .innerJoin(tenants, eq(tenants.id, tenantSlugHistory.tenantId))
     .where(eq(tenantSlugHistory.slug, normalized))
     .limit(1);
-  return legacy ? { tenant: legacy.tenant, redirectSlug: legacy.tenant.slug } : null;
+  if (!legacy) return null;
+  const [historicalTenant] = await db.select().from(tenants).where(eq(tenants.id, legacy.tenantId)).limit(1);
+  return historicalTenant ? { tenant: historicalTenant, redirectSlug: historicalTenant.slug } : null;
 }
 
 export async function tenantByHost(rawHost: string | null) {
