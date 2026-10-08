@@ -7,47 +7,58 @@ import type { PublicPropertyCard } from "@/data/properties";
 import { formatArea, formatMoney } from "@/lib/format";
 import { PHOTO_SIZES } from "@/lib/photos";
 import { publicPropertyPath } from "@/lib/property-publication";
-import { readFavorites } from "@/lib/favorites";
+import { favoritesStorageKey, readFavorites } from "@/lib/favorites";
 
-const FAVORITES_KEY = "avan:favorites";
+type Props = {
+  property: PublicPropertyCard;
+  priority?: boolean;
+  basePath?: string;
+  tenantKey?: string;
+};
 
 /**
- * Catalogue card. It renders the cover thumbnail only — never the gallery — and paints the stored
- * blur while that thumbnail decodes, so the grid never reflows. `priority` is reserved for the
- * cards that are above the fold; everything else loads lazily.
+ * Catalogue card. Only the cover thumbnail is rendered and every browser-side
+ * favorite is namespaced by tenant, preventing selections from crossing sites.
  */
-export function PropertyCard({ property, priority = false }: { property: PublicPropertyCard; priority?: boolean }) {
+export function PropertyCard({ property, priority = false, basePath = "", tenantKey }: Props) {
+  const favoriteScope = tenantKey || "avanca-imoveis";
+  const eventName = `favorites:changed:${favoriteScope}`;
   const saved = useSyncExternalStore(
-    (callback) => { window.addEventListener("favorites:changed", callback); return () => window.removeEventListener("favorites:changed", callback); },
-    () => readFavorites().includes(property.id),
+    (callback) => {
+      window.addEventListener(eventName, callback);
+      return () => window.removeEventListener(eventName, callback);
+    },
+    () => readFavorites(favoriteScope).includes(property.id),
     () => false,
   );
   const toggle = () => {
-    const current = readFavorites();
-    const next = current.includes(property.id) ? current.filter((id) => id !== property.id) : [...current, property.id];
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
-    window.dispatchEvent(new Event("favorites:changed"));
+    const current = readFavorites(favoriteScope);
+    const next = current.includes(property.id)
+      ? current.filter((id) => id !== property.id)
+      : [...current, property.id];
+    localStorage.setItem(favoritesStorageKey(favoriteScope), JSON.stringify(next));
+    window.dispatchEvent(new Event(eventName));
   };
-  const href = publicPropertyPath(property.slug);
+  const href = publicPropertyPath(property.slug, basePath);
   return (
     <article className="property-card">
       <div className="property-image">
         <Link href={href} aria-label={`Ver fotos e detalhes de ${property.title}`}>
-        {property.cover ? (
-          <Image
-            src={property.cover.url}
-            alt={property.cover.alt || `Fachada e ambientes de ${property.title}`}
-            fill
-            sizes={PHOTO_SIZES.card}
-            placeholder="blur"
-            blurDataURL={property.cover.blur}
-            priority={priority}
-            loading={priority ? undefined : "lazy"}
-            unoptimized
-          />
-        ) : (
-          <span className="property-image-empty"><Building2 aria-hidden="true" /></span>
-        )}
+          {property.cover ? (
+            <Image
+              src={property.cover.url}
+              alt={property.cover.alt || `Fachada e ambientes de ${property.title}`}
+              fill
+              sizes={PHOTO_SIZES.card}
+              placeholder="blur"
+              blurDataURL={property.cover.blur}
+              priority={priority}
+              loading={priority ? undefined : "lazy"}
+              unoptimized
+            />
+          ) : (
+            <span className="property-image-empty"><Building2 aria-hidden="true" /></span>
+          )}
         </Link>
         <button className={`favorite ${saved ? "saved" : ""}`} onClick={toggle} aria-pressed={saved} aria-label={saved ? "Remover dos favoritos" : "Adicionar aos favoritos"}>
           <Heart size={19} fill={saved ? "currentColor" : "none"} />
