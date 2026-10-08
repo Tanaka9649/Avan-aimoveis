@@ -45,7 +45,15 @@ INSERT INTO plans(code,name,limits,modules) VALUES
 ON CONFLICT (code) DO NOTHING;
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS global_role global_role NOT NULL DEFAULT 'user';
-UPDATE users SET global_role='super_admin' WHERE role='admin';
+UPDATE users
+SET global_role='super_admin'
+WHERE id = (
+  SELECT id FROM users
+  WHERE role='admin' AND active=TRUE
+  ORDER BY created_at ASC, id ASC
+  LIMIT 1
+)
+AND NOT EXISTS (SELECT 1 FROM users WHERE global_role='super_admin');
 
 CREATE TABLE IF NOT EXISTS tenant_slug_history (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
