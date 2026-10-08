@@ -52,8 +52,9 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
   const pathname = usePathname();
   const panelBase = user.tenant.slug === "avanca-imoveis" ? "/painel" : `/empresa/${user.tenant.slug}/painel`;
   const publicBase = user.tenant.slug === "avanca-imoveis" ? "/" : `/empresa/${user.tenant.slug}`;
-  const scoped = (href: string) => href.replace(/^\\/painel/, panelBase);
-  const panelPath = pathname.replace(/^\\/empresa\\/[^/]+/, "");
+  const scoped = (href: string) => href.startsWith("/painel") ? `${panelBase}${href.slice(7)}` : href;
+  const tenantPrefix = `/empresa/${user.tenant.slug}`;
+  const panelPath = pathname.startsWith(tenantPrefix) ? pathname.slice(tenantPrefix.length) : pathname;
   const homeHref = scoped(firstAllowedRoute(user));
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
