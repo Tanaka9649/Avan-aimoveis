@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { TenantPublicHome } from "@/components/tenant-public-home";
 import { publicPropertyCards } from "@/lib/public-properties";
-import { rootTenant } from "@/lib/tenant";
+import { tenantForRequest, tenantPublicPathBase } from "@/lib/tenant";
 import { PublicLoading } from "@/components/public-loading";
 import { PublicError } from "@/components/public-error";
 
@@ -12,11 +12,11 @@ export default function HomePage() {
 }
 
 async function HomeContent() {
-  const tenant = await rootTenant();
+  const tenant = await tenantForRequest();
   if (!tenant) return <PublicError/>;
   try {
     const properties = await publicPropertyCards(tenant.id, 24);
-    return <TenantPublicHome tenant={tenant} properties={properties}/>;
+    return <TenantPublicHome tenant={tenant} properties={properties} basePath={tenantPublicPathBase(tenant)}/>;
   } catch {
     console.error("public_home_load_failed");
     return <PublicError/>;
