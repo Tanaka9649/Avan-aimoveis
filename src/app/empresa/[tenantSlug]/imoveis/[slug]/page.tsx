@@ -40,5 +40,5 @@ export default async function TenantPropertyPage({ params }: Props) {
   const property = await publicProperty(tenant.id, slug);
   if (!property) notFound();
   const [similar, baseUrl] = await Promise.all([similarProperties(tenant.id, property), Promise.resolve(tenantPublicBase(tenant))]);
-  return <PublicPropertyView property={property} similar={similar} tenant={{ name: tenant.name, whatsapp: tenant.whatsapp || "", baseUrl, basePath: `/empresa/${tenant.slug}` }}/>;
+  return <PublicPropertyView property={property} similar={similar} tenant={{ name: tenant.name, slug: tenant.slug, whatsapp: tenant.whatsapp || "", baseUrl, basePath: `/empresa/${tenant.slug}` }}/>;
 }
