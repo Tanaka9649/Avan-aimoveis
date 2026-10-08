@@ -15,10 +15,11 @@ function sessionId() {
 export function AnalyticsTracker({ tenantSlug }: { tenantSlug: string }) {
   const pathname = usePathname();
   useEffect(() => {
+    if (pathname.includes("/painel") || pathname.startsWith("/superadmin") || pathname.startsWith("/convite")) return;
     const params = new URLSearchParams(window.location.search);
     const payload = {
       tenantSlug,
-      eventType: pathname.includes("/imoveis/") ? "listing_impression" : pathname.endsWith("/imoveis") ? "search" : "page_view",
+      eventType: pathname.endsWith("/imoveis") ? "search" : "site_view",
       anonymousSessionId: sessionId(),
       path: `${pathname}${window.location.search}`,
       utm: {
