@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 
-const mock = vi.hoisted(() => ({ db: null as unknown, user: { id: "50000000-0000-4000-8000-000000000001", role: "admin", access: { clients: "all" } } }));
+const ROOT_TENANT = "00000000-0000-4000-8000-000000000001";
+const mock = vi.hoisted(() => ({ db: null as unknown, user: { id: "50000000-0000-4000-8000-000000000001", tenantId: ROOT_TENANT, role: "admin", access: { clients: "all" } } }));
 vi.mock("@/db", () => ({ getDb: () => mock.db }));
 vi.mock("@/lib/access", () => ({ requireModule: async () => mock.user, clientScope: () => undefined }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -20,8 +21,8 @@ let pg: PGlite;
 const insertProperty = (overrides: Partial<Record<string, string | number | null>> = {}) => {
   const values = { id: PROPERTY, code: "CDA-001", title: "Casa Cidade das Águas", slug: "casa-cidade-das-aguas-cda-001", type: "Casa", price: 40000000, description: "Casa térrea com quintal, sala ampla e garagem coberta para dois carros.", state: "MG", city: "Frutal", neighborhood: "Centro", address: "Rua interna, 100", area: "120.00", status: "rascunho", ...overrides };
   return pg.query(
-    "insert into properties(id,code,title,slug,type,price_cents,description,state,city,neighborhood,address_private,private_area,status) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)",
-    [values.id, values.code, values.title, values.slug, values.type, values.price, values.description, values.state, values.city, values.neighborhood, values.address, values.area, values.status],
+    "insert into properties(tenant_id,id,code,title,slug,type,price_cents,description,state,city,neighborhood,address_private,private_area,status) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
+    [ROOT_TENANT, values.id, values.code, values.title, values.slug, values.type, values.price, values.description, values.state, values.city, values.neighborhood, values.address, values.area, values.status],
   );
 };
 
@@ -43,15 +44,15 @@ afterAll(async () => { await pg.close(); });
 
 describe.sequential("fluxo de publicação ponta a ponta", () => {
   it("keeps a draft out of the catalogue and out of its own public URL", async () => {
-    expect(await publicPropertyCards()).toHaveLength(0);
-    expect(await publicProperty("casa-cidade-das-aguas-cda-001")).toBeNull();
+    expect(await publicPropertyCards(ROOT_TENANT)).toHaveLength(0);
+    expect(await publicProperty(ROOT_TENANT, "casa-cidade-das-aguas-cda-001")).toBeNull();
   });
 
   it("refuses to publish while the listing has no photo, and says what is missing", async () => {
     const result = await publishProperty(PROPERTY);
     expect(result.ok).toBe(false);
     expect(result.missing).toEqual(["Pelo menos 1 foto"]);
-    expect(await publicPropertyCards()).toHaveLength(0);
+    expect(await publicPropertyCards(ROOT_TENANT)).toHaveLength(0);
   });
 
   it("publishes once the requirements are met and returns the shareable URL", async () => {
@@ -59,16 +60,16 @@ describe.sequential("fluxo de publicação ponta a ponta", () => {
     const result = await publishProperty(PROPERTY);
     expect(result.ok).toBe(true);
     expect(result.url).toContain("/imoveis/casa-cidade-das-aguas-cda-001");
-    const cards = await publicPropertyCards();
+    const cards = await publicPropertyCards(ROOT_TENANT);
     expect(cards).toHaveLength(1);
     expect(cards[0].cover?.url).toBe(`/api/property-photos/${id(20)}?v=thumb`);
-    const detail = await publicProperty("casa-cidade-das-aguas-cda-001");
+    const detail = await publicProperty(ROOT_TENANT, "casa-cidade-das-aguas-cda-001");
     expect(detail?.gallery).toHaveLength(1);
     expect(Object.keys(detail!)).not.toContain("status");
   });
 
   it("never exposes the private address, coordinates or commission on public routes", async () => {
-    const detail = await publicProperty("casa-cidade-das-aguas-cda-001");
+    const detail = await publicProperty(ROOT_TENANT, "casa-cidade-das-aguas-cda-001");
     const serialized = JSON.stringify(detail);
     expect(serialized).not.toContain("Rua interna");
     for (const field of ["addressPrivate", "latitudePrivate", "longitudePrivate", "commissionPercent", "acquisitionType", "status"])
@@ -82,18 +83,18 @@ describe.sequential("fluxo de publicação ponta a ponta", () => {
 
   it("removes it from the catalogue when unpublished, keeping the record intact", async () => {
     expect((await unpublishProperty(PROPERTY)).ok).toBe(true);
-    expect(await publicPropertyCards()).toHaveLength(0);
-    expect(await publicProperty("casa-cidade-das-aguas-cda-001")).toBeNull();
+    expect(await publicPropertyCards(ROOT_TENANT)).toHaveLength(0);
+    expect(await publicProperty(ROOT_TENANT, "casa-cidade-das-aguas-cda-001")).toBeNull();
     const { rows } = await pg.query<{ title: string }>("select title from properties where id=$1", [PROPERTY]);
     expect(rows[0].title).toBe("Casa Cidade das Águas");
   });
 
   it("takes a sold property out of the catalogue without losing that it was published", async () => {
     await publishProperty(PROPERTY);
-    expect(await publicPropertyCards()).toHaveLength(1);
+    expect(await publicPropertyCards(ROOT_TENANT)).toHaveLength(1);
     await pg.query("update properties set status='vendido' where id=$1", [PROPERTY]);
-    expect(await publicPropertyCards()).toHaveLength(0);
-    expect(await publicProperty("casa-cidade-das-aguas-cda-001")).toBeNull();
+    expect(await publicPropertyCards(ROOT_TENANT)).toHaveLength(0);
+    expect(await publicProperty(ROOT_TENANT, "casa-cidade-das-aguas-cda-001")).toBeNull();
     const { rows } = await pg.query<{ published_at: Date | null }>("select published_at from properties where id=$1", [PROPERTY]);
     expect(rows[0].published_at).not.toBeNull();
     expect((await publishProperty(PROPERTY)).ok).toBe(false);
