@@ -38,10 +38,6 @@ const toPhoto = (photo: { id: string; alt: string; blurData: string | null }, si
 
 const toCard = (row: CardRow, cover: PublicPhoto | null): PublicPropertyCard => ({ ...row, area: Number(row.area || 0), cover });
 
-/**
- * Catalogue listing. Loads one cover photo per property — never the whole gallery — so a page of
- * cards costs one extra query and one small thumbnail each, instead of up to ten full pictures.
- */
 export async function publicPropertyCards(tenantId: string, limit = 200): Promise<PublicPropertyCard[]> {
   const rows = await getDb().select(cardColumns).from(properties).where(publiclyVisible(tenantId)).orderBy(desc(properties.publishedAt)).limit(limit);
   if (!rows.length) return [];
@@ -49,7 +45,6 @@ export async function publicPropertyCards(tenantId: string, limit = 200): Promis
   return rows.map((row) => toCard(row, covers.get(row.id) || null));
 }
 
-/** One published property with its full gallery, or null when it is not publicly visible. */
 export async function publicProperty(tenantId: string, slug: string): Promise<PublicPropertyDetail | null> {
   const [row] = await getDb()
     .select({ ...cardColumns, description: properties.description, features: properties.features, publishedAt: properties.publishedAt, updatedAt: properties.updatedAt })
@@ -73,7 +68,6 @@ export async function publicProperty(tenantId: string, slug: string): Promise<Pu
   };
 }
 
-/** Published properties similar to this one: same city, nearby price, never itself. */
 export async function similarProperties(tenantId: string, property: PublicPropertyCard, limit = 3): Promise<PublicPropertyCard[]> {
   const rows = await getDb()
     .select(cardColumns)
@@ -82,11 +76,10 @@ export async function similarProperties(tenantId: string, property: PublicProper
     .orderBy(sql`abs(${properties.priceCents} - ${property.priceCents})`)
     .limit(limit);
   if (!rows.length) return [];
-  const covers = await coverPhotos(rows.map((row) => row.id));
+  const covers = await coverPhotos(tenantId, rows.map((row) => row.id));
   return rows.map((row) => toCard(row, covers.get(row.id) || null));
 }
 
-/** Everything the sitemap needs, without loading descriptions or photos. */
 export async function publishedPropertyRoutes(tenantId: string) {
   return getDb().select({ slug: properties.slug, updatedAt: properties.updatedAt }).from(properties).where(publiclyVisible(tenantId)).orderBy(desc(properties.publishedAt)).limit(5000);
 }
@@ -97,8 +90,9 @@ async function coverPhotos(tenantId: string, ids: string[]) {
     .from(propertyPhotos)
     .where(and(eq(propertyPhotos.tenantId, tenantId), inArray(propertyPhotos.propertyId, ids), eq(propertyPhotos.processingStatus, "ready")));
   const covers = new Map<string, PublicPhoto>();
-  for (const photo of photos.sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.position - b.position))
+  for (const photo of photos.sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.position - b.position)) {
     if (!covers.has(photo.propertyId)) covers.set(photo.propertyId, toPhoto(photo, "thumb"));
+  }
   return covers;
 }
 
