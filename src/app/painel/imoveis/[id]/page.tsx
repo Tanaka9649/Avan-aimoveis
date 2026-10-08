@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -28,17 +28,18 @@ export default async function EditPropertyPage({
   const [p] = await getDb()
     .select()
     .from(properties)
-    .where(eq(properties.id, id))
+    .where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId)))
     .limit(1);
   if (!p) notFound();
   const ownerRows = await getDb()
     .select({ id: owners.id, name: owners.name })
-    .from(owners);
+    .from(owners)
+    .where(eq(owners.tenantId,user.tenantId));
   const linked = await getDb()
     .select({ name: owners.name })
     .from(propertyOwners)
-    .innerJoin(owners, eq(owners.id, propertyOwners.ownerId))
-    .where(eq(propertyOwners.propertyId, id));
+    .innerJoin(owners, and(eq(owners.id, propertyOwners.ownerId),eq(owners.tenantId,user.tenantId)))
+    .where(and(eq(propertyOwners.tenantId,user.tenantId),eq(propertyOwners.propertyId, id)));
   const [photos, documents] = await Promise.all([
     getDb()
       .select({
@@ -50,7 +51,7 @@ export default async function EditPropertyPage({
         processingStatus: propertyPhotos.processingStatus,
       })
       .from(propertyPhotos)
-      .where(eq(propertyPhotos.propertyId, id)),
+      .where(and(eq(propertyPhotos.tenantId,user.tenantId),eq(propertyPhotos.propertyId, id))),
     getDb()
       .select({
         id: propertyDocuments.id,
@@ -59,7 +60,7 @@ export default async function EditPropertyPage({
         size: propertyDocuments.size,
       })
       .from(propertyDocuments)
-      .where(eq(propertyDocuments.propertyId, id)),
+      .where(and(eq(propertyDocuments.tenantId,user.tenantId),eq(propertyDocuments.propertyId, id))),
   ]);
   const candidates = canAccess(user, "clientes")
     ? await getDb().select().from(clients).where(clientScope(user))
