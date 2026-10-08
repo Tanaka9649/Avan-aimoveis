@@ -65,8 +65,8 @@ export function canPublish(property: PublicationCandidate) {
 }
 
 /** The one place that knows what a public property URL looks like. */
-export const publicPropertyPath = (slug: string) => `/imoveis/${slug}`;
-export const publicPropertyUrl = (slug: string) => siteUrl(publicPropertyPath(slug));
+export const publicPropertyPath = (slug: string, basePath = "") => `${basePath}/imoveis/${slug}`;
+export const publicPropertyUrl = (slug: string, baseUrl?: string) => `${(baseUrl || siteUrl()).replace(/\/$/, "")}/imoveis/${slug}`;
 
 export type ShareablePropety = {
   title: string;
@@ -80,7 +80,7 @@ export type ShareablePropety = {
 };
 
 /** Ready-to-paste message used by "Copiar mensagem" and by the WhatsApp hand-off. */
-export function sharePropertyMessage(property: ShareablePropety) {
+export function sharePropertyMessage(property: ShareablePropety, baseUrl?: string) {
   const specs = [
     Number(property.bedrooms) > 0 ? `${property.bedrooms} quartos` : "",
     Number(property.bathrooms) > 0 ? `${property.bathrooms} banheiros` : "",
@@ -95,7 +95,7 @@ export function sharePropertyMessage(property: ShareablePropety) {
     specs,
     "",
     "Veja todos os detalhes e fotos:",
-    publicPropertyUrl(property.slug),
+    publicPropertyUrl(property.slug, baseUrl),
   ].filter((line, index, all) => line !== "" || all[index - 1] !== "").join("\n");
 }
 
