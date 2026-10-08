@@ -1,5 +1,4 @@
 "use server";
-import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -7,33 +6,39 @@ import { getDb } from "@/db";
 import { users, sessions, activityLogs, reminderSettings, clients, tenantMemberships, tenants } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
 import { defaultAccess, modules } from "@/lib/permissions";
-import { hashPassword } from "@/lib/security";
-import { canCreateResource } from "@/lib/entitlements";
+import { canCreateResource, getLimit } from "@/lib/entitlements";
+import { createTenantInvitation } from "@/lib/invitations";
 
-type State = { message: string; ok: boolean };
+type State = { message: string; ok: boolean; inviteUrl?: string };
 
 export async function createAccount(_: State, form: FormData): Promise<State> {
   const admin = await requireAdmin();
-  const parsed = z.object({ name: z.string().trim().min(2).max(160), email: z.email().max(254), password: z.string().min(12).max(128) }).safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { ok: false, message: "Informe nome, e-mail válido e senha de 12 a 128 caracteres." };
-  const email = parsed.data.email.toLowerCase();
-  if(!await canCreateResource(admin.tenantId,"max_users"))return {ok:false,message:"O limite de usuários do plano foi atingido."};
-  const db = getDb();
-  try {
-    let [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-    if (!user) {
-      [user] = await db.insert(users).values({ id: randomUUID(), name: parsed.data.name, email, passwordHash: await hashPassword(parsed.data.password), role: "equipe", active: true, access: defaultAccess }).returning({ id: users.id });
-    }
-    const membershipId = randomUUID();
-    await db.batch([
-      db.insert(tenantMemberships).values({ id: membershipId, tenantId: admin.tenantId, userId: user.id, role: "agent", status: "invited", permissions: defaultAccess, invitedAt: new Date() }).onConflictDoNothing(),
-      db.insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "membership", entityId: membershipId, action: "account_created_pending" }),
-    ]);
-  } catch {
-    return { ok: false, message: "Não foi possível criar. Verifique se o e-mail já pertence a esta equipe." };
+  const parsed = z.object({
+    name: z.string().trim().min(2).max(160),
+    email: z.email().max(254),
+  }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { ok: false, message: "Informe nome e e-mail válidos." };
+  if (!await canCreateResource(admin.tenantId, "max_users")) {
+    return { ok: false, message: "O limite de usuários do plano foi atingido." };
   }
-  revalidatePath("/painel/configuracoes");
-  return { ok: true, message: "Conta criada e pendente de aprovação neste tenant." };
+  try {
+    const invitation = await createTenantInvitation({
+      tenantId: admin.tenantId,
+      invitedBy: admin.id,
+      name: parsed.data.name,
+      email: parsed.data.email,
+      role: "agent",
+      permissions: defaultAccess,
+    });
+    revalidatePath("/painel/configuracoes");
+    return {
+      ok: true,
+      message: "Convite criado. Copie o link e envie à pessoa; nenhuma senha foi definida pelo administrador.",
+      inviteUrl: invitation.inviteUrl,
+    };
+  } catch {
+    return { ok: false, message: "Não foi possível criar o convite agora." };
+  }
 }
 
 export async function updateAccount(_: State, form: FormData): Promise<State> {
@@ -121,8 +126,9 @@ export async function saveTenantBranding(_: State, form: FormData): Promise<Stat
   if (!parsed.success) return { ok: false, message: "Revise a identidade visual e os dados de contato." };
   const data = parsed.data;
   try {
-    await getDb().batch([
-      getDb().update(tenants).set({
+    const db = getDb();
+    await db.batch([
+      db.update(tenants).set({
         name: data.name,
         phone: data.phone || null,
         whatsapp: data.whatsapp || null,
@@ -131,7 +137,7 @@ export async function saveTenantBranding(_: State, form: FormData): Promise<Stat
         site: { primaryColor: data.primaryColor, secondaryColor: data.secondaryColor, accentColor: data.accentColor, title: data.siteTitle || undefined, description: data.siteDescription || undefined },
         updatedAt: new Date(),
       }).where(eq(tenants.id, admin.tenantId)),
-      getDb().insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant", entityId: admin.tenantId, action: "branding_updated" }),
+      db.insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant", entityId: admin.tenantId, action: "branding_updated" }),
     ]);
   } catch {
     return { ok: false, message: "Não foi possível salvar a identidade visual." };
@@ -146,10 +152,14 @@ export async function saveCustomDomain(_: State, form: FormData): Promise<State>
   const raw = String(form.get("customDomain") || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
   const parsed = z.union([z.literal(""), z.string().regex(/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/)]).safeParse(raw);
   if (!parsed.success) return { ok: false, message: "Informe apenas um domínio válido, sem caminho." };
+  if (parsed.data && await getLimit(admin.tenantId, "custom_domain") === 0) {
+    return { ok: false, message: "O plano atual não permite domínio personalizado." };
+  }
   try {
-    await getDb().batch([
-      getDb().update(tenants).set({ customDomain: parsed.data || null, domainStatus: parsed.data ? "verifying" : "pending", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
-      getDb().insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant_domain", entityId: admin.tenantId, action: parsed.data ? "domain_verification_requested" : "domain_removed", details: { domain: parsed.data || null } }),
+    const db = getDb();
+    await db.batch([
+      db.update(tenants).set({ customDomain: parsed.data || null, domainStatus: parsed.data ? "verifying" : "pending", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
+      db.insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant_domain", entityId: admin.tenantId, action: parsed.data ? "domain_verification_requested" : "domain_removed", details: { domain: parsed.data || null } }),
     ]);
   } catch {
     return { ok: false, message: "Não foi possível salvar. Verifique se o domínio já pertence a outra empresa." };
