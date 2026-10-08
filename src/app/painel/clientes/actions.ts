@@ -8,6 +8,7 @@ import { getDb } from "@/db";
 import { clients, activities, clientFavorites, clientPropertyPresentations, properties } from "@/db/schema";
 import { requireModule, clientScope } from "@/lib/access";
 import { clientInput } from "@/lib/client-input";
+import { canCreateResource } from "@/lib/entitlements";
 type State = {ok:boolean;message:string};
 export async function saveClient(_:State, form:FormData):Promise<State> {
   const user=await requireModule("clientes");
@@ -16,6 +17,7 @@ export async function saveClient(_:State, form:FormData):Promise<State> {
   const raw=String(form.get("id")||"");
   if(raw && !z.uuid().safeParse(raw).success) return {ok:false,message:"Cliente inválido."};
   const db=getDb(); const id=raw||randomUUID();
+  if(!raw&&!await canCreateResource(user.tenantId,"max_clients"))return {ok:false,message:"O limite de clientes do plano foi atingido."};
   if(raw){const [allowed]=await db.select({id:clients.id}).from(clients).where(and(eq(clients.id,id),clientScope(user)));if(!allowed)return {ok:false,message:"Cliente indisponível."};}
   const {budgetMin,budgetMax,...rest}=parsed.data;
   const values={...rest,budgetMinCents:budgetMin,budgetMaxCents:budgetMax,updatedAt:new Date()};
