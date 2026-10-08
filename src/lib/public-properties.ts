@@ -6,7 +6,7 @@ import { NEUTRAL_BLUR, PHOTO_PLACEHOLDER, photoUrl } from "./photos";
 import { PUBLIC_STATUS } from "./property-publication";
 
 /** The catalogue's visibility rule, expressed once, for every public query. */
-export const publiclyVisible = () => and(eq(properties.status, PUBLIC_STATUS), isNotNull(properties.publishedAt));
+export const publiclyVisible = (tenantId: string) => and(eq(properties.tenantId, tenantId), eq(properties.status, PUBLIC_STATUS), isNotNull(properties.publishedAt));
 
 // Explicit projection: private addresses, coordinates, commissions, owners, documents and
 // internal notes are never selected, so they cannot leak through a public route.
@@ -42,25 +42,25 @@ const toCard = (row: CardRow, cover: PublicPhoto | null): PublicPropertyCard => 
  * Catalogue listing. Loads one cover photo per property — never the whole gallery — so a page of
  * cards costs one extra query and one small thumbnail each, instead of up to ten full pictures.
  */
-export async function publicPropertyCards(limit = 200): Promise<PublicPropertyCard[]> {
-  const rows = await getDb().select(cardColumns).from(properties).where(publiclyVisible()).orderBy(desc(properties.publishedAt)).limit(limit);
+export async function publicPropertyCards(tenantId: string, limit = 200): Promise<PublicPropertyCard[]> {
+  const rows = await getDb().select(cardColumns).from(properties).where(publiclyVisible(tenantId)).orderBy(desc(properties.publishedAt)).limit(limit);
   if (!rows.length) return [];
-  const covers = await coverPhotos(rows.map((row) => row.id));
+  const covers = await coverPhotos(tenantId, rows.map((row) => row.id));
   return rows.map((row) => toCard(row, covers.get(row.id) || null));
 }
 
 /** One published property with its full gallery, or null when it is not publicly visible. */
-export async function publicProperty(slug: string): Promise<PublicPropertyDetail | null> {
+export async function publicProperty(tenantId: string, slug: string): Promise<PublicPropertyDetail | null> {
   const [row] = await getDb()
     .select({ ...cardColumns, description: properties.description, features: properties.features, publishedAt: properties.publishedAt, updatedAt: properties.updatedAt })
     .from(properties)
-    .where(and(publiclyVisible(), eq(properties.slug, slug)))
+    .where(and(publiclyVisible(tenantId), eq(properties.slug, slug)))
     .limit(1);
   if (!row) return null;
   const photos = await getDb()
     .select({ id: propertyPhotos.id, alt: propertyPhotos.alt, blurData: propertyPhotos.blurData, isCover: propertyPhotos.isCover, position: propertyPhotos.position })
     .from(propertyPhotos)
-    .where(and(eq(propertyPhotos.propertyId, row.id), eq(propertyPhotos.processingStatus, "ready")));
+    .where(and(eq(propertyPhotos.tenantId, tenantId), eq(propertyPhotos.propertyId, row.id), eq(propertyPhotos.processingStatus, "ready")));
   const ordered = photos.sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.position - b.position);
   const gallery = ordered.map((photo) => toPhoto(photo, "medium"));
   return {
@@ -74,11 +74,11 @@ export async function publicProperty(slug: string): Promise<PublicPropertyDetail
 }
 
 /** Published properties similar to this one: same city, nearby price, never itself. */
-export async function similarProperties(property: PublicPropertyCard, limit = 3): Promise<PublicPropertyCard[]> {
+export async function similarProperties(tenantId: string, property: PublicPropertyCard, limit = 3): Promise<PublicPropertyCard[]> {
   const rows = await getDb()
     .select(cardColumns)
     .from(properties)
-    .where(and(publiclyVisible(), ne(properties.id, property.id), or(eq(properties.city, property.city), eq(properties.type, property.type))))
+    .where(and(publiclyVisible(tenantId), ne(properties.id, property.id), or(eq(properties.city, property.city), eq(properties.type, property.type))))
     .orderBy(sql`abs(${properties.priceCents} - ${property.priceCents})`)
     .limit(limit);
   if (!rows.length) return [];
@@ -87,15 +87,15 @@ export async function similarProperties(property: PublicPropertyCard, limit = 3)
 }
 
 /** Everything the sitemap needs, without loading descriptions or photos. */
-export async function publishedPropertyRoutes() {
-  return getDb().select({ slug: properties.slug, updatedAt: properties.updatedAt }).from(properties).where(publiclyVisible()).orderBy(desc(properties.publishedAt)).limit(5000);
+export async function publishedPropertyRoutes(tenantId: string) {
+  return getDb().select({ slug: properties.slug, updatedAt: properties.updatedAt }).from(properties).where(publiclyVisible(tenantId)).orderBy(desc(properties.publishedAt)).limit(5000);
 }
 
-async function coverPhotos(ids: string[]) {
+async function coverPhotos(tenantId: string, ids: string[]) {
   const photos = await getDb()
     .select({ id: propertyPhotos.id, propertyId: propertyPhotos.propertyId, alt: propertyPhotos.alt, blurData: propertyPhotos.blurData, isCover: propertyPhotos.isCover, position: propertyPhotos.position })
     .from(propertyPhotos)
-    .where(and(inArray(propertyPhotos.propertyId, ids), eq(propertyPhotos.processingStatus, "ready")));
+    .where(and(eq(propertyPhotos.tenantId, tenantId), inArray(propertyPhotos.propertyId, ids), eq(propertyPhotos.processingStatus, "ready")));
   const covers = new Map<string, PublicPhoto>();
   for (const photo of photos.sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.position - b.position))
     if (!covers.has(photo.propertyId)) covers.set(photo.propertyId, toPhoto(photo, "thumb"));
