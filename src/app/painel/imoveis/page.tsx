@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Building2, Check, Plus, SlidersHorizontal, X } from "lucide-react";
+import { Building2, Check, Copy, Plus, SlidersHorizontal, X } from "lucide-react";
 import { ListFilters, Pagination } from "@/components/list-tools";
 import { value, pageNumber, PAGE_SIZE, type Query } from "@/lib/list-query";
 import {
@@ -28,10 +28,11 @@ import {
 import { formatMoney } from "@/lib/format";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/admin-ui";
 import { propertyCompleteness } from "@/lib/property-completeness";
-import { PropertyPublicationMenu } from "@/components/property-admin-actions";
+import { PropertyPublicationMenu, PropertyShareButton } from "@/components/property-admin-actions";
 import { SiteBadge } from "@/components/site-badge";
 import { PhotoOptimizer } from "@/components/photo-optimizer";
 import { PHOTO_SIZES, photoUrl } from "@/lib/photos";
+import { duplicateProperty } from "./actions";
 
 export default async function AdminPropertiesPage({
   searchParams,
@@ -291,7 +292,14 @@ export default async function AdminPropertiesPage({
                     >
                       Editar
                     </Link>
-                    <PropertyPublicationMenu property={sharable} full />
+                    <form action={duplicateProperty}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <button className="row-menu-button">
+                        <Copy /> Duplicar
+                      </button>
+                    </form>
+                    <PropertyShareButton property={sharable} />
+                    <PropertyPublicationMenu property={sharable} />
                   </footer>
                 </div>
               </article>
