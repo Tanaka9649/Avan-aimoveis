@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, type LucideIcon } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 export function AdminDrawerComposer({
   label,
   title,
   description,
-  icon: Icon,
+  showPlus = false,
   children,
   variant = "primary",
 }: {
   label: string;
   title: string;
   description?: string;
-  icon?: LucideIcon;
+  showPlus?: boolean;
   children: React.ReactNode;
   variant?: "primary" | "secondary";
 }) {
@@ -32,7 +32,7 @@ export function AdminDrawerComposer({
   return (
     <>
       <button className={`admin-button ${variant}`} type="button" onClick={() => setOpen(true)}>
-        {Icon ? <Icon aria-hidden="true"/> : null}
+        {showPlus ? <Plus aria-hidden="true"/> : null}
         {label}
       </button>
       {open ? (
