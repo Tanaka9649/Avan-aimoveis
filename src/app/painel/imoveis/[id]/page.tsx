@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -16,6 +16,7 @@ import { SiteBadge } from "@/components/site-badge";
 import { PropertyEditor } from "@/components/property-editor";
 import { propertyMatch } from "@/lib/property-match";
 import { canAccess } from "@/lib/permissions";
+import { ownerIdentityKey } from "@/lib/owner-identity";
 import Link from "next/link";
 export default async function EditPropertyPage({
   params,
@@ -31,15 +32,21 @@ export default async function EditPropertyPage({
     .where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId)))
     .limit(1);
   if (!p) notFound();
-  const ownerRows = await getDb()
-    .select({ id: owners.id, name: owners.name })
+  const ownerRowsRaw = await getDb()
+    .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email, createdAt: owners.createdAt })
     .from(owners)
-    .where(eq(owners.tenantId,user.tenantId));
+    .where(eq(owners.tenantId,user.tenantId))
+    .orderBy(asc(owners.createdAt));
+  const ownerRows = [...new Map(ownerRowsRaw.map((owner) => [ownerIdentityKey(owner), owner])).values()]
+    .map(({ id: ownerId, name }) => ({ id: ownerId, name }));
   const linked = await getDb()
-    .select({ name: owners.name })
+    .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email, createdAt: owners.createdAt })
     .from(propertyOwners)
     .innerJoin(owners, and(eq(owners.id, propertyOwners.ownerId),eq(owners.tenantId,user.tenantId)))
-    .where(and(eq(propertyOwners.tenantId,user.tenantId),eq(propertyOwners.propertyId, id)));
+    .where(and(eq(propertyOwners.tenantId,user.tenantId),eq(propertyOwners.propertyId, id)))
+    .orderBy(asc(owners.createdAt));
+  const linkedUnique = [...new Map(linked.map((owner) => [ownerIdentityKey(owner), owner])).values()];
+  const primaryOwner = linkedUnique[0];
   const [photos, documents] = await Promise.all([
     getDb()
       .select({
@@ -106,7 +113,11 @@ export default async function EditPropertyPage({
           documents={documents}
           initial={{
             features: p.features.join("\n"),
-            ownerNames: linked.map((o) => o.name).join(", "),
+            ownerNames: linkedUnique.map((o) => o.name).join(", "),
+            ownerId: primaryOwner?.id || "",
+            ownerName: "",
+            ownerPhone: primaryOwner?.phone || "",
+            ownerEmail: primaryOwner?.email || "",
             id: p.id,
             code: p.code,
             title: p.title,
