@@ -1,0 +1,249 @@
+/* Internal SaaS polish. Everything in this file is scoped to authenticated admin surfaces. */
+.admin-app {
+  --admin-bg: #0a0c10;
+  --admin-sidebar: #0e1116;
+  --admin-surface: #12161c;
+  --admin-surface-2: #181d25;
+  --admin-border: #2c3340;
+  --admin-border-soft: #1f2530;
+  --admin-text: #f2f5f9;
+  --admin-muted: #9aa4b2;
+  --admin-muted-2: #6b7584;
+  --admin-blue: #3b82f6;
+  --admin-blue-hover: #2563eb;
+  --admin-green: #22c55e;
+  --admin-amber: #f59e0b;
+  --admin-red: #ef4444;
+}
+
+.admin-app .admin-content { padding: 32px clamp(20px, 3vw, 44px) 64px; }
+.admin-app .admin-card,
+.admin-app .metric-grid > .metric-card { border-radius: 10px; box-shadow: none; }
+.admin-app .admin-card { border-color: var(--admin-border-soft); }
+.admin-app .page-header { margin-bottom: 28px; }
+.admin-app .page-header h1 { font-size: 28px; font-weight: 600; }
+.admin-app .page-header p { color: var(--admin-muted); }
+
+.admin-app .entity-form label,
+.admin-app .form-section-grid label {
+  color: var(--admin-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.admin-app .entity-form input,
+.admin-app .entity-form select,
+.admin-app .entity-form textarea,
+.admin-app .form-section-grid input,
+.admin-app .form-section-grid select,
+.admin-app .form-section-grid textarea {
+  min-height: 40px;
+  border-radius: 6px;
+  border-color: var(--admin-border);
+  background: var(--admin-sidebar);
+  color: var(--admin-text);
+  font-size: 14px;
+  font-weight: 400;
+}
+.admin-app .entity-form input::placeholder,
+.admin-app .form-section-grid input::placeholder,
+.admin-app textarea::placeholder { color: var(--admin-muted-2); }
+.admin-app .entity-form input:focus,
+.admin-app .entity-form select:focus,
+.admin-app .entity-form textarea:focus,
+.admin-app .form-section-grid input:focus,
+.admin-app .form-section-grid select:focus,
+.admin-app .form-section-grid textarea:focus {
+  border-color: var(--admin-blue);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.18);
+}
+
+.admin-app .admin-button,
+.admin-app .admin-primary { min-height: 36px; border-radius: 6px; font-size: 14px; font-weight: 600; }
+.admin-app .admin-button.primary,
+.admin-app .admin-primary { box-shadow: none; }
+.admin-app .admin-button.secondary { background: var(--admin-surface-2); border-color: var(--admin-border); }
+
+.admin-app .status-badge,
+.admin-app .status { min-height: 22px; display: inline-flex; align-items: center; border-radius: 999px; font-size: 12px; font-weight: 500; text-transform: none; }
+.admin-app .table-card th { position: sticky; top: 0; z-index: 1; height: 42px; font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.admin-app .table-card td { min-height: 52px; font-size: 13px; }
+.admin-app .table-card tbody tr:hover { background: var(--admin-surface-2); }
+
+.admin-app .admin-tabs { border-radius: 8px; }
+.admin-app .admin-tabs button,
+.admin-app .admin-tabs a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.admin-app .admin-tabs button[aria-selected="true"],
+.admin-app .admin-tabs a.active {
+  background: rgba(59,130,246,.14);
+  color: #9bc1ff;
+}
+
+.admin-app .analytics-period-card { display: grid; gap: 16px; margin-bottom: 16px; }
+.admin-app .analytics-period-card .entity-form { margin-top: 0; grid-template-columns: minmax(160px,220px) minmax(160px,220px) auto; align-items: end; }
+.admin-app .analytics-period-card .entity-form > div { align-self: end; }
+.admin-app .analytics-metrics { margin-bottom: 16px; }
+.admin-app .analytics-metrics .metric-card > svg { width: 18px; height: 18px; color: #8bb8ff; margin-bottom: 10px; }
+.admin-app .analytics-table-card + .analytics-table-card { margin-top: 16px; }
+
+.admin-app .tenant-wizard { display: grid; gap: 20px; }
+.admin-app .tenant-wizard-stepper {
+  display: grid;
+  grid-template-columns: repeat(6,minmax(0,1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-app .tenant-wizard-stepper li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 8px;
+  background: var(--admin-surface-2);
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.admin-app .tenant-wizard-stepper li > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--admin-border);
+  color: var(--admin-muted);
+  font-size: 10px;
+}
+.admin-app .tenant-wizard-stepper li.active { border-color: rgba(59,130,246,.5); color: var(--admin-text); background: rgba(59,130,246,.08); }
+.admin-app .tenant-wizard-stepper li.active > span { background: var(--admin-blue); color: #fff; }
+.admin-app .tenant-wizard-stepper li.done > span { background: rgba(34,197,94,.14); color: #6ee7a7; }
+.admin-app .tenant-wizard-card { padding: 22px; }
+.admin-app .tenant-wizard-card .entity-form { margin-top: 0; }
+.admin-app .tenant-wizard-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 16px; border-top: 1px solid var(--admin-border-soft); }
+.admin-app .tenant-wizard-actions > div { display: flex; gap: 8px; }
+.admin-app .tenant-review-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.admin-app .tenant-review-card { padding: 16px; border: 1px solid var(--admin-border-soft); border-radius: 8px; background: var(--admin-surface-2); }
+.admin-app .tenant-review-card small { color: var(--admin-muted); }
+.admin-app .tenant-review-card strong { display: block; margin-top: 5px; font-size: 14px; }
+.admin-app .tenant-wizard-message { margin: 0; }
+
+.admin-app .brand-logo-editor-heading,
+.admin-app .brand-logo-panel {
+  border-color: var(--admin-border-soft);
+  background: var(--admin-surface-2);
+  color: var(--admin-text);
+}
+.admin-app .brand-logo-editor-heading p,
+.admin-app .brand-logo-count { color: var(--admin-muted); }
+.admin-app .brand-logo-tabs button {
+  border-color: var(--admin-border);
+  background: var(--admin-sidebar);
+  color: var(--admin-muted);
+}
+.admin-app .brand-logo-tabs button.active { border-color: var(--admin-blue); background: rgba(59,130,246,.12); color: #9bc1ff; }
+.admin-app .brand-logo-fields label { color: var(--admin-muted); }
+.admin-app .brand-logo-fields input { border-color: var(--admin-border); background: var(--admin-sidebar); color: var(--admin-text); }
+.admin-app .brand-logo-preview.light { border-color: var(--admin-border); background: #fff; color: #475569; }
+.admin-app .brand-logo-preview.dark { border-color: var(--admin-border); background: #080b0f; color: #cbd5e1; }
+.admin-app .brand-logo-actions button { border-color: var(--admin-border); background: var(--admin-sidebar); color: var(--admin-muted); }
+.admin-app .brand-logo-actions button:hover { color: var(--admin-text); background: var(--admin-surface); }
+
+.admin-app .admin-editor-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 131;
+  width: min(560px,100vw);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  box-shadow: -24px 0 60px rgba(0,0,0,.42);
+}
+.admin-app .admin-editor-drawer > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--admin-border-soft);
+}
+.admin-app .admin-editor-drawer > header span { color: #8bb8ff; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.admin-app .admin-editor-drawer > header h2 { margin: 4px 0 3px; font-size: 20px; font-weight: 600; }
+.admin-app .admin-editor-drawer > header p { margin: 0; color: var(--admin-muted); font-size: 12px; }
+.admin-app .admin-editor-drawer > header > button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--admin-border); border-radius: 7px; background: var(--admin-surface-2); color: var(--admin-muted); }
+.admin-app .admin-editor-drawer > header > button svg { width: 16px; }
+.admin-app .admin-editor-drawer-body { flex: 1; overflow: auto; padding: 22px 24px 40px; }
+.admin-app .admin-editor-drawer-body .admin-card { padding: 0; border: 0; background: transparent; }
+.admin-app .admin-editor-drawer-body .section-card-header { margin-bottom: 16px; }
+
+.admin-app .platform-sidebar-brand > a { display: flex; align-items: center; gap: 10px; color: var(--admin-text); }
+.admin-app .platform-mark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 9px; background: var(--admin-blue); color: #fff; font-size: 12px; font-weight: 800; }
+.admin-app .platform-wordmark { display: grid; line-height: 1.15; }
+.admin-app .platform-wordmark strong { font-size: 13px; letter-spacing: .01em; }
+.admin-app .platform-wordmark small { color: var(--admin-muted); font-size: 10px; font-weight: 500; }
+.admin-app .superadmin-app .admin-search { color: var(--admin-muted); }
+
+.admin-app .admin-section-tabs { display: grid; gap: 0; }
+.admin-app .admin-section-tabbar { max-width: 100%; overflow-x: auto; }
+.admin-app .admin-section-tabcontent > .admin-card { margin-bottom: 14px; }
+
+.admin-app .impersonation-banner {
+  position: sticky;
+  top: 64px;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 6px 16px;
+  border-bottom: 1px solid rgba(59,130,246,.26);
+  background: rgba(37,99,235,.16);
+  color: #cfe1ff;
+  font-size: 12px;
+}
+.admin-app .impersonation-banner a { color: #fff; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+
+.admin-app .secondary-kpis { margin-top: 10px; }
+.admin-app .secondary-kpis .metric-card { opacity: .93; }
+.admin-app .secondary-kpis .metric-card > strong { font-size: 22px; }
+
+@media(max-width:1180px){
+  .admin-app .tenant-wizard-stepper { grid-template-columns: repeat(3,1fr); }
+}
+@media(max-width:860px){
+  .admin-app .analytics-period-card .entity-form { grid-template-columns: 1fr 1fr; }
+  .admin-app .analytics-period-card .entity-form > div { grid-column: 1/-1; }
+  .admin-app .tenant-wizard-stepper { grid-template-columns: repeat(2,1fr); }
+}
+@media(max-width:620px){
+  .admin-app .admin-content { padding: 24px 16px 50px; }
+  .admin-app .page-header h1 { font-size: 24px; }
+  .admin-app .analytics-period-card .entity-form { grid-template-columns: 1fr; }
+  .admin-app .analytics-period-card .entity-form > div { grid-column: auto; }
+  .admin-app .tenant-wizard-stepper { grid-template-columns: 1fr 1fr; }
+  .admin-app .tenant-wizard-stepper li { padding: 9px; }
+  .admin-app .tenant-review-grid { grid-template-columns: 1fr; }
+  .admin-app .tenant-wizard-actions { align-items: stretch; flex-direction: column-reverse; }
+  .admin-app .tenant-wizard-actions > div { width: 100%; }
+  .admin-app .tenant-wizard-actions button { flex: 1; }
+  .admin-app .admin-editor-drawer { width: 100vw; }
+}
