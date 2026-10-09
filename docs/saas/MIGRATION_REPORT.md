@@ -109,13 +109,44 @@ Membership validation:
 
 The multi-tenant foundation migration completed successfully on the isolated test branch and preserved the observed operational data counts.
 
-No Production migration has been applied.
+## Production migration — 09/10/2026
 
-Before applying to `vercel-production`, continue with:
+Explicit approval was obtained and migrations `0008_saas_multitenant_foundation.sql` and `0009_tenant_relational_integrity.sql` were applied transactionally to:
 
-1. validate `0009_tenant_relational_integrity.sql` on the isolated branch;
-2. repeat the count and relationship checks;
-3. obtain explicit approval for the Production migration.
+- branch: `vercel-production`
+- branch ID: `br-raspy-snow-b58wt9zz`
+
+A fresh pre-migration backup branch was created immediately beforehand:
+
+- `backup-pre-saas-production-2026-10-09`
+- branch ID: `br-cool-sunset-b520s5i0`
+- state: READY
+
+Production counts before and after were preserved:
+
+- properties: 8
+- property_photos: 76
+- owners: 20
+- clients: 2
+- deals: 2
+- users: 2
+- visits: 0
+- proposals: 0
+- sales: 0
+- property_documents: 0
+
+Post-migration validation:
+
+- tenants: 1
+- tenant_memberships: 2
+- super_admins: 1
+- verified tenant relational constraints from 0009: 25
+- NULL tenant_id in verified core tables: 0
+- Avança operational records found under a different tenant: 0
+
+The Drizzle database migration journal was also updated with the exact SHA-256 hashes and timestamps for 0008 and 0009.
+
+Important deployment checkpoint: the Vercel Production deployment was still on pre-SaaS commit `40a4b93641e6144c6534a213344740406256d8b6` when this migration completed. That code does not model the new mandatory `tenant_id` columns, so Production application writes/login flows must not be considered fully compatible until the SaaS code is promoted or a deliberate compatibility/rollback action is taken.
 
 ## Application hardening after the Neon test
 
@@ -128,4 +159,4 @@ On 09/10/2026 the application audit added:
 - invitation quota enforcement and protection against password replacement;
 - Tenant A/B integration tests covering clients, properties, visits, proposals, sales, owners, memberships and database constraints.
 
-Local validation after these changes: 25 test files and 116 tests passed, plus typecheck, lint, Drizzle migration consistency check and the production build. The 0009 migration has not been run on Neon or Production yet.
+Local validation after these changes: 25 test files and 116 tests passed, plus typecheck, lint, Drizzle migration consistency check and the production build. The 0009 migration was subsequently validated on the isolated Neon branch and then applied to `vercel-production` together with 0008 after explicit approval.
