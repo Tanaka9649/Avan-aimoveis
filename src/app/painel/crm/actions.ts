@@ -93,3 +93,18 @@ export async function assignCrmClient(_:State,form:FormData):Promise<State>{
 export async function dealChoices(){
  const user=await requireModule("crm");const db=getDb();const [stageRows,clientRows,propertyRows,team]=await Promise.all([db.select({id:stages.id,name:stages.name,isWon:stages.isWon,isLost:stages.isLost}).from(stages).where(eq(stages.tenantId,user.tenantId)).orderBy(asc(stages.position)),db.select({id:clients.id,name:clients.name,phone:clients.phone,assignedTo:clients.assignedTo}).from(clients).where(clientScope(user)).orderBy(asc(clients.name)),db.select({id:properties.id,title:properties.title,code:properties.code,priceCents:properties.priceCents,city:properties.city,neighborhood:properties.neighborhood,photoId:sql<string|null>`(select id from property_photos where property_id=${properties.id} and tenant_id=${user.tenantId}::uuid and processing_status='ready' order by is_cover desc, position limit 1)`}).from(properties).where(eq(properties.tenantId,user.tenantId)).orderBy(asc(properties.title)),user.role==="admin"?db.select({id:users.id,name:users.name}).from(users).innerJoin(tenantMemberships,and(eq(tenantMemberships.userId,users.id),eq(tenantMemberships.tenantId,user.tenantId),eq(tenantMemberships.status,"active"))).where(eq(users.active,true)):Promise.resolve([])]);return {stages:stageRows,clients:clientRows,properties:propertyRows,team};
 }
+
+
+export async function salePropertyChoices() {
+  const user = await requireModule("crm");
+  return getDb()
+    .select({
+      id: properties.id,
+      title: properties.title,
+      code: properties.code,
+      priceCents: properties.priceCents,
+    })
+    .from(properties)
+    .where(and(eq(properties.tenantId, user.tenantId), ne(properties.status, "vendido")))
+    .orderBy(asc(properties.title));
+}
