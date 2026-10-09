@@ -3,6 +3,7 @@ import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { SettingsForm } from "@/components/settings-form";
 import { BrandLogosEditor } from "@/components/brand-logos-editor";
 import { BrandingSettingsTabs } from "@/components/branding-settings-tabs";
+import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import { DomainVerificationButton } from "@/components/domain-verification-button";
 import { TenantInviteForm } from "@/components/tenant-invite-form";
 import { getDb } from "@/db";
@@ -40,46 +41,48 @@ export default async function SettingsPage() {
   const allowedModules = modules.filter((module) => (planRows[0]?.modules || []).includes(module));
   const enabledModules = new Set(tenantModuleRows.filter((row) => row.enabled).map((row) => row.module));
 
-  return (
-    <div className="admin-content">
-      <PageHeader eyebrow="Somente administrador" title="Empresa, equipe e acessos" description="Configure a identidade deste tenant, sua equipe e as preferências operacionais." />
+  const companySection = (
+    <section className="admin-card">
+      <h2>Empresa e site</h2>
+      <p>Dados, identidade visual e informações públicas de {tenant.name}.</p>
+      <BrandingSettingsTabs
+        details={
+          <SettingsForm action={saveTenantBranding} label="Salvar dados e site">
+            <label>Nome da empresa<input name="name" required minLength={2} defaultValue={tenant.name}/></label>
+            <label>Telefone<input name="phone" defaultValue={tenant.phone || ""}/></label>
+            <label>WhatsApp<input name="whatsapp" defaultValue={tenant.whatsapp || ""}/></label>
+            <label>E-mail<input name="email" type="email" defaultValue={tenant.email || ""}/></label>
+            <label>Cor principal<input name="primaryColor" type="color" defaultValue={site.primaryColor || "#111827"}/></label>
+            <label>Cor secundária<input name="secondaryColor" type="color" defaultValue={site.secondaryColor || "#334155"}/></label>
+            <label>Cor de destaque<input name="accentColor" type="color" defaultValue={site.accentColor || "#3b82f6"}/></label>
+            <label className="wide">Título do site<input name="siteTitle" maxLength={180} defaultValue={site.title || ""}/></label>
+            <label className="wide">Descrição para SEO<textarea name="siteDescription" maxLength={320} defaultValue={site.description || ""}/></label>
+          </SettingsForm>
+        }
+        logos={
+          <SettingsForm action={saveTenantLogos} label="Salvar logos">
+            <BrandLogosEditor initialLogos={brandingLogos(branding)}/>
+            <label className="wide">Favicon — URL<input name="favicon" type="url" defaultValue={branding.favicon || ""}/></label>
+          </SettingsForm>
+        }
+      />
+    </section>
+  );
 
-      <section className="admin-card">
-        <h2>Identidade e site</h2>
-        <p>As alterações são aplicadas somente ao site e ao painel de {tenant.name}. Em Logos do site, você pode combinar marcas de duas ou mais empresas parceiras.</p>
-        <BrandingSettingsTabs
-          details={
-            <SettingsForm action={saveTenantBranding} label="Salvar identidade">
-              <label>Nome da empresa<input name="name" required minLength={2} defaultValue={tenant.name}/></label>
-              <label>Telefone<input name="phone" defaultValue={tenant.phone || ""}/></label>
-              <label>WhatsApp<input name="whatsapp" defaultValue={tenant.whatsapp || ""}/></label>
-              <label>E-mail<input name="email" type="email" defaultValue={tenant.email || ""}/></label>
-              <label>Cor principal<input name="primaryColor" type="color" defaultValue={site.primaryColor || "#111827"}/></label>
-              <label>Cor secundária<input name="secondaryColor" type="color" defaultValue={site.secondaryColor || "#334155"}/></label>
-              <label>Cor de destaque<input name="accentColor" type="color" defaultValue={site.accentColor || "#d6a85f"}/></label>
-              <label className="wide">Título do site<input name="siteTitle" maxLength={180} defaultValue={site.title || ""}/></label>
-              <label className="wide">Descrição para SEO<textarea name="siteDescription" maxLength={320} defaultValue={site.description || ""}/></label>
-            </SettingsForm>
-          }
-          logos={
-            <SettingsForm action={saveTenantLogos} label="Salvar logos">
-              <BrandLogosEditor initialLogos={brandingLogos(branding)}/>
-              <label className="wide">Favicon — URL<input name="favicon" type="url" defaultValue={branding.favicon || ""}/></label>
-            </SettingsForm>
-          }
-        />
-      </section>
+  const domainSection = (
+    <section className="admin-card">
+      <h2>Domínio personalizado</h2>
+      <p>O domínio entra em produção depois da confirmação DNS e da ativação na Vercel. O endereço padrão continua disponível enquanto isso.</p>
+      <SettingsForm action={saveCustomDomain} label="Salvar domínio">
+        <label className="wide">Domínio<input name="customDomain" placeholder="imoveis.suaempresa.com.br" defaultValue={tenant.customDomain || ""}/></label>
+        <div className="wide"><StatusBadge value={tenant.domainStatus}/></div>
+      </SettingsForm>
+      {tenant.customDomain ? <DomainVerificationButton/> : null}
+    </section>
+  );
 
-      <section className="admin-card">
-        <h2>Domínio personalizado</h2>
-        <p>O domínio só entra em produção depois da confirmação DNS e da ativação na Vercel. Enquanto isso, o endereço padrão continua disponível.</p>
-        <SettingsForm action={saveCustomDomain} label="Salvar domínio">
-          <label className="wide">Domínio<input name="customDomain" placeholder="imoveis.suaempresa.com.br" defaultValue={tenant.customDomain || ""}/></label>
-          <div className="wide"><StatusBadge value={tenant.domainStatus}/></div>
-        </SettingsForm>
-        {tenant.customDomain ? <DomainVerificationButton/> : null}
-      </section>
-
+  const teamSection = (
+    <>
       <section className="admin-card">
         <h2>Convidar pessoa</h2>
         <p>A pessoa recebe um link temporário e define a própria senha. O link expira em sete dias.</p>
@@ -87,24 +90,8 @@ export default async function SettingsPage() {
       </section>
 
       <section className="admin-card">
-        <h2>Módulos da empresa</h2>
-        <p>Escolha quais recursos incluídos no plano ficam disponíveis para a equipe. Dependências precisam permanecer ativas.</p>
-        <SettingsForm action={saveTenantModules} label="Salvar módulos">
-          <fieldset className="wide">
-            <legend>Recursos habilitados</legend>
-            {moduleRegistry.filter((definition) => allowedModules.includes(definition.key)).map((definition) => (
-              <label className="check" key={definition.key}>
-                <input type="checkbox" name={`module:${definition.key}`} defaultChecked={enabledModules.has(definition.key)}/>
-                <span><strong>{moduleLabels[definition.key]}</strong><small>{definition.description}</small></span>
-              </label>
-            ))}
-          </fieldset>
-        </SettingsForm>
-      </section>
-
-      <section className="admin-card">
         <h2>Contas e permissões</h2>
-        <p>{team.length} {team.length === 1 ? "conta cadastrada" : "contas cadastradas"} neste tenant.</p>
+        <p>{team.length} {team.length === 1 ? "conta cadastrada" : "contas cadastradas"} nesta empresa.</p>
         {team.map((person) => {
           const isAdmin = person.role === "owner" || person.role === "admin";
           return <article key={person.id} className="account-settings">
@@ -120,19 +107,36 @@ export default async function SettingsPage() {
       </section>
 
       <section className="admin-card">
-        <h2>Atribuir cliente a uma pessoa</h2>
+        <h2>Atribuir cliente</h2>
+        <p>Defina quem será responsável pelo acompanhamento comercial do cliente.</p>
         <SettingsForm action={assignClient} label="Atribuir responsável">
           <label>Cliente<select name="clientId" required><option value="">Selecione</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name}</option>)}</select></label>
           <label>Responsável<select name="userId" required><option value="">Selecione</option>{team.filter((person) => person.status === "active").map((person) => <option value={person.userId} key={person.id}>{person.name}</option>)}</select></label>
         </SettingsForm>
       </section>
+    </>
+  );
 
-      <section className="admin-card">
-        <h2>Exportação da empresa</h2>
-        <p>Baixe uma cópia JSON dos dados deste tenant. Senhas, sessões e tokens de convite nunca entram no arquivo.</p>
-        <a className="admin-primary" href="/api/tenant/export" download>Baixar exportação</a>
-      </section>
+  const modulesSection = (
+    <section className="admin-card">
+      <h2>Módulos da empresa</h2>
+      <p>Escolha quais recursos incluídos no plano ficam disponíveis para a equipe. Dependências precisam permanecer ativas.</p>
+      <SettingsForm action={saveTenantModules} label="Salvar módulos">
+        <fieldset className="wide">
+          <legend>Recursos habilitados</legend>
+          {moduleRegistry.filter((definition) => allowedModules.includes(definition.key)).map((definition) => (
+            <label className="check" key={definition.key}>
+              <input type="checkbox" name={`module:${definition.key}`} defaultChecked={enabledModules.has(definition.key)}/>
+              <span><strong>{moduleLabels[definition.key]}</strong><small>{definition.description}</small></span>
+            </label>
+          ))}
+        </fieldset>
+      </SettingsForm>
+    </section>
+  );
 
+  const preferencesSection = (
+    <>
       <section className="admin-card">
         <h2>Lembretes de visitas</h2>
         <SettingsForm action={saveReminders} label="Salvar preferências">
@@ -141,6 +145,24 @@ export default async function SettingsPage() {
           <label className="wide">Destinatários — um por linha (até 50)<textarea name="recipients" rows={4} required defaultValue={(settings?.recipients ?? [admin.email]).join("\n")}/></label>
         </SettingsForm>
       </section>
+      <section className="admin-card">
+        <h2>Exportação da empresa</h2>
+        <p>Baixe uma cópia JSON dos dados desta empresa. Senhas, sessões e tokens de convite não entram no arquivo.</p>
+        <a className="admin-button secondary" href="/api/tenant/export" download>Baixar exportação</a>
+      </section>
+    </>
+  );
+
+  return (
+    <div className="admin-content">
+      <PageHeader eyebrow="Administração" title="Configurações da empresa" description="Gerencie identidade, domínio, equipe, módulos e preferências operacionais." />
+      <AdminSectionTabs items={[
+        { id: "empresa", label: "Empresa e site", content: companySection },
+        { id: "dominio", label: "Domínio", content: domainSection },
+        { id: "equipe", label: "Equipe e acessos", content: teamSection },
+        { id: "modulos", label: "Módulos", content: modulesSection },
+        { id: "preferencias", label: "Preferências", content: preferencesSection },
+      ]}/>
     </div>
   );
 }
