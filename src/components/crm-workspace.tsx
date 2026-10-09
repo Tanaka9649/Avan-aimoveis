@@ -15,7 +15,7 @@ import type {Query} from "@/lib/list-query";
 import {maskPhone,moneyDigits} from "@/lib/crm-input";
 
 type Column={id:string;name:string;color:string;isWon:boolean;isLost:boolean};
-type DealCard={id:string;title:string;clientId:string;client:string;phone:string;email:string|null;origin:string;responsible:string|null;property:string|null;stageId:string;value:string;tags:string[];nextActionAt:string|null;nextActionType:string|null;nextActionNote:string|null;stageDays:number;attachmentCount:number};
+type DealCard={id:string;title:string;clientId:string;client:string;phone:string;email:string|null;origin:string;responsible:string|null;property:string|null;stageId:string;value:string;tags:string[];nextActionAt:string|null;nextActionType:string|null;nextActionNote:string|null;overdue:boolean;stageDays:number;attachmentCount:number};
 export type CrmClient={id:string;name:string;phone:string;email:string|null;origin:string;responsible:string|null;budgetMin:number|null;budgetMax:number|null;desiredTypes:string[];desiredRegions:string[];desiredFeatures:string[];minBedrooms:number;minBathrooms:number;minParkingSpaces:number;opportunities:number;favorites:number;presented:number;visits:number;proposals:number;history:number;matches:number;nextActionAt:string|null;nextActionType:string|null};
 
 type Drawer={mode:"new"}|{mode:"view"|"edit";client:CrmClient};
@@ -80,7 +80,7 @@ function ClientDrawer({drawer,onClose,onEdit}:{drawer:Drawer;onClose:()=>void;on
  return <CrmDialog title={drawer.mode==="new"?"Novo cliente":client?.name||"Cliente"} description={drawer.mode==="view"?"Contato, preferências e relacionamento em um só lugar.":"Cadastre os dados essenciais e complemente as preferências quando quiser."} onClose={onClose}>{drawer.mode==="view"&&client?<ClientSummary client={client} onEdit={()=>onEdit(client)}/>:<ClientForm key={`${drawer.mode}-${client?.id||"new"}`} client={client} onClose={onClose}/>}</CrmDialog>;
 }
 
-export function CrmWorkspace({userId,query,view,columns,cards,clients,dealTotal,clientTotal,selectedClientId,openNew}:{userId:string;query:Query;view:"funil"|"clientes";columns:Column[];cards:DealCard[];clients:CrmClient[];dealTotal:number;clientTotal:number;selectedClientId?:string;openNew?:boolean}){
+export function CrmWorkspace({query,view,columns,cards,clients,dealTotal,clientTotal,selectedClientId,openNew}:{query:Query;view:"funil"|"clientes";columns:Column[];cards:DealCard[];clients:CrmClient[];dealTotal:number;clientTotal:number;selectedClientId?:string;openNew?:boolean}){
  const selected=useMemo(()=>clients.find(client=>client.id===selectedClientId),[clients,selectedClientId]);
  const[drawer,setDrawer]=useState<Drawer|null>(()=>openNew?{mode:"new"}:selected?{mode:"view",client:selected}:null);
  const[opportunity,setOpportunity]=useState(false);const[notice,setNotice]=useState(query.criado?"Oportunidade criada com sucesso.":"");
