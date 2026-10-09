@@ -76,12 +76,21 @@ export default async function SettingsPage() {
   const domainSection = (
     <section className="admin-card">
       <h2>Domínio personalizado</h2>
-      <p>O domínio entra em produção depois da confirmação DNS e da ativação na Vercel. O endereço padrão continua disponível enquanto isso.</p>
-      <SettingsForm action={saveCustomDomain} label="Salvar domínio">
-        <label className="wide">Domínio<input name="customDomain" placeholder="imoveis.suaempresa.com.br" defaultValue={tenant.customDomain || ""}/></label>
-        <div className="wide"><StatusBadge value={tenant.domainStatus}/></div>
-      </SettingsForm>
-      {tenant.customDomain ? <DomainVerificationButton/> : null}
+      {customDomainAllowed ? (
+        <>
+          <p>Use um domínio próprio para o site desta empresa. Depois de salvar, a plataforma verifica a configuração de DNS antes de ativá-lo.</p>
+          <SettingsForm action={saveCustomDomain} label="Salvar domínio">
+            <label className="wide">Domínio<input name="customDomain" placeholder="imoveis.suaempresa.com.br" defaultValue={tenant.customDomain || ""}/></label>
+            <div className="wide">{tenant.customDomain ? <StatusBadge value={tenant.domainStatus}/> : <span className="muted-copy">Nenhum domínio personalizado configurado.</span>}</div>
+          </SettingsForm>
+          {tenant.customDomain ? <DomainVerificationButton/> : null}
+        </>
+      ) : (
+        <div className="settings-info-state">
+          <strong>Recurso não incluído no plano atual</strong>
+          <p>O endereço padrão da empresa continua funcionando normalmente. O Super Admin pode liberar domínio personalizado pelo plano ou por um limite específico.</p>
+        </div>
+      )}
     </section>
   );
 
