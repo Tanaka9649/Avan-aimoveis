@@ -1,4 +1,5 @@
 import { Plus, type LucideIcon } from "lucide-react";
+import { uiLabel } from "@/lib/ui-labels";
 
 export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: React.ReactNode }) {
   return <header className="page-header">
@@ -24,7 +25,7 @@ export function PlannedAction({ label }: { label: string }) {
 }
 
 export function StatusBadge({ value }: { value: string }) {
-  return <span className={"status-badge status-" + value.toLowerCase().replaceAll("_", "-")}>{value.replaceAll("_", " ")}</span>;
+  return <span className={"status-badge status-" + value.toLowerCase().replaceAll("_", "-")}>{uiLabel(value)}</span>;
 }
 
 export function FormSection({ number, title, description, children, wide = false }: { number: string; title: string; description?: string; children: React.ReactNode; wide?: boolean }) {
