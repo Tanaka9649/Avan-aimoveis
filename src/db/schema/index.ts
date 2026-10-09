@@ -188,9 +188,6 @@ export const owners = pgTable("owners", {
   uniqueIndex("owners_tenant_email_identity_uq")
     .on(t.tenantId, sql`lower(trim(coalesce(${t.email}, '')))`)
     .where(sql`lower(trim(coalesce(${t.email}, ''))) <> ''`),
-  uniqueIndex("owners_tenant_name_only_identity_uq")
-    .on(t.tenantId, sql`lower(regexp_replace(trim(${t.name}), '\\s+', ' ', 'g'))`)
-    .where(sql`regexp_replace(coalesce(${t.phone}, ''), '\\D', '', 'g') = '' AND lower(trim(coalesce(${t.email}, ''))) = ''`),
 ]);
 export const propertyOwners = pgTable("property_owners", {
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
