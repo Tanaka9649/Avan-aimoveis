@@ -125,3 +125,32 @@ Atenção operacional: o deployment Vercel de Production ainda apontava para có
 ## Baseline preservada
 
 O código auditado era single-tenant. O Tenant Avança usa UUID determinístico 00000000-0000-4000-8000-000000000001, slug avanca-imoveis e recebe o backfill de todos os dados legados. O SQL não remove tabelas, registros ou objetos de storage.
+
+
+## Refinamento visual interno — 09/10/2026
+
+Foi aplicada uma rodada de correções e consolidação visual baseada na auditoria do produto, com escopo deliberadamente restrito às áreas autenticadas. O site público e todas as telas de login permaneceram visualmente fora de escopo.
+
+Entregas principais:
+
+- Design system interno consolidado em grafite/preto com azul de destaque, mantendo Manrope.
+- Wizard de Nova Empresa reconstruído com stepper, validação por etapa, slug automático, preview e revisão.
+- Analytics reconstruído usando os componentes visuais do painel.
+- Editor multi-logo corrigido para o tema escuro e contraste interno.
+- Super Admin ganhou navegação responsiva, identidade neutra da plataforma e labels em pt-BR.
+- Detalhe de empresa no Super Admin reorganizado em abas.
+- Configurações do tenant reorganizadas em seções/abas.
+- Visitas, Propostas/Vendas e Proprietários passaram a priorizar a lista, abrindo cadastros em drawer.
+- Dashboard passou a ter hierarquia entre KPIs principais e secundários.
+- CRM ganhou CTA principal de Nova Oportunidade, busca compacta, contexto adicional nos cards, alerta visual de ação atrasada e atalho de WhatsApp.
+- Status, papéis, planos, domínio, auditoria, pluralização e armazenamento foram humanizados para pt-BR.
+- Ao acessar um tenant como Super Admin, uma faixa de contexto informa a impersonação e oferece retorno ao Super Admin.
+
+Uma tentativa adicional de compactar as ações dos cards de imóveis foi revertida após falha de build no Preview. A versão estável anterior foi restaurada antes do deploy de Production.
+
+Validação:
+
+- Preview final do commit `36aaaebb8d0f2c9f77342da24b72bb25a9ee40a7`: READY.
+- Production: deployment `dpl_37amrDAizSRwUzRK5wgXwj422uqs`, READY.
+- Alias `imoveisplatform.vercel.app`: ativo, sem erro de alias.
+- Nenhuma migration ou alteração de dados foi necessária nesta rodada.
