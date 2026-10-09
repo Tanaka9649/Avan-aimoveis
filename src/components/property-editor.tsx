@@ -357,13 +357,17 @@ export function PropertyEditor({
                       )}
                     </select>
                   </label>
-                  {field("price", "Preço de venda (R$)", {
-                    type: "number",
-                    min: 0.01,
-                    max: 21474836.47,
-                    step: "0.01",
-                    placeholder: "450000",
-                  })}
+                  <label className="wizard-field" htmlFor="price">
+                    <span>Preço de venda</span>
+                    <MoneyInput
+                      id="price"
+                      value={values.price}
+                      onValueChange={(value) => change("price", value)}
+                      required
+                      ariaLabel="Preço de venda"
+                    />
+                    {errors.price ? <small id="price-error" className="wizard-error">{errors.price}</small> : null}
+                  </label>
                   <label className="wizard-field" htmlFor="status">
                     <span>Status</span>
                     <select
@@ -635,7 +639,7 @@ export function PropertyEditor({
                     </p>
                     <p>
                       {values.bedrooms} quartos · {values.bathrooms} banheiros ·{" "}
-                      {values.parking} vagas · {values.area} m²
+                      {values.parking} vagas · {Number(values.area || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m²
                     </p>
                   </div>
                 </div>
@@ -657,7 +661,7 @@ export function PropertyEditor({
                   <SummaryBlock title="Características" onEdit={() => go(1)}>
                     <p>
                       {values.bedrooms} quartos · {values.bathrooms} banheiros ·{" "}
-                      {values.parking} vagas · {values.area} m² privativos
+                      {values.parking} vagas · {Number(values.area || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m² privativos
                     </p>
                   </SummaryBlock>
                   <SummaryBlock title="Localização" onEdit={() => go(2)}>
