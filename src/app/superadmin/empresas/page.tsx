@@ -3,6 +3,8 @@ import { and, countDistinct, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import { properties, tenantMemberships, tenants } from "@/db/schema";
 import { requireSuperAdmin } from "@/lib/access";
+import { StatusBadge } from "@/components/admin-ui";
+import { domainStatusLabels, planLabels, tenantStatusLabels } from "@/lib/ui-labels";
 
 const statuses = ["configuring", "trial", "active", "suspended", "cancelled"] as const;
 const plans = ["starter", "pro", "max", "custom"] as const;
@@ -45,13 +47,13 @@ export default async function TenantsPage({ searchParams }: { searchParams: Prom
       <section className="admin-card">
         <form className="entity-form" method="get">
           <label className="wide">Buscar<input name="q" defaultValue={q} placeholder="Nome, slug ou domínio" /></label>
-          <label>Status<select name="status" defaultValue={status}><option value="">Todos</option>{statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label>Plano<select name="plan" defaultValue={plan}><option value="">Todos</option>{plans.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label>Status<select name="status" defaultValue={status}><option value="">Todos</option>{statuses.map((item) => <option key={item} value={item}>{tenantStatusLabels[item]}</option>)}</select></label>
+          <label>Plano<select name="plan" defaultValue={plan}><option value="">Todos</option>{plans.map((item) => <option key={item} value={item}>{planLabels[item]}</option>)}</select></label>
           <div className="wide"><button className="admin-primary">Aplicar filtros</button></div>
         </form>
       </section>
       <section className="admin-card table-card">
-        {rows.length ? <table><thead><tr><th>Empresa</th><th>Plano</th><th>Usuários</th><th>Imóveis</th><th>Status</th><th>Domínio</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id}><td><Link href={"/superadmin/empresas/" + row.id}><strong>{row.name}</strong><small>/empresa/{row.slug}</small></Link></td><td>{row.plan}</td><td>{row.users}</td><td>{row.properties}</td><td><span className={"status status-" + row.status}>{row.status}</span></td><td>{row.domain ? <><strong>{row.domain}</strong><small>{row.domainStatus}</small></> : "Endereço padrão"}</td></tr>)}</tbody></table> : <div className="table-empty roomy"><h2>Nenhuma empresa encontrada</h2><p>Ajuste os filtros ou crie uma nova empresa.</p></div>}
+        {rows.length ? <table><thead><tr><th>Empresa</th><th>Plano</th><th>Usuários</th><th>Imóveis</th><th>Status</th><th>Domínio</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id}><td><Link href={"/superadmin/empresas/" + row.id}><strong>{row.name}</strong><small>/empresa/{row.slug}</small></Link></td><td>{planLabels[row.plan] || row.plan}</td><td>{row.users}</td><td>{row.properties}</td><td><StatusBadge value={row.status}/></td><td>{row.domain ? <><strong>{row.domain}</strong><small>{domainStatusLabels[row.domainStatus] || row.domainStatus}</small></> : "Endereço padrão"}</td></tr>)}</tbody></table> : <div className="table-empty roomy"><h2>Nenhuma empresa encontrada</h2><p>Ajuste os filtros ou crie uma nova empresa.</p></div>}
       </section>
     </main>
   );
