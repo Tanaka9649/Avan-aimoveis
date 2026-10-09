@@ -255,3 +255,45 @@
 
 .admin-app .crm-inline-search{position:relative;display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:0 10px;border:1px solid var(--admin-border-soft);border-radius:8px;background:var(--admin-surface)}.admin-app .crm-inline-search>svg{width:17px;color:var(--admin-muted);flex:0 0 auto}.admin-app .crm-inline-search input{width:100%;height:42px;border:0;background:transparent;color:var(--admin-text);outline:0;font-size:13px}.admin-app .crm-inline-search input::placeholder{color:var(--admin-muted-2)}.admin-app .crm-inline-search a{padding:6px 8px;border-radius:5px;color:var(--admin-muted);font-size:11px;font-weight:600}.admin-app .crm-inline-search a:hover{background:var(--admin-surface-2);color:var(--admin-text)}
 .admin-app .sortable-deal{position:relative;padding-right:36px}.admin-app .deal-card-context{display:grid;gap:4px;margin:8px 0;color:var(--admin-muted);font-size:10px}.admin-app .deal-card-context>span{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-app .deal-card-context svg{width:12px;height:12px;flex:0 0 auto}.admin-app .deal-card-context .deal-origin{width:max-content;padding:3px 6px;border-radius:99px;background:rgba(59,130,246,.1);color:#8bb8ff}.admin-app .deal-next-action{display:flex!important;align-items:center;gap:4px}.admin-app .deal-next-action.overdue{color:#fb7185!important}.admin-app .deal-quick-whatsapp{position:absolute;right:7px;top:42px;z-index:3;display:grid;width:27px;height:27px;place-items:center;border:1px solid var(--admin-border);border-radius:6px;background:var(--admin-surface-2);color:#6ee7a7}.admin-app .deal-quick-whatsapp:hover{border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.1)}.admin-app .deal-quick-whatsapp svg{width:14px;height:14px}
+
+/* Dark-theme segmented controls must never inherit the light public branding styles. */
+.admin-app .branding-settings-tabs{margin-top:18px}
+.admin-app .branding-tab-buttons{
+  display:inline-flex;
+  width:max-content;
+  max-width:100%;
+  gap:3px;
+  margin-bottom:18px;
+  padding:3px;
+  border:1px solid var(--admin-border);
+  border-radius:8px;
+  background:var(--admin-surface-2);
+  box-shadow:none;
+}
+.admin-app .branding-tab-buttons button{
+  min-height:34px;
+  padding:7px 13px;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  color:var(--admin-muted);
+  box-shadow:none;
+  font-size:12px;
+  font-weight:600;
+}
+.admin-app .branding-tab-buttons button:hover{background:rgba(255,255,255,.035);color:var(--admin-text)}
+.admin-app .branding-tab-buttons button.active,
+.admin-app .branding-tab-buttons button[aria-selected="true"]{
+  background:rgba(59,130,246,.14);
+  color:#9bc1ff;
+  box-shadow:none;
+}
+.admin-app.theme-light .branding-tab-buttons{background:#f4f7fb;border-color:#dce3ec}
+.admin-app.theme-light .branding-tab-buttons button:hover{background:#edf2f8;color:#172033}
+.admin-app.theme-light .branding-tab-buttons button.active,
+.admin-app.theme-light .branding-tab-buttons button[aria-selected="true"]{background:#e7f0ff;color:#1d4ed8}
+.admin-app .brand-logo-tabs{padding:3px;border:1px solid var(--admin-border);border-radius:8px;background:var(--admin-surface-2)}
+.admin-app .brand-logo-tabs button{border-color:transparent;background:transparent;color:var(--admin-muted);box-shadow:none}
+.admin-app .brand-logo-tabs button.active{border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.14);color:#9bc1ff}
+.admin-app.theme-light .brand-logo-tabs{background:#f4f7fb;border-color:#dce3ec}
+.admin-app.theme-light .brand-logo-tabs button.active{background:#e7f0ff;color:#1d4ed8}
