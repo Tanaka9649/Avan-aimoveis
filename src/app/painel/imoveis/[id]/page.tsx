@@ -32,23 +32,20 @@ export default async function EditPropertyPage({
     .where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId)))
     .limit(1);
   if (!p) notFound();
-  const ownerRowsRaw = await getDb()
-    .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email, createdAt: owners.createdAt })
-    .from(owners)
-    .where(eq(owners.tenantId,user.tenantId))
-    .orderBy(asc(owners.createdAt));
-  const ownerRows = [...new Map(ownerRowsRaw.map((owner) => [ownerIdentityKey(owner), owner])).values()]
-    .map(({ id: ownerId, name }) => ({ id: ownerId, name }));
-  const linked = await getDb()
-    .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email, createdAt: owners.createdAt })
-    .from(propertyOwners)
-    .innerJoin(owners, and(eq(owners.id, propertyOwners.ownerId),eq(owners.tenantId,user.tenantId)))
-    .where(and(eq(propertyOwners.tenantId,user.tenantId),eq(propertyOwners.propertyId, id)))
-    .orderBy(asc(owners.createdAt));
-  const linkedUnique = [...new Map(linked.map((owner) => [ownerIdentityKey(owner), owner])).values()];
-  const primaryOwner = linkedUnique[0];
-  const [photos, documents] = await Promise.all([
-    getDb()
+  const db = getDb();
+  const [ownerRowsRaw, linked, photos, documents, candidates] = await Promise.all([
+    db
+      .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email, createdAt: owners.createdAt })
+      .from(owners)
+      .where(eq(owners.tenantId,user.tenantId))
+      .orderBy(asc(owners.createdAt)),
+    db
+      .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email, createdAt: owners.createdAt })
+      .from(propertyOwners)
+      .innerJoin(owners, and(eq(owners.id, propertyOwners.ownerId),eq(owners.tenantId,user.tenantId)))
+      .where(and(eq(propertyOwners.tenantId,user.tenantId),eq(propertyOwners.propertyId, id)))
+      .orderBy(asc(owners.createdAt)),
+    db
       .select({
         id: propertyPhotos.id,
         alt: propertyPhotos.alt,
@@ -59,7 +56,7 @@ export default async function EditPropertyPage({
       })
       .from(propertyPhotos)
       .where(and(eq(propertyPhotos.tenantId,user.tenantId),eq(propertyPhotos.propertyId, id))),
-    getDb()
+    db
       .select({
         id: propertyDocuments.id,
         originalName: propertyDocuments.originalName,
@@ -68,10 +65,15 @@ export default async function EditPropertyPage({
       })
       .from(propertyDocuments)
       .where(and(eq(propertyDocuments.tenantId,user.tenantId),eq(propertyDocuments.propertyId, id))),
+    canAccess(user, "clientes")
+      ? db.select().from(clients).where(clientScope(user))
+      : Promise.resolve([]),
   ]);
-  const candidates = canAccess(user, "clientes")
-    ? await getDb().select().from(clients).where(clientScope(user))
-    : [];
+
+  const ownerRows = [...new Map(ownerRowsRaw.map((owner) => [ownerIdentityKey(owner), owner])).values()]
+    .map(({ id: ownerId, name }) => ({ id: ownerId, name }));
+  const linkedUnique = [...new Map(linked.map((owner) => [ownerIdentityKey(owner), owner])).values()];
+  const primaryOwner = linkedUnique[0];
   const matches = candidates
     .map((client) => ({ ...client, ...propertyMatch(client, p) }))
     .filter((client) => client.score >= 45)
