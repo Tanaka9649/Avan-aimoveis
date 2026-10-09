@@ -46,7 +46,7 @@ const routeLabels: Record<string, string> = {
   "/painel/propostas": "Propostas e vendas",
   "/painel/proprietarios": "Proprietários",
   "/painel/analytics": "Analytics",
-  "/painel/configuracoes": "Equipe e acessos",
+  "/painel/configuracoes": "Configurações",
   "/painel/busca": "Busca global",
 };
 
@@ -112,7 +112,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
             const meta = moduleMeta[module];
             return <div key={module}>{item(`/painel/${module}`, meta.label, meta.icon)}</div>;
           })}
-          {user.role === "admin" ? <><small>ADMINISTRAÇÃO</small>{item("/painel/configuracoes", "Equipe e acessos", Settings)}{user.globalRole === "super_admin" ? <Link href="/superadmin" title={collapsed ? "Voltar ao Super Admin" : undefined}><ShieldCheck /><span>Voltar ao Super Admin</span></Link> : null}</> : null}
+          {user.role === "admin" ? <><small>ADMINISTRAÇÃO</small>{item("/painel/configuracoes", "Configurações", Settings)}{user.globalRole === "super_admin" ? <Link href="/superadmin" title={collapsed ? "Voltar ao Super Admin" : undefined}><ShieldCheck /><span>Voltar ao Super Admin</span></Link> : null}</> : null}
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-profile"><span>{user.name.slice(0, 2).toUpperCase()}</span><div><strong>{user.name}</strong><small>{user.role === "admin" ? "Administrador" : "Equipe"}</small></div></div>
