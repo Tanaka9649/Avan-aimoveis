@@ -47,9 +47,12 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  for(const action of nextActions)if(action.clientId&&action.nextActionAt&&!nextActionByClient.has(action.clientId))nextActionByClient.set(action.clientId,{nextActionAt:action.nextActionAt,nextActionType:action.nextActionType});
  const referenceTime=new Date().getTime();
  const cards=dealRows.map(card=>({...card,attachmentCount:Number(card.attachmentCount),value:amount(card.value),nextActionAt:card.nextActionAt?.toISOString()??null,stageDays:Math.max(0,Math.floor((referenceTime-card.stageEnteredAt.getTime())/86400000))}));
- const clientCards:CrmClient[]=visibleClients.map(client=>({
-  id:client.id,name:client.name,phone:client.phone,email:client.email,origin:client.origin,budgetMin:client.budgetMinCents,budgetMax:client.budgetMaxCents,desiredTypes:client.desiredTypes,desiredRegions:client.desiredRegions,desiredFeatures:client.desiredFeatures,minBedrooms:client.minBedrooms??0,minBathrooms:client.minBathrooms??0,minParkingSpaces:client.minParkingSpaces??0,
-  opportunities:dealCountByClient.get(client.id)||0,favorites:favoritesByClient.get(client.id)||0,presented:presentationsByClient.get(client.id)||0,visits:visitsByClient.get(client.id)||0,proposals:proposalsByClient.get(client.id)||0,history:historyByClient.get(client.id)||0,matches:available.filter(property=>propertyMatch(client,property).score>=45).length,nextActionAt:nextActionByClient.get(client.id)?.nextActionAt.toISOString()||null,nextActionType:nextActionByClient.get(client.id)?.nextActionType||null,
- }));
+ const clientCards:CrmClient[]=visibleClients.map(client=>{
+  const hasPreferences = client.budgetMinCents !== null || client.budgetMaxCents !== null || client.desiredTypes.length > 0 || client.desiredRegions.length > 0 || client.desiredFeatures.length > 0 || Boolean(client.minBedrooms || client.minBathrooms || client.minParkingSpaces || client.minArea);
+  return {
+   id:client.id,name:client.name,phone:client.phone,email:client.email,origin:client.origin,budgetMin:client.budgetMinCents,budgetMax:client.budgetMaxCents,desiredTypes:client.desiredTypes,desiredRegions:client.desiredRegions,desiredFeatures:client.desiredFeatures,minBedrooms:client.minBedrooms??0,minBathrooms:client.minBathrooms??0,minParkingSpaces:client.minParkingSpaces??0,
+   opportunities:dealCountByClient.get(client.id)||0,favorites:favoritesByClient.get(client.id)||0,presented:presentationsByClient.get(client.id)||0,visits:visitsByClient.get(client.id)||0,proposals:proposalsByClient.get(client.id)||0,history:historyByClient.get(client.id)||0,matches:hasPreferences?available.filter(property=>propertyMatch(client,property).score>=45).length:0,nextActionAt:nextActionByClient.get(client.id)?.nextActionAt.toISOString()||null,nextActionType:nextActionByClient.get(client.id)?.nextActionType||null,
+  };
+ });
  return <CrmWorkspace key={`${selectedClientId}-${value(query,"novo")}`} userId={user.id} query={query} view={view} columns={stageRows} cards={cards} clients={clientCards} dealTotal={dealCount.value} clientTotal={clientCount.value} selectedClientId={selectedClientId||undefined} openNew={value(query,"novo")==="1"}/>;
 }
