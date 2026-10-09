@@ -54,8 +54,9 @@ export async function saveSale(_: { ok: boolean; message: string }, formData: Fo
   const [property] = await db.select({ id: properties.id }).from(properties).where(and(eq(properties.id, parsed.data.propertyId), eq(properties.tenantId, user.tenantId))).limit(1);
   if (!deal || !property) return { ok: false, message: "Oportunidade ou imóvel indisponível." };
   if (parsed.data.proposalId) {
-    const [proposal] = await db.select({ id: proposals.id }).from(proposals).where(and(eq(proposals.tenantId, user.tenantId), eq(proposals.id, parsed.data.proposalId), eq(proposals.dealId, deal.id), eq(proposals.propertyId, property.id))).limit(1);
+    const [proposal] = await db.select({ id: proposals.id, status: proposals.status }).from(proposals).where(and(eq(proposals.tenantId, user.tenantId), eq(proposals.id, parsed.data.proposalId), eq(proposals.dealId, deal.id), eq(proposals.propertyId, property.id))).limit(1);
     if (!proposal) return { ok: false, message: "A proposta não pertence a esta oportunidade e imóvel." };
+    if (proposal.status !== "aceita") return { ok: false, message: "Marque a proposta como aceita antes de concluir a venda." };
   }
   try {
     await db.batch([
