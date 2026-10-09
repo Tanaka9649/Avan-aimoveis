@@ -10,6 +10,7 @@ import { canCreateResource, getLimit, tenantEntitlements } from "@/lib/entitleme
 import { createTenantInvitation } from "@/lib/invitations";
 import { moduleRegistry, validModuleCombination } from "@/lib/module-registry";
 import { normalizeHostname } from "@/lib/tenant-routing";
+import { compactBrandLogos, type BrandLogoEntry } from "@/lib/branding";
 
 type State = { message: string; ok: boolean; inviteUrl?: string };
 
@@ -174,9 +175,6 @@ export async function saveTenantBranding(_: State, form: FormData): Promise<Stat
     phone: z.string().trim().max(30),
     whatsapp: z.string().trim().max(30),
     email: z.union([z.literal(""), z.email().max(254)]),
-    logoLight: z.union([z.literal(""), z.url().max(2000)]),
-    logoDark: z.union([z.literal(""), z.url().max(2000)]),
-    favicon: z.union([z.literal(""), z.url().max(2000)]),
     primaryColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     secondaryColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     accentColor: z.string().regex(/^#[0-9a-f]{6}$/i),
@@ -193,7 +191,6 @@ export async function saveTenantBranding(_: State, form: FormData): Promise<Stat
         phone: data.phone || null,
         whatsapp: data.whatsapp || null,
         email: data.email || null,
-        branding: { logoLight: data.logoLight || undefined, logoDark: data.logoDark || undefined, favicon: data.favicon || undefined },
         site: { primaryColor: data.primaryColor, secondaryColor: data.secondaryColor, accentColor: data.accentColor, title: data.siteTitle || undefined, description: data.siteDescription || undefined },
         updatedAt: new Date(),
       }).where(eq(tenants.id, admin.tenantId)),
@@ -205,6 +202,67 @@ export async function saveTenantBranding(_: State, form: FormData): Promise<Stat
   revalidatePath("/", "layout");
   revalidatePath("/painel", "layout");
   return { ok: true, message: "Identidade visual e contatos atualizados." };
+}
+
+export async function saveTenantLogos(_: State, form: FormData): Promise<State> {
+  const admin = await requireAdmin();
+
+  let rawLogos: unknown;
+  try {
+    rawLogos = JSON.parse(String(form.get("logosJson") || "[]"));
+  } catch {
+    return { ok: false, message: "Não foi possível ler as logos configuradas." };
+  }
+
+  const urlField = z.union([z.literal(""), z.url().max(2000)]).optional();
+  const logoSchema = z.array(z.object({
+    id: z.string().trim().min(1).max(120),
+    name: z.string().trim().max(80).optional().default(""),
+    logoLight: urlField,
+    logoDark: urlField,
+  })).max(8);
+
+  const parsedLogos = logoSchema.safeParse(rawLogos);
+  const favicon = z.union([z.literal(""), z.url().max(2000)]).safeParse(String(form.get("favicon") || ""));
+  if (!parsedLogos.success || !favicon.success) {
+    return { ok: false, message: "Revise as URLs das logos e do favicon." };
+  }
+
+  const logos = compactBrandLogos(parsedLogos.data as BrandLogoEntry[]);
+  const primary = logos[0];
+  const db = getDb();
+
+  try {
+    const [tenant] = await db.select({ branding: tenants.branding }).from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1);
+    if (!tenant) return { ok: false, message: "Empresa não encontrada." };
+
+    const branding = {
+      ...tenant.branding,
+      logos,
+      logoLight: primary?.logoLight,
+      logoDark: primary?.logoDark,
+      favicon: favicon.data || undefined,
+    };
+
+    await db.batch([
+      db.update(tenants).set({ branding, updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
+      db.insert(activityLogs).values({
+        tenantId: admin.tenantId,
+        userId: admin.id,
+        entityType: "tenant",
+        entityId: admin.tenantId,
+        action: "branding_logos_updated",
+        details: { logoCount: logos.length },
+      }),
+    ]);
+  } catch {
+    return { ok: false, message: "Não foi possível salvar as logos." };
+  }
+
+  revalidatePath("/", "layout");
+  revalidatePath("/painel", "layout");
+  revalidatePath("/painel/configuracoes");
+  return { ok: true, message: logos.length > 1 ? `${logos.length} logos atualizadas.` : "Logo atualizada." };
 }
 
 export async function saveCustomDomain(_: State, form: FormData): Promise<State> {
