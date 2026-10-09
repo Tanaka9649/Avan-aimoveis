@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, asc, count, eq, ilike, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { properties, activityLogs, owners, propertyOwners, propertyPhotos } from "@/db/schema";
@@ -11,6 +11,7 @@ import { requireModule } from "@/lib/access";
 import { propertyInput } from "@/lib/property-input";
 import { canCreateResource } from "@/lib/entitlements";
 import { canPublish, publicationBlockers, publicPropertyUrl } from "@/lib/property-publication";
+import { isValidBrazilianPhone, normalizeEmail, normalizePhone, sameOwnerIdentity } from "@/lib/owner-identity";
 
 export async function saveProperty(_previous: { error: string; id?: string; saved?: boolean }, formData: FormData): Promise<{ error: string; id?: string; saved?: boolean }> {
   const user = await requireModule("imoveis");
@@ -21,10 +22,23 @@ export async function saveProperty(_previous: { error: string; id?: string; save
   const id = typeof rawId === "string" && rawId ? rawId : randomUUID();
   const p = parsed.data;
   if(!rawId&&!await canCreateResource(user.tenantId,"max_properties"))return {error:"O limite de imóveis do plano foi atingido."};
-  const ownerInput=z.object({ownerId:z.union([z.uuid(),z.literal("")]),ownerName:z.string().trim().max(160),ownerPhone:z.string().trim().max(30),ownerEmail:z.union([z.email(),z.literal("")]),features:listInput}).safeParse({ownerId:formData.get("ownerId")||"",ownerName:formData.get("ownerName")||"",ownerPhone:formData.get("ownerPhone")||"",ownerEmail:formData.get("ownerEmail")||"",features:formData.get("features")||""});
+  const ownerInput=z.object({
+    ownerId:z.union([z.uuid(),z.literal("")]),
+    ownerName:z.string().trim().max(160),
+    ownerPhone:z.string().trim().max(30),
+    ownerEmail:z.union([z.email(),z.literal("")]),
+    features:listInput,
+  }).safeParse({
+    ownerId:formData.get("ownerId")||"",
+    ownerName:formData.get("ownerName")||"",
+    ownerPhone:formData.get("ownerPhone")||"",
+    ownerEmail:formData.get("ownerEmail")||"",
+    features:formData.get("features")||"",
+  });
   if(!ownerInput.success)return {error:"Revise os dados do proprietário e características."};
   const owner=ownerInput.data;
   if(!owner.ownerId&&owner.ownerName&&owner.ownerName.length<2)return {error:"Informe o nome completo do proprietário."};
+  if(!owner.ownerId&&owner.ownerPhone&&!isValidBrazilianPhone(owner.ownerPhone))return {error:"Informe um telefone válido com DDD para o proprietário ou deixe o campo em branco."};
   const values = { code: p.code, title: p.title, slug: p.slug, type: p.type, priceCents: p.price, city: p.city, state: p.state, neighborhood: p.neighborhood, addressPrivate: p.address, description: p.description, bedrooms: p.bedrooms, bathrooms: p.bathrooms, parkingSpaces: p.parking, privateArea: p.area.toFixed(2), status: p.status, updatedAt: new Date() };
   // Publication is its own decision, never a side effect of the commercial status, so re-saving a
   // listing no longer republishes it and no longer resets the date it went live.
@@ -32,7 +46,52 @@ export async function saveProperty(_previous: { error: string; id?: string; save
   let publication: { publishedAt?: Date | null; status?: typeof values.status } = {};
   try {
     const db = getDb();
-    if(owner.ownerId){const [found]=await db.select({id:owners.id}).from(owners).where(and(eq(owners.id,owner.ownerId),eq(owners.tenantId,user.tenantId)));if(!found)return {error:"Proprietário indisponível."};}
+
+    let resolvedOwnerId: string | null = owner.ownerId || null;
+    let resolvedOwner: { id: string; name: string; phone: string; email: string | null } | null = null;
+    let ownerNeedsInsert = false;
+
+    if (resolvedOwnerId) {
+      const [found] = await db
+        .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email })
+        .from(owners)
+        .where(and(eq(owners.id, resolvedOwnerId), eq(owners.tenantId, user.tenantId)))
+        .limit(1);
+      if (!found) return { error: "Proprietário indisponível." };
+      resolvedOwner = found;
+    } else if (owner.ownerName) {
+      const phone = normalizePhone(owner.ownerPhone);
+      const email = normalizeEmail(owner.ownerEmail);
+      const matches: SQL[] = [];
+      if (phone) matches.push(sql`regexp_replace(coalesce(${owners.phone}, ''), '\\D', '', 'g') = ${phone}`);
+      if (email) matches.push(sql`lower(trim(coalesce(${owners.email}, ''))) = ${email}`);
+      if (!phone && !email) matches.push(ilike(owners.name, owner.ownerName));
+
+      const identity = matches.length === 1 ? matches[0] : or(...matches);
+      const [existingOwner] = identity
+        ? await db
+            .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email })
+            .from(owners)
+            .where(and(eq(owners.tenantId, user.tenantId), identity))
+            .orderBy(asc(owners.createdAt))
+            .limit(1)
+        : [];
+
+      if (existingOwner) {
+        resolvedOwnerId = existingOwner.id;
+        resolvedOwner = existingOwner;
+      } else {
+        resolvedOwnerId = randomUUID();
+        resolvedOwner = {
+          id: resolvedOwnerId,
+          name: owner.ownerName,
+          phone: owner.ownerPhone,
+          email: owner.ownerEmail || null,
+        };
+        ownerNeedsInsert = true;
+      }
+    }
+
     let current: { publishedAt: Date | null } | undefined;
     if(rawId){const [found]=await db.select({id:properties.id,publishedAt:properties.publishedAt}).from(properties).where(and(eq(properties.id,id),eq(properties.tenantId,user.tenantId),ne(properties.status,"vendido")));if(!found)return {error:"Imóvel indisponível ou vendido."};current=found;}
     if (wantsPublication) {
@@ -45,8 +104,48 @@ export async function saveProperty(_previous: { error: string; id?: string; save
     } else if (formData.get("publish") === "0") {
       publication = { publishedAt: null };
     }
-    const ownerId=owner.ownerId||(owner.ownerName?randomUUID():null);
-    const ownerQueries=[...(!owner.ownerId&&ownerId?[db.insert(owners).values({tenantId:user.tenantId,id:ownerId,name:owner.ownerName,phone:owner.ownerPhone,email:owner.ownerEmail||null})]:[]),...(ownerId?[db.insert(propertyOwners).values({tenantId:user.tenantId,propertyId:id,ownerId}).onConflictDoNothing()]:[])];
+    const ownerQueries = [];
+    if (ownerNeedsInsert && resolvedOwnerId && resolvedOwner) {
+      ownerQueries.push(
+        db.insert(owners).values({
+          tenantId: user.tenantId,
+          id: resolvedOwnerId,
+          name: resolvedOwner.name,
+          phone: resolvedOwner.phone,
+          email: resolvedOwner.email,
+        }),
+      );
+    }
+
+    if (resolvedOwnerId && resolvedOwner) {
+      if (rawId) {
+        const linkedOwners = await db
+          .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email })
+          .from(propertyOwners)
+          .innerJoin(owners, and(eq(owners.id, propertyOwners.ownerId), eq(owners.tenantId, user.tenantId)))
+          .where(and(eq(propertyOwners.tenantId, user.tenantId), eq(propertyOwners.propertyId, id)));
+
+        const onlyDuplicateIdentity =
+          linkedOwners.length > 1 &&
+          linkedOwners.every((linkedOwner) => sameOwnerIdentity(linkedOwner, resolvedOwner!));
+
+        if (onlyDuplicateIdentity) {
+          ownerQueries.push(
+            db.delete(propertyOwners).where(
+              and(eq(propertyOwners.tenantId, user.tenantId), eq(propertyOwners.propertyId, id)),
+            ),
+          );
+        }
+      }
+
+      ownerQueries.push(
+        db.insert(propertyOwners).values({
+          tenantId: user.tenantId,
+          propertyId: id,
+          ownerId: resolvedOwnerId,
+        }).onConflictDoNothing(),
+      );
+    }
     if (rawId) {
       await db.batch([db.update(properties).set({...values,...publication,features:owner.features}).where(and(eq(properties.id,id),eq(properties.tenantId,user.tenantId),ne(properties.status,"vendido"))),...ownerQueries,db.insert(activityLogs).values({tenantId:user.tenantId,userId:user.id,entityType:"property",entityId:id,action:wantsPublication?"published":formData.get("publish")==="0"?"unpublished":"updated"})]);
     } else {
