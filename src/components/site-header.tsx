@@ -4,12 +4,13 @@ import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { Heart, Menu, X } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
+import type { TenantBranding } from "@/lib/branding";
 
 type Props = {
   tenant: {
     name: string;
     slug: string;
-    branding: { logoLight?: string; logoDark?: string; favicon?: string };
+    branding: TenantBranding;
   };
   basePath?: string;
 };
