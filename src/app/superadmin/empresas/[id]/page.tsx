@@ -43,7 +43,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const limitValue = (overrides: Record<string, number | null>, key: string) => overrides[key] ?? "";
+const limitValue = (overrides: Record<string, number | null>, key: string) => overrides[key] ?? "";\nconst storageOverrideGb = (overrides: Record<string, number | null>) => { const bytes = overrides.max_storage_bytes; return typeof bytes === "number" ? Number((bytes / 1073741824).toFixed(2)) : ""; };
 const metadataText = (metadata: Record<string, unknown>) => {
   const value = JSON.stringify(metadata);
   return value.length > 120 ? value.slice(0, 117) + "…" : value;
