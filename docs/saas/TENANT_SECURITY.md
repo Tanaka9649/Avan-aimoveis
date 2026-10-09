@@ -30,6 +30,7 @@ Fixtures A/B exercitam imóveis, clientes, oportunidades, visitas, propostas, ve
 - unicidades de código, slug, posição e deduplicação compostas por tenant;
 - login exige tenant ativo/trial e membership ativa;
 - convite usa token aleatório armazenado apenas como hash, expiração e uso único;
+- convites pendentes consomem quota e a ativação repete a verificação; uma conta global existente precisa confirmar sua senha atual, que nunca é redefinida pelo convite;
 - sessão usa token opaco armazenado como hash e cookie HttpOnly, SameSite Lax e Secure em Production;
 - Super Admin usa globalRole persistido e sessão temporária auditada para acessar um tenant;
 - suspensão/cancelamento remove sessões do tenant sem apagar dados;
@@ -37,12 +38,14 @@ Fixtures A/B exercitam imóveis, clientes, oportunidades, visitas, propostas, ve
 - analytics não armazena IP puro;
 - exportação exclui hashes de senha, sessão e convite;
 - auditoria filtra password, token, secret, signedUrl e conteúdo de documento.
+- relações operacionais críticas possuem FKs compostas (tenant_id, id relacionado), impedindo vínculos cross-tenant mesmo diante de uma escrita malformada;
+- requisição sem slug e sem Host falha fechada, sem fallback implícito para o tenant raiz.
 
 ## Matriz de isolamento
 
 | Superfície | Autoridade | Proteção |
 |---|---|---|
-| Painel e server actions | sessão + tenant + membership | guards e filtros tenant_id |
+| Painel e server actions | sessão + tenant + membership | guards, filtros tenant_id e validação dos recursos relacionados |
 | APIs operacionais | sessão + módulo + permissão | validação de relacionamentos no tenant |
 | Site público | hostname/slug persistido | somente status operacional e imóveis publicados |
 | Fotos e documentos | sessão pública/privada conforme tipo | join com registro e tenant antes da URL/stream |

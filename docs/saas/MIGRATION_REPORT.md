@@ -113,7 +113,19 @@ No Production migration has been applied.
 
 Before applying to `vercel-production`, continue with:
 
-1. application-level tenant-context tests;
-2. cross-tenant authorization tests using synthetic Tenant B data in a safe branch;
-3. lint/typecheck/tests/build;
-4. explicit approval for Production migration.
+1. validate `0009_tenant_relational_integrity.sql` on the isolated branch;
+2. repeat the count and relationship checks;
+3. obtain explicit approval for the Production migration.
+
+## Application hardening after the Neon test
+
+On 09/10/2026 the application audit added:
+
+- Drizzle journal registration for 0008;
+- `0009_tenant_relational_integrity.sql`, which adds composite tenant/resource foreign keys;
+- fail-closed resolution when Host is absent;
+- stricter tenant-correlated joins and write validation;
+- invitation quota enforcement and protection against password replacement;
+- Tenant A/B integration tests covering clients, properties, visits, proposals, sales, owners, memberships and database constraints.
+
+Local validation after these changes: 25 test files and 116 tests passed, plus typecheck, lint, Drizzle migration consistency check and the production build. The 0009 migration has not been run on Neon or Production yet.

@@ -1,29 +1,37 @@
 # Status da implementação SaaS
 
-Atualizado em 08/10/2026.
+Atualizado em 09/10/2026.
 
 | Milestone | Estado | Evidência |
 |---|---|---|
 | 0 — Auditoria | Concluído | Inventário do projeto real, arquitetura, plano de execução e riscos documentados |
 | 1 — Data model | Concluído | Tenants, planos, memberships, convites, módulos, provisioning, analytics e auditoria; entidades operacionais com tenant obrigatório |
-| 2 — Migração Avança | Código e checkpoint concluídos; execução Production bloqueada por segurança | Migration 0008_saas_multitenant_foundation.sql, backfill determinístico e relatório pré/pós-migração; falta restore point e acesso ao Neon de Production |
+| 2 — Migração Avança | Validado em branch isolada; Production aguarda aprovação explícita | 0008 preservou as contagens no clone de vercel-production; backup e relatório pré/pós-migração confirmados. 0009 de integridade relacional foi validada apenas localmente |
 | 3 — Contexto/isolamento | Concluído | Resolução por sessão, slug e hostname; consultas, APIs, storage, PDF e dados públicos escopados |
-| 4 — Membership/convites | Concluído | Memberships, convite com token hash/expiração/uso único e ativação sem senha definida por administrador |
+| 4 — Membership/convites | Concluído | Memberships, convite com token hash/expiração/uso único, quota incluindo convites pendentes e senha de conta existente preservada |
 | 5 — Super Admin | Concluído | Dashboard global, busca/filtros, detalhe da empresa, status, plano, quotas, módulos e acesso auditado |
-| 6 — Provisionamento | Concluído | Wizard em seis etapas, operação transacional/idempotente e checklist persistido |
+| 6 — Provisionamento | Concluído | Wizard em seis etapas, operação transacional, retry idempotente com rotação segura do convite e checklist persistido |
 | 7 — Branding/site | Concluído | Marca, paleta, contatos, login e site público tenant-aware sem fallback para Avança |
 | 8 — Rotas/domínios | Concluído em código | Rota por slug, histórico/redirect, custom domain, Vercel add/verify/remove e sitemap isolado |
-| 9 — Planos/quotas | Concluído | Starter/Pro/Max/Custom, entitlements centralizados, usage e overrides sem exclusão em downgrade |
-| 10 — Módulos | Concluído | Registry central, dependências e validação de plano + tenant + permissão no backend |
+| 9 — Planos/quotas | Concluído | Starter/Pro/Max/Custom, usage/limite visível e enforcement backend para usuários, imóveis, clientes, oportunidades, documentos, armazenamento e domínio |
+| 10 — Módulos | Concluído | Registry central, dependências, validação de plano + tenant + permissão no backend e configuração self-service pelo admin do tenant |
 | 11 — Analytics | Concluído | Eventos públicos, UTM separado do CRM, deduplicação, filtros, agregação e retenção configurável |
 | 12 — Auditoria/exportação | Concluído | Ações sensíveis auditadas e exportação JSON tenant-aware sem hashes ou segredos |
-| 13 — Hardening | Concluído | Fail-closed, host normalizado, rate limit, cookies seguros, tenant obrigatório e sessão invalidada na suspensão |
-| 14 — Testes | Concluído | CI verde: npm ci, typecheck, lint, testes e build |
+| 13 — Hardening | Concluído em código | Fail-closed inclusive sem header Host, joins correlacionados por tenant, constraints relacionais compostas, rate limit, cookies seguros e invalidação de sessão |
+| 14 — Testes | Concluído | 25 arquivos e 116 testes locais aprovados, incluindo Tenant A/B, constraints no PostgreSQL efêmero, quotas, convites, provisionamento, typecheck, lint e build |
 | 15 — Preview/revisão | Preview READY; smoke test hospedado bloqueado externamente | Deployment dpl_FuATJ5EcLKfDijYqUkMPzJm2h1NC no commit f731116; Vercel SSO ativo e conexão recusou bypass autenticado com 403 |
 
 ## Checkpoint técnico
 
-Validação integral: GitHub Actions quality, run 37818736495, commit f731116ff6f297cb8bf73acd3de678ea20bbfc08, conclusão success.
+Validação local em 09/10/2026:
+
+1. npm run typecheck — aprovado;
+2. npm run lint — aprovado;
+3. npm test — 25 arquivos e 116 testes aprovados;
+4. npm run build — aprovado com Next.js 16.3.5.
+5. npx --no-install drizzle-kit check — journal e migrations consistentes.
+
+Última validação integral anterior no GitHub Actions: run 37818736495, commit f731116ff6f297cb8bf73acd3de678ea20bbfc08, conclusão success.
 
 Etapas confirmadas no CI:
 
@@ -50,6 +58,21 @@ O relatório agora:
 - diferencia tabelas globais de tabelas tenant-owned;
 - continua protegido por ALLOW_SAAS_COUNT_REPORT=true.
 
+O hardening de 09/10/2026 também:
+
+- registrou corretamente a migration 0008 no journal do Drizzle;
+- adicionou 0009_tenant_relational_integrity.sql com FKs compostas tenant/recurso;
+- eliminou leitura não escopada de proprietários no cadastro de imóvel;
+- bloqueou apresentação de imóvel de outro tenant;
+- correlacionou tenant_id nos joins críticos de dashboard, CRM, busca, propostas e ficha do cliente;
+- tornou a resolução sem Host explicitamente fail-closed;
+- incluiu convites pendentes na quota de usuários;
+- impediu que a aceitação de convite redefina a senha global de uma conta existente;
+- permitiu ao admin do tenant ativar/desativar módulos somente dentro do plano e com dependências válidas.
+- tornou o retry de provisionamento idempotente e validou módulos contra o plano;
+- aplicou quotas de oportunidades, documentos e armazenamento antes das respectivas criações/uploads;
+- passou a exibir uso/limite efetivo no detalhe Super Admin.
+
 ## Configuração Vercel confirmada
 
 As seguintes variáveis foram registradas para Preview e Production:
@@ -64,24 +87,25 @@ ROOT_DOMAIN não foi inventado porque ainda não há domínio raiz definitivo co
 
 ## Migração de Production não executada
 
-A migration não foi aplicada ao Neon de Production porque a especificação exige, antes da escrita:
+A migration não foi aplicada ao Neon de Production. O checkpoint seguro já confirmou:
 
-1. identificar inequivocamente projeto e branch Production;
-2. criar/confirmar restore point ou branch de segurança;
-3. executar npm run saas:counts e guardar o relatório anterior;
-4. validar migration em Preview;
-5. repetir contagens e comparar depois.
+1. projeto Neon avan-aimoveis-dev (wandering-snow-32301627);
+2. branch com os dados atuais: vercel-production (br-raspy-snow-b58wt9zz);
+3. backup: backup-pre-saas-vercel-production-2026-10-08 (br-old-rice-b5xkemer);
+4. teste isolado: test-saas-migration-2026-10-08 (br-odd-water-b5e3f4vx);
+5. migration 0008 aprovada no clone, com contagens preservadas.
 
-Nenhuma credencial foi registrada no repositório ou exposta no chat.
+Antes de Production, a 0009 deve ser aplicada e validada nessa branch isolada, seguida dos mesmos relatórios de contagem. A escrita em vercel-production continua exigindo aprovação explícita. Nenhuma credencial foi registrada no repositório.
 
 ## Bloqueios externos reais
 
 ### Neon
 
 - Serviço: Neon PostgreSQL
-- Projeto/branch: não expostos às ferramentas conectadas desta sessão
-- Permissão necessária: criar/confirmar restore point, consultar branch e executar migration
-- Etapa bloqueada: contagens, aplicação e validação da migration em Preview e Production
+- Projeto: avan-aimoveis-dev
+- Branch operacional: vercel-production
+- Segurança: backup e branch isolada confirmados
+- Etapa pendente: validar 0009 na branch isolada; aplicar 0008/0009 em Production somente após aprovação explícita
 
 ### Vercel
 
@@ -91,10 +115,6 @@ Nenhuma credencial foi registrada no repositório ou exposta no chat.
 - Proteção: Vercel SSO
 - Etapa bloqueada: smoke test HTTP autenticado
 - Evidência: web_fetch_vercel_url recebeu 403 em read_protection_bypass porque a conexão atual não possui acesso ao projeto/equipe para o bypass
-
-### Executor local
-
-O terminal e o navegador autenticado desta sessão falham antes de iniciar com helper_unknown_error: setup refresh had errors. Esse erro impede usar a sessão local já autenticada para operar o Neon Console ou executar os scripts existentes.
 
 ## Baseline preservada
 

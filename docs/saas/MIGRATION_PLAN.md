@@ -6,7 +6,7 @@
 2. Criar e registrar restore point ou branch de segurança.
 3. Executar npm run saas:counts e guardar o relatório anterior.
 4. Aplicar primeiro em Preview com fixtures sintéticas.
-5. Revisar o SQL efetivo de drizzle/0008_saas_multitenant_foundation.sql.
+5. Revisar os SQLs efetivos de drizzle/0008_saas_multitenant_foundation.sql e drizzle/0009_tenant_relational_integrity.sql.
 6. Executar npm run db:migrate uma única vez.
 7. Repetir npm run saas:counts e comparar tabela por tabela.
 8. Executar smoke tests autenticados e públicos antes da promoção.
@@ -55,4 +55,4 @@ Rollback de aplicação não desfaz schema. Preferir migration corretiva compat�
 
 ## Estado atual
 
-A migration está implementada e validada por typecheck, lint, testes e build, mas não foi executada em Production. Sem acesso ao projeto Neon e sem restore point verificável, aplicar o SQL violaria o checkpoint de segurança da especificação.
+A 0008 foi executada com sucesso somente na branch Neon isolada test-saas-migration-2026-10-08, criada a partir de vercel-production, e preservou as contagens documentadas em MIGRATION_REPORT.md. A 0009 foi validada em PostgreSQL efêmero pela suíte local e ainda precisa ser executada e conferida nessa branch isolada. Nenhuma delas foi aplicada a vercel-production nesta etapa; essa escrita exige aprovação explícita.
