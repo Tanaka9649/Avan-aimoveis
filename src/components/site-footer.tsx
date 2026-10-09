@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, MessageCircle, Phone } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
+import type { TenantBranding } from "@/lib/branding";
 
 type Props = {
   tenant: {
@@ -8,7 +9,7 @@ type Props = {
     phone: string | null;
     whatsapp: string | null;
     email: string | null;
-    branding: { logoLight?: string; logoDark?: string; favicon?: string };
+    branding: TenantBranding;
     settings: Record<string, unknown>;
   };
   basePath?: string;
