@@ -62,3 +62,48 @@ export function formatBytes(bytes: number) {
 export function countText(count: number, singular: string, plural = singular + "s") {
   return `${count.toLocaleString("pt-BR")} ${count === 1 ? singular : plural}`;
 }
+
+export const auditActionLabels: Record<string, string> = {
+  "tenant_created": "Empresa criada",
+  "tenant.identity_updated": "Identidade atualizada",
+  "tenant.status_changed": "Status alterado",
+  "tenant.plan_changed": "Plano alterado",
+  "tenant.limits_updated": "Limites atualizados",
+  "tenant.modules_updated": "Módulos atualizados",
+  "tenant.admin_access_started": "Acesso administrativo iniciado",
+  "tenant_provisioning_retried": "Provisionamento repetido",
+  "branding_updated": "Identidade visual atualizada",
+  "branding_logos_updated": "Logos atualizadas",
+  "modules_updated": "Módulos atualizados",
+};
+
+export const auditEntityLabels: Record<string, string> = {
+  tenant: "Empresa",
+  tenant_domain: "Domínio",
+  membership: "Usuário",
+  settings: "Configuração",
+  property: "Imóvel",
+  client: "Cliente",
+  deal: "Oportunidade",
+};
+
+export const provisionStepLabels: Record<string, string> = {
+  tenant: "Empresa",
+  branding: "Identidade visual",
+  plan: "Plano",
+  modules: "Módulos",
+  admin_invite: "Convite do administrador",
+  site: "Site",
+};
+
+export function auditActionLabel(value: string) {
+  return auditActionLabels[value] || value.replaceAll("_", " ").replaceAll(".", " › ");
+}
+
+export function auditEntityLabel(value: string) {
+  return auditEntityLabels[value] || value.replaceAll("_", " ");
+}
+
+export function provisionStepLabel(value: string) {
+  return provisionStepLabels[value] || value.replaceAll("_", " ");
+}
