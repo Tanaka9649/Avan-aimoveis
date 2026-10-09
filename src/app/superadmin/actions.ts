@@ -150,6 +150,8 @@ export async function updateTenantLimits(
       max_users: readLimit(formData, "max_users"),
       max_properties: readLimit(formData, "max_properties"),
       max_clients: readLimit(formData, "max_clients"),
+      max_opportunities: readLimit(formData, "max_opportunities"),
+      max_documents: readLimit(formData, "max_documents"),
       max_storage_bytes: readLimit(formData, "max_storage_bytes"),
       custom_domain: formData.get("custom_domain") === "1" ? 1 : 0,
     };

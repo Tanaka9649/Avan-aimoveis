@@ -3,9 +3,10 @@ import { randomUUID } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
 import { tenantAuditLogs, tenantInvites, tenantMemberships, tenantProvisioning, tenants, users } from "@/db/schema";
+import { canActivateMembership, canCreateResource } from "@/lib/entitlements";
 import type { Access } from "@/lib/permissions";
 import { defaultAccess } from "@/lib/permissions";
-import { hashPassword, hashToken, issueToken } from "@/lib/security";
+import { hashPassword, hashToken, issueToken, verifyPassword } from "@/lib/security";
 
 type InviteRole = "owner" | "admin" | "manager" | "agent" | "viewer";
 
@@ -31,6 +32,9 @@ export async function createTenantInvitation(input: {
       gt(tenantInvites.expiresAt, new Date()),
     ))
     .limit(1);
+  if (!pending && !await canCreateResource(input.tenantId, "max_users")) {
+    throw new Error("tenant_user_quota_exceeded");
+  }
 
   const inviteId = pending?.id || randomUUID();
   const values = {
@@ -83,16 +87,27 @@ export async function acceptInvitation(token: string, password: string) {
     return { ok: false as const, error: "A empresa não está disponível." };
   }
 
-  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, invite.email)).limit(1);
+  const [existing] = await db.select({ id: users.id, passwordHash: users.passwordHash }).from(users).where(eq(users.email, invite.email)).limit(1);
   const userId = existing?.id || randomUUID();
-  const passwordHash = await hashPassword(password);
+  const [membership] = existing
+    ? await db.select({ status: tenantMemberships.status }).from(tenantMemberships).where(and(eq(tenantMemberships.tenantId, invite.tenantId), eq(tenantMemberships.userId, existing.id))).limit(1)
+    : [];
+  if (membership?.status !== "active" && !await canActivateMembership(invite.tenantId)) {
+    return { ok: false as const, error: "O limite de usuários do plano foi atingido." };
+  }
+  let userMutation;
   if (existing) {
-    await db.update(users).set({ passwordHash, active: true, updatedAt: now }).where(eq(users.id, userId));
+    if (!await verifyPassword(password, existing.passwordHash)) {
+      return { ok: false as const, error: "Esta conta já existe. Informe a senha atual para aceitar o convite." };
+    }
+    userMutation = db.update(users).set({ active: true, updatedAt: now }).where(eq(users.id, userId));
   } else {
-    await db.insert(users).values({ id: userId, name: invite.name, email: invite.email, passwordHash, role: "equipe", active: true });
+    const passwordHash = await hashPassword(password);
+    userMutation = db.insert(users).values({ id: userId, name: invite.name, email: invite.email, passwordHash, role: "equipe", active: true });
   }
 
   await db.batch([
+    userMutation,
     db.insert(tenantMemberships).values({
       tenantId: invite.tenantId,
       userId,

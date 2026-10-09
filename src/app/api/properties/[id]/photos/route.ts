@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { properties, propertyPhotos } from "@/db/schema";
 import { requireModule } from "@/lib/access";
+import { canConsumeResource } from "@/lib/entitlements";
 import { PHOTO_BUCKET, signedUploadUrl, tenantStorageKey } from "@/lib/storage";
 import { MAX_PROPERTY_PHOTOS, normalizeUploadMetadata, safeFileName, validateUploadMetadata } from "@/lib/upload";
 
@@ -21,6 +22,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const files = parsed.data.files.map((file) => normalizeUploadMetadata(file, "photo"));
   const invalid = files.map((file) => validateUploadMetadata(file, "photo")).find(Boolean);
   if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
+  if (!await canConsumeResource(user.tenantId, "max_storage_bytes", files.reduce((total, file) => total + file.size, 0))) {
+    return NextResponse.json({ error: "O limite de armazenamento do plano foi atingido." }, { status: 409 });
+  }
 
   const db = getDb();
   const [property] = await db.select({ id: properties.id, title: properties.title }).from(properties).where(and(eq(properties.id, id), eq(properties.tenantId, user.tenantId))).limit(1);

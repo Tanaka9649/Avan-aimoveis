@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { documentCategories, properties, propertyDocuments } from "@/db/schema";
 import { requireModule } from "@/lib/access";
+import { canConsumeResource } from "@/lib/entitlements";
 import { DOCUMENT_BUCKET, storageClient, tenantStorageKey } from "@/lib/storage";
 import { safeFileName, validateUpload } from "@/lib/upload";
 
@@ -23,6 +24,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!(file instanceof File)) return NextResponse.json({ error: "Selecione um documento." }, { status: 400 });
   const invalid = validateUpload(file, "document");
   if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
+  if (!await canConsumeResource(user.tenantId, "max_documents", 1)) return NextResponse.json({ error: "O limite de documentos do plano foi atingido." }, { status: 409 });
+  if (!await canConsumeResource(user.tenantId, "max_storage_bytes", file.size)) return NextResponse.json({ error: "O limite de armazenamento do plano foi atingido." }, { status: 409 });
   let [category] = await db.select({ id: documentCategories.id }).from(documentCategories).where(and(eq(documentCategories.tenantId, user.tenantId), eq(documentCategories.entityType, "property"))).limit(1);
   if (!category) [category] = await db.insert(documentCategories).values({ tenantId: user.tenantId, name: "Documentos do imóvel", entityType: "property" }).returning({ id: documentCategories.id });
   const documentId = randomUUID();

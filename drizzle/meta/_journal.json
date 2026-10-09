@@ -57,6 +57,20 @@
       "when": 1790249712186,
       "tag": "0007_naive_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791462125000,
+      "tag": "0008_saas_multitenant_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791543600000,
+      "tag": "0009_tenant_relational_integrity",
+      "breakpoints": true
     }
   ]
 }

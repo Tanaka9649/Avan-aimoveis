@@ -10,6 +10,7 @@ import {requireModule,clientScope} from "@/lib/access";
 import {clientInput,optionalMoney} from "@/lib/client-input";
 import {dealPosition} from "@/lib/crm-input";
 import { parseOperationDateTime } from "@/lib/datetime";
+import { canCreateResource } from "@/lib/entitlements";
 type State={ok:boolean;message:string};
 export type CrmClientState={ok:boolean;message:string;clientId?:string;duplicate?:{id:string;name:string}};
 export async function saveDeal(_:State,form:FormData):Promise<State>{
@@ -17,6 +18,7 @@ export async function saveDeal(_:State,form:FormData):Promise<State>{
  const p=z.object({id:z.union([z.uuid(),z.literal("")]),clientId:z.uuid(),title:z.string().trim().min(3).max(180),stageId:z.uuid(),amount:optionalMoney,nextActionAt:z.string().max(40),nextActionType:z.string().trim().max(80),nextActionNote:z.string().trim().max(500),lostReason:z.string().trim().max(2000),note:z.string().trim().max(10000),assignedTo:z.union([z.uuid(),z.literal("")])}).safeParse(Object.fromEntries(form));
  if(!p.success)return {ok:false,message:"Revise título, cliente, etapa e valor."};
  const v=p.data;const [client]=await db.select().from(clients).where(and(eq(clients.id,v.clientId),clientScope(user)));if(!client)return {ok:false,message:"Cliente indisponível."};
+ if(!v.id&&!await canCreateResource(user.tenantId,"max_opportunities"))return {ok:false,message:"O limite de oportunidades do plano foi atingido."};
  const [stage]=await db.select().from(stages).where(and(eq(stages.id,v.stageId),eq(stages.tenantId,user.tenantId)));if(!stage)return {ok:false,message:"Etapa inválida."};
  if(stage.isLost&&!v.lostReason)return {ok:false,message:"Informe o motivo da perda."};
  if(v.nextActionType&&!v.nextActionAt)return {ok:false,message:"Escolha uma data para a próxima ação."};

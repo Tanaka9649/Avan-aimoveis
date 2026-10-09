@@ -4,15 +4,16 @@ import { SettingsForm } from "@/components/settings-form";
 import { DomainVerificationButton } from "@/components/domain-verification-button";
 import { TenantInviteForm } from "@/components/tenant-invite-form";
 import { getDb } from "@/db";
-import { clients, reminderSettings, tenantMemberships, tenants, users } from "@/db/schema";
+import { clients, plans, reminderSettings, tenantMemberships, tenantModules, tenants, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
+import { moduleRegistry } from "@/lib/module-registry";
 import { moduleLabels, modules } from "@/lib/permissions";
-import { assignClient, createAccount, saveCustomDomain, saveReminders, saveTenantBranding, updateAccount } from "./actions";
+import { assignClient, createAccount, saveCustomDomain, saveReminders, saveTenantBranding, saveTenantModules, updateAccount } from "./actions";
 
 export default async function SettingsPage() {
   const admin = await requireAdmin();
   const db = getDb();
-  const [team, preferences, customers, tenantRows] = await Promise.all([
+  const [team, preferences, customers, tenantRows, planRows, tenantModuleRows] = await Promise.all([
     db.select({
       id: tenantMemberships.id,
       userId: users.id,
@@ -25,12 +26,16 @@ export default async function SettingsPage() {
     db.select().from(reminderSettings).where(and(eq(reminderSettings.tenantId, admin.tenantId), eq(reminderSettings.key, "visits"))).limit(1),
     db.select({ id: clients.id, name: clients.name }).from(clients).where(eq(clients.tenantId, admin.tenantId)).orderBy(desc(clients.createdAt)).limit(200),
     db.select().from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1),
+    db.select({ modules: plans.modules }).from(tenants).leftJoin(plans, eq(plans.code, tenants.plan)).where(eq(tenants.id, admin.tenantId)).limit(1),
+    db.select({ module: tenantModules.module, enabled: tenantModules.enabled }).from(tenantModules).where(eq(tenantModules.tenantId, admin.tenantId)),
   ]);
   const settings = preferences[0];
   const tenant = tenantRows[0];
   if (!tenant) return null;
   const site = tenant.site || {};
   const branding = tenant.branding || {};
+  const allowedModules = modules.filter((module) => (planRows[0]?.modules || []).includes(module));
+  const enabledModules = new Set(tenantModuleRows.filter((row) => row.enabled).map((row) => row.module));
 
   return (
     <div className="admin-content">
@@ -69,6 +74,22 @@ export default async function SettingsPage() {
         <h2>Convidar pessoa</h2>
         <p>A pessoa recebe um link temporário e define a própria senha. O link expira em sete dias.</p>
         <TenantInviteForm action={createAccount}/>
+      </section>
+
+      <section className="admin-card">
+        <h2>Módulos da empresa</h2>
+        <p>Escolha quais recursos incluídos no plano ficam disponíveis para a equipe. Dependências precisam permanecer ativas.</p>
+        <SettingsForm action={saveTenantModules} label="Salvar módulos">
+          <fieldset className="wide">
+            <legend>Recursos habilitados</legend>
+            {moduleRegistry.filter((definition) => allowedModules.includes(definition.key)).map((definition) => (
+              <label className="check" key={definition.key}>
+                <input type="checkbox" name={`module:${definition.key}`} defaultChecked={enabledModules.has(definition.key)}/>
+                <span><strong>{moduleLabels[definition.key]}</strong><small>{definition.description}</small></span>
+              </label>
+            ))}
+          </fieldset>
+        </SettingsForm>
       </section>
 
       <section className="admin-card">

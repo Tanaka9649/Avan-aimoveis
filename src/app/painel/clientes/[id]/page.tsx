@@ -79,7 +79,7 @@ export default async function Page({
           .from(dealProperties)
           .innerJoin(deals,and(eq(deals.id,dealProperties.dealId),eq(deals.tenantId,user.tenantId)))
           .innerJoin(properties,and(eq(properties.id,dealProperties.propertyId),eq(properties.tenantId,user.tenantId)))
-          .where(eq(deals.clientId, id))
+          .where(and(eq(dealProperties.tenantId,user.tenantId),eq(deals.clientId, id)))
       : [],
     canAccess(user, "visitas")
       ? db
@@ -102,8 +102,8 @@ export default async function Page({
             status: proposals.status,
           })
           .from(proposals)
-          .innerJoin(deals, eq(deals.id, proposals.dealId))
-          .where(eq(deals.clientId, id))
+          .innerJoin(deals, and(eq(deals.id, proposals.dealId),eq(deals.tenantId,user.tenantId)))
+          .where(and(eq(proposals.tenantId,user.tenantId),eq(deals.clientId, id)))
       : [],
     db
       .select({

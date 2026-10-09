@@ -64,7 +64,7 @@ export async function tenantForRequest(): Promise<TenantRecord | null> {
 
   const rawHost = requestHeaders.get("host");
   const host = normalizeHostname(rawHost);
-  if (!host) return rootTenant();
+  if (!host) return null;
 
   const tenant = await tenantByHost(host);
   if (tenant) return tenantOperational(tenant.status) ? tenant : null;

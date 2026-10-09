@@ -3,11 +3,12 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { users, sessions, activityLogs, reminderSettings, clients, tenantMemberships, tenants } from "@/db/schema";
+import { users, sessions, activityLogs, reminderSettings, clients, tenantMemberships, tenantModules, tenants } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
 import { defaultAccess, modules } from "@/lib/permissions";
-import { canCreateResource, getLimit } from "@/lib/entitlements";
+import { canCreateResource, getLimit, tenantEntitlements } from "@/lib/entitlements";
 import { createTenantInvitation } from "@/lib/invitations";
+import { moduleRegistry, validModuleCombination } from "@/lib/module-registry";
 import { normalizeHostname } from "@/lib/tenant-routing";
 
 type State = { message: string; ok: boolean; inviteUrl?: string };
@@ -37,7 +38,10 @@ export async function createAccount(_: State, form: FormData): Promise<State> {
       message: "Convite criado. Copie o link e envie à pessoa; nenhuma senha foi definida pelo administrador.",
       inviteUrl: invitation.inviteUrl,
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "tenant_user_quota_exceeded") {
+      return { ok: false, message: "O limite de usuários do plano foi atingido." };
+    }
     return { ok: false, message: "Não foi possível criar o convite agora." };
   }
 }
@@ -49,8 +53,11 @@ export async function updateAccount(_: State, form: FormData): Promise<State> {
   const selected = z.array(z.enum(modules)).safeParse(form.getAll("modules"));
   if (!id.success || !scope.success || !selected.success) return { ok: false, message: "Permissões inválidas." };
   const db = getDb();
-  const [target] = await db.select({ id: tenantMemberships.id, userId: tenantMemberships.userId }).from(tenantMemberships).where(and(eq(tenantMemberships.id, id.data), eq(tenantMemberships.tenantId, admin.tenantId))).limit(1);
+  const [target] = await db.select({ id: tenantMemberships.id, userId: tenantMemberships.userId, role: tenantMemberships.role }).from(tenantMemberships).where(and(eq(tenantMemberships.id, id.data), eq(tenantMemberships.tenantId, admin.tenantId))).limit(1);
   if (!target) return { ok: false, message: "Conta não encontrada nesta empresa." };
+  if (target.role === "owner" || target.role === "admin") {
+    return { ok: false, message: "Contas administrativas devem ser gerenciadas pelo fluxo de governança." };
+  }
   const active = form.get("active") === "on";
   try {
     await db.batch([
@@ -105,6 +112,58 @@ export async function assignClient(_: State, form: FormData): Promise<State> {
   }
   revalidatePath("/painel", "layout");
   return { ok: true, message: "Responsável atualizado." };
+}
+
+export async function saveTenantModules(_: State, form: FormData): Promise<State> {
+  const admin = await requireAdmin();
+  const entitlements = await tenantEntitlements(admin.tenantId);
+  if (!entitlements) return { ok: false, message: "Não foi possível carregar o plano desta empresa." };
+
+  const allowed = modules.filter((module) => entitlements.modules.includes(module));
+  const enabled = modules.filter((module) => form.get("module:" + module) === "on");
+  if (!enabled.length) return { ok: false, message: "Mantenha ao menos um módulo habilitado." };
+  if (enabled.some((module) => !allowed.includes(module))) {
+    return { ok: false, message: "Um dos módulos selecionados não está incluído no plano atual." };
+  }
+  if (!validModuleCombination(enabled)) {
+    return { ok: false, message: "Ative também os módulos exigidos pelas dependências selecionadas." };
+  }
+
+  const db = getDb();
+  try {
+    const now = new Date();
+    const moduleQueries = moduleRegistry.map((definition) => {
+      const moduleEnabled = allowed.includes(definition.key) && enabled.includes(definition.key);
+      return db.insert(tenantModules).values({
+        tenantId: admin.tenantId,
+        module: definition.key,
+        enabled: moduleEnabled,
+        updatedAt: now,
+      }).onConflictDoUpdate({
+        target: [tenantModules.tenantId, tenantModules.module],
+        set: { enabled: moduleEnabled, updatedAt: now },
+      });
+    });
+    const [firstModuleQuery, ...remainingModuleQueries] = moduleQueries;
+    if (!firstModuleQuery) return { ok: false, message: "Nenhum módulo está configurado no registro." };
+    await db.batch([
+      firstModuleQuery,
+      ...remainingModuleQueries,
+      db.insert(activityLogs).values({
+        tenantId: admin.tenantId,
+        userId: admin.id,
+        entityType: "tenant",
+        entityId: admin.tenantId,
+        action: "modules_updated",
+        details: { enabledModules: enabled },
+      }),
+    ]);
+  } catch {
+    return { ok: false, message: "Não foi possível atualizar os módulos." };
+  }
+  revalidatePath("/painel", "layout");
+  revalidatePath("/painel/configuracoes");
+  return { ok: true, message: "Módulos da empresa atualizados." };
 }
 
 

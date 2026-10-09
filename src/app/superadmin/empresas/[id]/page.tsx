@@ -16,6 +16,7 @@ import {
   users,
 } from "@/db/schema";
 import { requireSuperAdmin } from "@/lib/access";
+import { getUsage, tenantEntitlements, type LimitKey } from "@/lib/entitlements";
 import { moduleRegistry } from "@/lib/module-registry";
 import {
   accessTenant,
@@ -55,6 +56,13 @@ export default async function TenantDetailPage({ params, searchParams }: { param
   ]);
   const enabledModules = new Set(moduleRows.filter((row) => row.enabled).map((row) => row.module));
   const operational = tenant.status === "active" || tenant.status === "trial";
+  const [entitlements, userUsage, documentUsage, storageUsage] = await Promise.all([
+    tenantEntitlements(id),
+    getUsage(id, "max_users"),
+    getUsage(id, "max_documents"),
+    getUsage(id, "max_storage_bytes"),
+  ]);
+  const quota = (usage: number, key: LimitKey) => `${usage}/${entitlements?.limits[key] ?? "∞"}`;
 
   return (
     <main className="admin-content">
@@ -70,10 +78,12 @@ export default async function TenantDetailPage({ params, searchParams }: { param
       {query.access === "indisponivel" ? <p className="admin-form-error" role="alert">Reative a empresa antes de acessar o contexto operacional.</p> : null}
 
       <section className="metric-grid" aria-label="Uso da empresa">
-        <article className="metric-card"><div className="metric-card-top"><span>Usuários</span></div><strong>{memberCount.value}</strong><small>memberships ativas</small></article>
-        <article className="metric-card"><div className="metric-card-top"><span>Imóveis</span></div><strong>{propertyCount.value}</strong><small>dados preservados</small></article>
-        <article className="metric-card"><div className="metric-card-top"><span>Clientes</span></div><strong>{clientCount.value}</strong><small>somente deste tenant</small></article>
-        <article className="metric-card"><div className="metric-card-top"><span>Oportunidades</span></div><strong>{dealCount.value}</strong><small>pipeline isolado</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Usuários</span></div><strong>{quota(userUsage, "max_users")}</strong><small>{memberCount.value} membership(s) ativa(s), incluindo quota de convites</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Imóveis</span></div><strong>{quota(Number(propertyCount.value), "max_properties")}</strong><small>dados preservados</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Clientes</span></div><strong>{quota(Number(clientCount.value), "max_clients")}</strong><small>somente deste tenant</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Oportunidades</span></div><strong>{quota(Number(dealCount.value), "max_opportunities")}</strong><small>pipeline isolado</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Documentos</span></div><strong>{quota(documentUsage, "max_documents")}</strong><small>imóveis e oportunidades</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Armazenamento</span></div><strong>{quota(storageUsage, "max_storage_bytes")}</strong><small>bytes reservados</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Eventos — 30 dias</span></div><strong>{traffic.value}</strong><small>analytics público</small></article>
       </section>
 
@@ -102,6 +112,8 @@ export default async function TenantDetailPage({ params, searchParams }: { param
           <label>Máximo de usuários<input name="max_users" type="number" min="0" defaultValue={limitValue(tenant.quotaOverrides, "max_users")} /></label>
           <label>Máximo de imóveis<input name="max_properties" type="number" min="0" defaultValue={limitValue(tenant.quotaOverrides, "max_properties")} /></label>
           <label>Máximo de clientes<input name="max_clients" type="number" min="0" defaultValue={limitValue(tenant.quotaOverrides, "max_clients")} /></label>
+          <label>Máximo de oportunidades<input name="max_opportunities" type="number" min="0" defaultValue={limitValue(tenant.quotaOverrides, "max_opportunities")} /></label>
+          <label>Máximo de documentos<input name="max_documents" type="number" min="0" defaultValue={limitValue(tenant.quotaOverrides, "max_documents")} /></label>
           <label>Armazenamento em bytes<input name="max_storage_bytes" type="number" min="0" defaultValue={limitValue(tenant.quotaOverrides, "max_storage_bytes")} /></label>
           <label className="wide">Domínio personalizado<select name="custom_domain" defaultValue={tenant.quotaOverrides.custom_domain === 1 ? "1" : "0"}><option value="0">Não permitido</option><option value="1">Permitido</option></select></label>
         </SettingsForm>

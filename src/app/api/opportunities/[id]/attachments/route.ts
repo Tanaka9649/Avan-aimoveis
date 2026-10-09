@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import { opportunityAttachments } from "@/db/schema";
 import { attachmentCategories } from "@/lib/opportunity-attachments";
 import { requireOpportunity } from "@/lib/opportunity-access";
+import { canConsumeResource } from "@/lib/entitlements";
 import { DOCUMENT_BUCKET, signedUploadUrl, tenantStorageKey } from "@/lib/storage";
 import { safeFileName, validateUploadMetadata } from "@/lib/upload";
 
@@ -44,6 +45,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!parsed.success) return NextResponse.json({ error: "Revise os arquivos selecionados." }, { status: 400 });
   const invalid = parsed.data.files.map((file) => validateUploadMetadata(file, "document")).find(Boolean);
   if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
+  if (!await canConsumeResource(user.tenantId, "max_documents", parsed.data.files.length)) return NextResponse.json({ error: "O limite de documentos do plano foi atingido." }, { status: 409 });
+  if (!await canConsumeResource(user.tenantId, "max_storage_bytes", parsed.data.files.reduce((total, file) => total + file.size, 0))) return NextResponse.json({ error: "O limite de armazenamento do plano foi atingido." }, { status: 409 });
 
   const reservations = parsed.data.files.map((file) => {
     const attachmentId = randomUUID();

@@ -20,7 +20,7 @@ export default async function GlobalSearchPage({ searchParams }: { searchParams:
       ? db.select({ id: properties.id, title: properties.title, code: properties.code, status: properties.status }).from(properties).where(and(eq(properties.tenantId,user.tenantId),or(ilike(properties.title, `%${q}%`), ilike(properties.code, `%${q}%`), ilike(properties.city, `%${q}%`), ilike(properties.neighborhood, `%${q}%`)))).limit(12)
       : Promise.resolve([]),
     canAccess(user, "crm")
-      ? db.select({ id: deals.id, title: deals.title }).from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).where(and(eq(deals.tenantId,user.tenantId),clientScope(user), ilike(deals.title, `%${q}%`))).limit(12)
+      ? db.select({ id: deals.id, title: deals.title }).from(deals).innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(deals.tenantId,user.tenantId),clientScope(user), ilike(deals.title, `%${q}%`))).limit(12)
       : Promise.resolve([]),
   ]) : [[], [], []];
   const total = clientRows.length + propertyRows.length + dealRows.length;
