@@ -146,14 +146,19 @@ export async function updateTenantLimits(
   const tenantId = tenantIdSchema.safeParse(tenantIdValue);
   if (!tenantId.success) return failure("Empresa inválida.");
   try {
+    const storageGbRaw = String(formData.get("max_storage_gb") ?? "").trim();
+    const storageGb = storageGbRaw ? Number(storageGbRaw.replace(",", ".")) : null;
+    if (storageGb !== null && (!Number.isFinite(storageGb) || storageGb < 0)) throw new Error("invalid_limit");
+    const customDomainRaw = String(formData.get("custom_domain") ?? "").trim();
+
     const limits = {
       max_users: readLimit(formData, "max_users"),
       max_properties: readLimit(formData, "max_properties"),
       max_clients: readLimit(formData, "max_clients"),
       max_opportunities: readLimit(formData, "max_opportunities"),
       max_documents: readLimit(formData, "max_documents"),
-      max_storage_bytes: readLimit(formData, "max_storage_bytes"),
-      custom_domain: formData.get("custom_domain") === "1" ? 1 : 0,
+      max_storage_bytes: storageGb === null ? null : Math.round(storageGb * 1024 * 1024 * 1024),
+      custom_domain: customDomainRaw === "" ? null : customDomainRaw === "1" ? 1 : 0,
     };
     const result = await getDb().update(tenants).set({ quotaOverrides: limits, updatedAt: new Date() }).where(eq(tenants.id, tenantId.data)).returning({ id: tenants.id });
     if (!result.length) return failure("Empresa não encontrada.");
@@ -168,7 +173,7 @@ export async function updateTenantLimits(
     paths(tenantId.data);
     return { message: "Limites específicos atualizados.", ok: true };
   } catch {
-    return failure("Use números inteiros positivos ou deixe em branco para ilimitado.");
+    return failure("Use valores positivos ou deixe em branco para herdar o limite do plano.");
   }
 }
 
