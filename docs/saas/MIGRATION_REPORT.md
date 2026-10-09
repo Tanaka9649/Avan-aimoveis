@@ -160,3 +160,69 @@ On 09/10/2026 the application audit added:
 - Tenant A/B integration tests covering clients, properties, visits, proposals, sales, owners, memberships and database constraints.
 
 Local validation after these changes: 25 test files and 116 tests passed, plus typecheck, lint, Drizzle migration consistency check and the production build. The 0009 migration was subsequently validated on the isolated Neon branch and then applied to `vercel-production` together with 0008 after explicit approval.
+
+
+## Integridade de proprietários — 09/10/2026
+
+Após auditoria da plataforma interna, foi confirmada duplicação histórica de proprietários no Tenant Avança. Antes de qualquer correção foi criada uma branch de segurança a partir de `vercel-production`:
+
+- `backup-pre-owner-dedupe-2026-10-09`
+- branch ID: `br-noisy-leaf-b5jwzw49`
+- estado: READY
+
+Contagens antes da correção:
+
+- properties: 8
+- property_photos: 76
+- owners: 20
+- property_owners: 20
+- clients: 2
+- deals: 2
+
+A migration `0010_owner_identity_integrity.sql` foi validada primeiro na branch isolada e depois aplicada a `vercel-production`. A correção:
+
+- preserva o proprietário canônico mais antigo por identidade dentro do mesmo tenant;
+- move os vínculos de imóveis para o registro canônico;
+- elimina somente registros duplicados de proprietário e vínculos redundantes;
+- adiciona proteção de unicidade por telefone normalizado, e-mail normalizado e, como fallback sem contato, nome normalizado;
+- não altera nem exclui registros de imóveis ou fotos.
+
+Validação depois da correção em Production:
+
+- properties: 8
+- property_photos: 76
+- owners: 8
+- property_owners: 8
+- clients: 2
+- deals: 2
+- grupos de identidade duplicada: 0
+- todos os 8 imóveis continuaram com um proprietário vinculado.
+
+Hash registrado no journal para 0010:
+
+`872164be89fdf48f4211caf75da361104294d225d660f7a70ebb4a2071a43169`
+
+## Consistência interna e performance — 09/10/2026
+
+A migration `0011_internal_consistency_performance.sql` também foi validada primeiro na branch isolada e aplicada depois em Production.
+
+Ela não remove nem altera imóveis, fotos, clientes, oportunidades, propostas ou vendas.
+
+Mudanças:
+
+- normaliza `domain_status` para `pending` quando não existe custom domain;
+- adiciona 11 índices tenant-first para caminhos frequentes de CRM, clientes, visitas, propostas, proprietários e fotos.
+
+Validação pós-0011:
+
+- properties: 8
+- property_photos: 76
+- owners: 8
+- clients: 2
+- deals: 2
+- índices novos confirmados: 11
+- tenants sem custom domain com status de domínio inconsistente: 0
+
+Hash registrado no journal para 0011:
+
+`8f19db876c6a814a895ab51867ed0f90d2bf9954cb23f9b3c9593b72d0a6eab4`
