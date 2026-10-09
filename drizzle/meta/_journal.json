@@ -78,6 +78,13 @@
       "when": 1791551700000,
       "tag": "0010_owner_identity_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791554400000,
+      "tag": "0011_internal_consistency_performance",
+      "breakpoints": true
     }
   ]
 }
