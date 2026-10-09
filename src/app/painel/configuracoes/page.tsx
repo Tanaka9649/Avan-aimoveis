@@ -40,9 +40,10 @@ export default async function SettingsPage() {
   const allowedModules = modules.filter((module) => (planRows[0]?.modules || []).includes(module));
   const enabledModules = new Set(tenantModuleRows.filter((row) => row.enabled).map((row) => row.module));
   const customDomainOverride = tenant.quotaOverrides?.custom_domain;
+  const planCustomDomain = planRows[0]?.limits?.custom_domain;
   const customDomainAllowed = typeof customDomainOverride === "number"
     ? customDomainOverride === 1
-    : planRows[0]?.limits?.custom_domain === 1;
+    : planCustomDomain !== 0;
 
   const companySection = (
     <section className="admin-card">
