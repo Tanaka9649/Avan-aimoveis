@@ -30,7 +30,7 @@ export default async function SettingsPage() {
     db.select().from(reminderSettings).where(and(eq(reminderSettings.tenantId, admin.tenantId), eq(reminderSettings.key, "visits"))).limit(1),
     db.select({ id: clients.id, name: clients.name }).from(clients).where(eq(clients.tenantId, admin.tenantId)).orderBy(desc(clients.createdAt)).limit(200),
     db.select().from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1),
-    db.select({ modules: plans.modules }).from(tenants).leftJoin(plans, eq(plans.code, tenants.plan)).where(eq(tenants.id, admin.tenantId)).limit(1),
+    db.select({ modules: plans.modules, limits: plans.limits }).from(tenants).leftJoin(plans, eq(plans.code, tenants.plan)).where(eq(tenants.id, admin.tenantId)).limit(1),
     db.select({ module: tenantModules.module, enabled: tenantModules.enabled }).from(tenantModules).where(eq(tenantModules.tenantId, admin.tenantId)),
   ]);
   const settings = preferences[0];
@@ -40,6 +40,10 @@ export default async function SettingsPage() {
   const branding = tenant.branding || {};
   const allowedModules = modules.filter((module) => (planRows[0]?.modules || []).includes(module));
   const enabledModules = new Set(tenantModuleRows.filter((row) => row.enabled).map((row) => row.module));
+  const customDomainOverride = tenant.quotaOverrides?.custom_domain;
+  const customDomainAllowed = typeof customDomainOverride === "number"
+    ? customDomainOverride === 1
+    : planRows[0]?.limits?.custom_domain === 1;
 
   const companySection = (
     <section className="admin-card">
