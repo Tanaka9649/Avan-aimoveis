@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, ne } from "drizzle-orm";
-import { CircleDollarSign, HandCoins, Plus } from "lucide-react";
+import { CircleDollarSign, HandCoins } from "lucide-react";
 import { AdminTabs } from "@/components/admin-tabs";
 import { EmptyState, PageHeader } from "@/components/admin-ui";
 import { AdminDrawerComposer } from "@/components/admin-drawer-composer";
