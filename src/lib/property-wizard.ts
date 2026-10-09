@@ -22,7 +22,7 @@ export const propertySteps = [
     title: "Características",
     heading: "Como é o imóvel?",
     hint: "Informe as quantidades e a área privativa.",
-    fields: ["bedrooms", "bathrooms", "parking", "area"],
+    fields: ["bedrooms", "suites", "bathrooms", "parking", "area"],
   },
   {
     title: "Localização",
@@ -71,6 +71,7 @@ const messages: Record<string, string> = {
     "Informe um valor de R$ 0,01 até R$ 21.474.836,47, com até 2 casas decimais.",
   area: "Informe uma área maior que zero, até 99.999.999,99 m².",
   bedrooms: "Informe um número inteiro de 0 a 100.",
+  suites: "Informe um número inteiro de 0 a 100.",
   bathrooms: "Informe um número inteiro de 0 a 100.",
   parking: "Informe um número inteiro de 0 a 100.",
   address: "Informe o endereço completo (5 a 1.000 caracteres).",
