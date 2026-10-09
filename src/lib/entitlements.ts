@@ -10,7 +10,12 @@ const unlimited = (value: unknown): number | null => typeof value === "number" &
 export async function tenantEntitlements(tenantId: string) {
   const [row] = await getDb().select({ plan: tenants.plan, overrides: tenants.quotaOverrides, limits: plans.limits, modules: plans.modules }).from(tenants).leftJoin(plans, eq(plans.code, tenants.plan)).where(eq(tenants.id, tenantId)).limit(1);
   if (!row) return null;
-  return { plan: row.plan, limits: { ...(row.limits || {}), ...(row.overrides || {}) }, modules: row.modules || [] };
+  const limits: Record<string, number | null> = { ...(row.limits || {}) };
+  for (const [key, value] of Object.entries(row.overrides || {})) {
+    // A null override means "inherit from the plan", not "unlimited".
+    if (typeof value === "number" && Number.isFinite(value)) limits[key] = value;
+  }
+  return { plan: row.plan, limits, modules: row.modules || [] };
 }
 
 export async function getLimit(tenantId: string, key: LimitKey) {
