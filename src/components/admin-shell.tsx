@@ -18,6 +18,7 @@ import {
   Moon,
   Search,
   Settings,
+  UserRound,
   ShieldCheck,
   Sun,
   Users,
@@ -48,6 +49,7 @@ const routeLabels: Record<string, string> = {
   "/painel/analytics": "Analytics",
   "/painel/configuracoes": "Configurações",
   "/painel/busca": "Busca global",
+  "/painel/perfil": "Meu perfil",
 };
 
 export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; globalRole: "user" | "super_admin"; access: Access; tenant: { slug: string; name: string } } }) {
@@ -115,7 +117,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
           {user.role === "admin" ? <><small>ADMINISTRAÇÃO</small>{item("/painel/configuracoes", "Configurações", Settings)}{user.globalRole === "super_admin" ? <Link href="/superadmin" title={collapsed ? "Voltar ao Super Admin" : undefined}><ShieldCheck /><span>Voltar ao Super Admin</span></Link> : null}</> : null}
         </nav>
         <div className="sidebar-footer">
-          <div className="sidebar-profile"><span>{user.name.slice(0, 2).toUpperCase()}</span><div><strong>{user.name}</strong><small>{user.role === "admin" ? "Administrador" : "Equipe"}</small></div></div>
+          <Link className="sidebar-profile sidebar-profile-link" href={scoped("/painel/perfil")} title={collapsed ? "Meu perfil" : undefined}><span>{user.name.slice(0, 2).toUpperCase()}</span><div><strong>{user.name}</strong><small>{user.role === "admin" ? "Administrador" : "Equipe"}</small></div><UserRound/></Link>
           <button className="sidebar-utility" onClick={toggleTheme} title={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"}>{theme === "dark" ? <Sun /> : <Moon />}<span>{theme === "dark" ? "Tema claro" : "Tema escuro"}</span></button>
           <form action="/api/auth/logout" method="post"><button className="sidebar-logout"><LogOut /><span>Sair</span></button></form>
         </div>
