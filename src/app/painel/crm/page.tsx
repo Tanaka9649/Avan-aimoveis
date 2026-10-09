@@ -1,4 +1,5 @@
 import {and,asc,count,desc,eq,ilike,inArray,isNotNull,or,sql} from "drizzle-orm";
+import {z} from "zod";
 import {getDb} from "@/db";
 import {activities,clientFavorites,clientPropertyPresentations,clients,deals,properties,proposals,stages,tenantMemberships,users,visits} from "@/db/schema";
 import {clientScope,requireModule} from "@/lib/access";
@@ -18,6 +19,8 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  const search=value(query,"q");
  const view=value(query,"view")==="clientes"?"clientes":"funil";
  const selectedClientId=value(query,"cliente");
+ const responsibleFilter=value(query,"responsavel");
+ const responsibleId=z.uuid().safeParse(responsibleFilter).success?responsibleFilter:"";
 
  const dealSearch=search?or(
    ilike(deals.title,`%${search}%`),
@@ -56,7 +59,7 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  ):undefined;
 
  const dealWhere=and(eq(deals.tenantId,user.tenantId),clientScope(user),dealSearch);
- const clientWhere=and(clientScope(user),clientSearch);
+ const clientWhere=and(clientScope(user),clientSearch,responsibleId?eq(clients.assignedTo,responsibleId):undefined);
 
  const [[dealCount],[clientCount]]=await Promise.all([
    db.select({value:count()}).from(deals)
