@@ -1,5 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { AdminTabs } from "@/components/admin-tabs";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/admin-ui";
 import { AdminDrawerComposer } from "@/components/admin-drawer-composer";
