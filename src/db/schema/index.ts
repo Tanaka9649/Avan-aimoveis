@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean, date, index, integer, jsonb, numeric, pgEnum, pgTable,
   primaryKey, text, timestamp, uniqueIndex, uuid, varchar,
@@ -180,7 +181,17 @@ export const propertyPhotos = pgTable("property_photos", {
 export const owners = pgTable("owners", {
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
   id: uuid("id").defaultRandom().primaryKey(), name: varchar("name", { length: 160 }).notNull(), phone: varchar("phone", { length: 30 }).notNull(), email: varchar("email", { length: 254 }), taxIdEncrypted: text("tax_id_encrypted"), notes: text("notes"), ...audit,
-});
+}, (t) => [
+  uniqueIndex("owners_tenant_phone_identity_uq")
+    .on(t.tenantId, sql`regexp_replace(coalesce(${t.phone}, ''), '\\D', '', 'g')`)
+    .where(sql`regexp_replace(coalesce(${t.phone}, ''), '\\D', '', 'g') <> ''`),
+  uniqueIndex("owners_tenant_email_identity_uq")
+    .on(t.tenantId, sql`lower(trim(coalesce(${t.email}, '')))`)
+    .where(sql`lower(trim(coalesce(${t.email}, ''))) <> ''`),
+  uniqueIndex("owners_tenant_name_only_identity_uq")
+    .on(t.tenantId, sql`lower(regexp_replace(trim(${t.name}), '\\s+', ' ', 'g'))`)
+    .where(sql`regexp_replace(coalesce(${t.phone}, ''), '\\D', '', 'g') = '' AND lower(trim(coalesce(${t.email}, ''))) = ''`),
+]);
 export const propertyOwners = pgTable("property_owners", {
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
   propertyId: uuid("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(), ownerId: uuid("owner_id").references(() => owners.id, { onDelete: "restrict" }).notNull(), ownershipPercent: numeric("ownership_percent", { precision: 5, scale: 2 }),
