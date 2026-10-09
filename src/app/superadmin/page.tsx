@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { count, countDistinct, desc, eq, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { BarChart3, Building2, Globe2, Home, Users } from "lucide-react";
 import { getDb } from "@/db";
 import { analyticsEvents, properties, tenantAuditLogs, tenantMemberships, tenants } from "@/db/schema";
