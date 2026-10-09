@@ -19,7 +19,7 @@ Atualizado em 09/10/2026.
 | 12 — Auditoria/exportação | Concluído | Ações sensíveis auditadas e exportação JSON tenant-aware sem hashes ou segredos |
 | 13 — Hardening | Concluído em código | Fail-closed inclusive sem header Host, joins correlacionados por tenant, constraints relacionais compostas, rate limit, cookies seguros e invalidação de sessão |
 | 14 — Testes | Concluído | 25 arquivos e 116 testes locais aprovados, incluindo Tenant A/B, constraints no PostgreSQL efêmero, quotas, convites, provisionamento, typecheck, lint e build |
-| 15 — Preview/revisão | Preview READY; smoke test hospedado bloqueado externamente | Deployment dpl_FuATJ5EcLKfDijYqUkMPzJm2h1NC no commit f731116; Vercel SSO ativo e conexão recusou bypass autenticado com 403 |
+| 15 — Preview/revisão | Production SaaS READY; smoke HTTP externo parcialmente bloqueado | Deployment Production dpl_FwfKojzCSCeL83vgU1oHjekD5b4j no commit 105cd06, alias imoveisplatform.vercel.app e aliasError=null; leitura de runtime errors permaneceu bloqueada por 403 da integração |
 
 ## Checkpoint técnico
 
@@ -109,7 +109,9 @@ Atenção operacional: o deployment Vercel de Production ainda apontava para có
 - Branch operacional: vercel-production
 - Segurança: backup e branch isolada confirmados
 - Etapa concluída: 0009 validada em branch isolada e 0008/0009 aplicadas em vercel-production após aprovação explícita
-- Etapa crítica pendente: alinhar o deployment Vercel Production ao código SaaS compatível
+- Etapa concluída: deployment Vercel Production alinhado ao código SaaS compatível no commit `105cd06e045d9ccbf6b0cc9dbb038988ee6a3c16`
+- Deployment: `dpl_FwfKojzCSCeL83vgU1oHjekD5b4j`, estado READY, alias `imoveisplatform.vercel.app`, aliasError=null
+- Validação externa pendente: smoke HTTP detalhado/runtime errors não pôde ser concluído pela integração devido 403 de acesso à observabilidade
 
 ### Vercel
 
