@@ -10,6 +10,7 @@ import { DealEditor } from "@/components/deal-editor";
 import { dealChoices } from "../actions";
 import { clientScope, requireModule } from "@/lib/access";
 import { formatMoney } from "@/lib/format";
+import { formatBrazilianPhone } from "@/lib/owner-identity";
 import { OpportunityAttachments } from "@/components/opportunity-attachments";
 
 export default async function DealPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,25 +27,26 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
     .where(and(eq(deals.id, id),eq(deals.tenantId,user.tenantId), clientScope(user)))
     .limit(1);
   if (!deal) notFound();
-  const [record] = await db.select().from(deals).where(and(eq(deals.id,id),eq(deals.tenantId,user.tenantId)));
-  const choices=await dealChoices();
-  const linked=await db.select({id:dealProperties.propertyId}).from(dealProperties).where(and(eq(dealProperties.tenantId,user.tenantId),eq(dealProperties.dealId,id)));
-
-  const timeline = await db
-    .select({ id: activities.id, description: activities.description, occurredAt: activities.occurredAt })
-    .from(activities)
-    .where(and(eq(activities.tenantId,user.tenantId),eq(activities.dealId, id)))
-    .orderBy(desc(activities.occurredAt))
-    .limit(100);
-  const attachmentRows = await db.select({
-    id: opportunityAttachments.id,
-    displayName: opportunityAttachments.displayName,
-    originalName: opportunityAttachments.originalName,
-    mimeType: opportunityAttachments.mimeType,
-    sizeBytes: opportunityAttachments.sizeBytes,
-    category: opportunityAttachments.category,
-    createdAt: opportunityAttachments.createdAt,
-  }).from(opportunityAttachments).where(and(eq(opportunityAttachments.tenantId,user.tenantId),eq(opportunityAttachments.opportunityId, id), eq(opportunityAttachments.uploadStatus, "ready"))).orderBy(desc(opportunityAttachments.createdAt));
+  const [[record], choices, linked, timeline, attachmentRows] = await Promise.all([
+    db.select().from(deals).where(and(eq(deals.id,id),eq(deals.tenantId,user.tenantId))).limit(1),
+    dealChoices(),
+    db.select({id:dealProperties.propertyId}).from(dealProperties).where(and(eq(dealProperties.tenantId,user.tenantId),eq(dealProperties.dealId,id))),
+    db
+      .select({ id: activities.id, description: activities.description, occurredAt: activities.occurredAt })
+      .from(activities)
+      .where(and(eq(activities.tenantId,user.tenantId),eq(activities.dealId, id)))
+      .orderBy(desc(activities.occurredAt))
+      .limit(100),
+    db.select({
+      id: opportunityAttachments.id,
+      displayName: opportunityAttachments.displayName,
+      originalName: opportunityAttachments.originalName,
+      mimeType: opportunityAttachments.mimeType,
+      sizeBytes: opportunityAttachments.sizeBytes,
+      category: opportunityAttachments.category,
+      createdAt: opportunityAttachments.createdAt,
+    }).from(opportunityAttachments).where(and(eq(opportunityAttachments.tenantId,user.tenantId),eq(opportunityAttachments.opportunityId, id), eq(opportunityAttachments.uploadStatus, "ready"))).orderBy(desc(opportunityAttachments.createdAt)),
+  ]);
   const attachments = attachmentRows.map((attachment) => ({ ...attachment, createdAt: attachment.createdAt.toISOString() }));
 
   return (
@@ -63,7 +65,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
         <SectionCard title="Contato e oportunidade" description="Dados usados durante o atendimento comercial.">
           <dl className="detail-list">
             <div><dt><UserRound />Cliente</dt><dd>{deal.name}</dd></div>
-            <div><dt><Phone />Telefone</dt><dd>{deal.phone}</dd></div>
+            <div><dt><Phone />Telefone</dt><dd><a href={`tel:${deal.phone}`}>{formatBrazilianPhone(deal.phone)}</a></dd></div>
             <div><dt><Mail />E-mail</dt><dd>{deal.email || "Não informado"}</dd></div>
             <div><dt>Valor estimado</dt><dd>{deal.value === null ? "Não informado" : formatMoney(deal.value)}</dd></div>
           </dl>
