@@ -12,6 +12,7 @@ import "./admin-refinement.css";
 import "./public-site.css";
 import "./login/login.css";
 import "./brand-logos.css";
+import "./internal-polish.css";
 
 const sans = Manrope({ subsets: ["latin"], variable: "--font-sans" });
 
