@@ -316,7 +316,7 @@ export function PropertyEditor({
                           : complete
                             ? "Concluída"
                             : index === 4
-                              ? "Armazenamento pendente"
+                              ? (photos.length || documents.length ? "Mídia configurada" : propertyId ? "Sem arquivos" : "Salve para enviar")
                               : "Pendente"}
                       </small>
                     </div>
@@ -395,13 +395,13 @@ export function PropertyEditor({
                   <summary>
                     Proprietário{" "}
                     <small>
-                      {initial.ownerNames ? "Já vinculado" : "(opcional)"}
+                      {initial.ownerNames ? "Vinculado" : "(opcional)"}
                     </small>
                   </summary>
                   {initial.ownerNames ? (
                     <p>
-                      Já vinculados: {initial.ownerNames}. Você pode acrescentar
-                      outro proprietário.
+                      Proprietário atual: {initial.ownerNames}. Selecione outro
+                      cadastro abaixo somente se precisar alterar o vínculo.
                     </p>
                   ) : null}
                   <label className="wizard-field" htmlFor="ownerId">
@@ -411,7 +411,7 @@ export function PropertyEditor({
                       value={values.ownerId}
                       onChange={(e) => change("ownerId", e.target.value)}
                     >
-                      <option value="">Cadastrar pelo nome</option>
+                      <option value="">Cadastrar novo proprietário</option>
                       {owners.map((o) => (
                         <option key={o.id} value={o.id}>
                           {o.name}
@@ -437,7 +437,7 @@ export function PropertyEditor({
                       })}
                     </div>
                   ) : null}
-                  <p>O proprietário será vinculado ao imóvel ao salvar.</p>
+                  <p>Ao salvar, o sistema reutiliza um proprietário já cadastrado quando o contato coincide, evitando duplicidades.</p>
                 </details>
                 <details
                   open={advanced}
