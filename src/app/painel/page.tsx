@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { Building2, CalendarCheck, CircleDollarSign, Gauge, HandCoins, Handshake, MessageCircle, Users } from "lucide-react";
 import { clientScope, requireModule } from "@/lib/access";
 import { getDb } from "@/db";
-import { activityLogs, clients, deals, properties, proposals, sales, stages, visits, whatsappClicks, propertyViews, clientPropertyPresentations } from "@/db/schema";
+import { activityLogs, clients, deals, owners, properties, proposals, sales, stages, users, visits, whatsappClicks, propertyViews, clientPropertyPresentations } from "@/db/schema";
 import { formatMoney } from "@/lib/format";
 import { MetricCard, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 
@@ -29,7 +29,25 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
     db.select({ value: count() }).from(whatsappClicks).where(and(eq(whatsappClicks.tenantId,user.tenantId),gte(whatsappClicks.createdAt, monthStart))),
     db.select({ id: stages.id, name: stages.name, color: stages.color, value: scope ? sql<number>`count(${deals.id}) filter (where ${scope})` : count(deals.id) }).from(stages).leftJoin(deals,and(eq(deals.stageId,stages.id),eq(deals.tenantId,user.tenantId))).leftJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,user.tenantId))).where(eq(stages.tenantId,user.tenantId)).groupBy(stages.id).orderBy(asc(stages.position)),
     db.select({ status: properties.status, value: count() }).from(properties).where(eq(properties.tenantId,user.tenantId)).groupBy(properties.status),
-    db.select({ id: activityLogs.id, entityType: activityLogs.entityType, action: activityLogs.action, createdAt: activityLogs.createdAt }).from(activityLogs).where(and(eq(activityLogs.tenantId,user.tenantId),user.role === "admin" ? undefined : eq(activityLogs.userId, user.id))).orderBy(desc(activityLogs.createdAt)).limit(6),
+    db.select({
+      id: activityLogs.id,
+      entityType: activityLogs.entityType,
+      action: activityLogs.action,
+      createdAt: activityLogs.createdAt,
+      actor: users.name,
+      entityName: sql<string | null>`
+        case
+          when ${activityLogs.entityType} = 'property' then (select p.title from properties p where p.id = ${activityLogs.entityId} and p.tenant_id = ${user.tenantId}::uuid limit 1)
+          when ${activityLogs.entityType} = 'client' then (select c.name from clients c where c.id = ${activityLogs.entityId} and c.tenant_id = ${user.tenantId}::uuid limit 1)
+          when ${activityLogs.entityType} = 'deal' then (select d.title from deals d where d.id = ${activityLogs.entityId} and d.tenant_id = ${user.tenantId}::uuid limit 1)
+          when ${activityLogs.entityType} = 'owner' then (select o.name from owners o where o.id = ${activityLogs.entityId} and o.tenant_id = ${user.tenantId}::uuid limit 1)
+          else null
+        end
+      `,
+    }).from(activityLogs)
+      .leftJoin(users, eq(users.id, activityLogs.userId))
+      .where(and(eq(activityLogs.tenantId,user.tenantId),user.role === "admin" ? undefined : eq(activityLogs.userId, user.id)))
+      .orderBy(desc(activityLogs.createdAt)).limit(6),
   ]);
   const conversion = number(dealTotal.value) ? Math.round(number(salesMonth.count) / number(dealTotal.value) * 100) : 0;
   const primaryMetrics = [
@@ -63,7 +81,7 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
         <div className="status-summary">{propertyStatus.length ? propertyStatus.map((row) => <div key={row.status}><StatusBadge value={row.status}/><strong>{row.value}</strong></div>) : <p className="muted-copy">Nenhum imóvel cadastrado.</p>}</div>
       </SectionCard>
       <SectionCard title="Atividade recente" description="Últimas alterações registradas na plataforma." className="dashboard-wide">
-        <div className="activity-list">{recentActivity.length ? recentActivity.map((item) => <div key={item.id}><span className="activity-dot"/><div><strong>{activityText(item.entityType,item.action)}</strong><small>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(item.createdAt)}</small></div></div>) : <p className="muted-copy">Nenhuma atividade registrada.</p>}</div>
+        <div className="activity-list">{recentActivity.length ? recentActivity.map((item) => <div key={item.id}><span className="activity-dot"/><div><strong>{activityText(item.entityType,item.action)}{item.entityName ? ` · ${item.entityName}` : ""}</strong><small>{item.actor ? `${item.actor} · ` : ""}{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(item.createdAt)}</small></div></div>) : <p className="muted-copy">Nenhuma atividade registrada.</p>}</div>
       </SectionCard>
       <SectionCard title="WhatsApp" description="Cliques registrados no mês." className="dashboard-secondary"><div className="secondary-metric"><MessageCircle/><strong>{whatsappMonth.value}</strong><span>interações</span></div></SectionCard>
       <SectionCard title="Imóveis em destaque" description={`Métricas reais dos últimos ${days} dias.`} className="dashboard-wide" action={<div className="period-switch"><Link className={days===7?"active":""} href="/painel?period=7">7 dias</Link><Link className={days===30?"active":""} href="/painel?period=30">30 dias</Link></div>}><div className="analytics-columns">{[["Mais visualizados",topViews],["Mais interessados",topInterest],["Mais cliques no WhatsApp",topWhatsapp]].map(([title,rows])=><div key={title as string}><h3>{title as string}</h3>{(rows as typeof topViews).length?(rows as typeof topViews).map((item,index)=><Link href={`/painel/imoveis/${item.id}`} key={item.id}><span>{index+1}</span><div><strong>{item.title}</strong><small>{item.region}</small></div><b>{item.value}</b></Link>):<p className="muted-copy">Ainda sem dados no período.</p>}</div>)}</div></SectionCard>
