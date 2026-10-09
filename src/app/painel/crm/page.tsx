@@ -1,6 +1,6 @@
 import {and,asc,count,desc,eq,ilike,inArray,isNotNull,or,sql} from "drizzle-orm";
 import {getDb} from "@/db";
-import {activities,clientFavorites,clientPropertyPresentations,clients,deals,properties,proposals,stages,users,visits} from "@/db/schema";
+import {activities,clientFavorites,clientPropertyPresentations,clients,deals,properties,proposals,stages,tenantMemberships,users,visits} from "@/db/schema";
 import {clientScope,requireModule} from "@/lib/access";
 import {formatMoney} from "@/lib/format";
 import {PAGE_SIZE,pageNumber,type Query,value} from "@/lib/list-query";
@@ -34,7 +34,12 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  const visibleClients=selectedClient?[selectedClient,...clientRows.slice(0,PAGE_SIZE-1)]:clientRows;
  const clientIds=visibleClients.map(client=>client.id);
  const assignedUserIds=[...new Set(visibleClients.flatMap(client=>client.assignedTo?[client.assignedTo]:[]))];
- const assignedUsers=assignedUserIds.length?await db.select({id:users.id,name:users.name}).from(users).where(inArray(users.id,assignedUserIds)):[];
+ const [assignedUsers,team]=await Promise.all([
+  assignedUserIds.length?db.select({id:users.id,name:users.name}).from(users).where(inArray(users.id,assignedUserIds)):Promise.resolve([]),
+  user.role==="admin"?db.select({id:users.id,name:users.name}).from(users)
+   .innerJoin(tenantMemberships,and(eq(tenantMemberships.userId,users.id),eq(tenantMemberships.tenantId,user.tenantId),eq(tenantMemberships.status,"active")))
+   .where(eq(users.active,true)).orderBy(asc(users.name)):Promise.resolve([]),
+ ]);
  const responsibleByUserId=new Map(assignedUsers.map(person=>[person.id,person.name] as const));
  const[dealStats,favoriteStats,presentationStats,visitStats,proposalStats,historyStats,nextActions]=clientIds.length?await Promise.all([
   db.select({clientId:deals.clientId,value:count()}).from(deals).where(and(eq(deals.tenantId,user.tenantId),inArray(deals.clientId,clientIds))).groupBy(deals.clientId),
@@ -57,5 +62,5 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
    opportunities:dealCountByClient.get(client.id)||0,favorites:favoritesByClient.get(client.id)||0,presented:presentationsByClient.get(client.id)||0,visits:visitsByClient.get(client.id)||0,proposals:proposalsByClient.get(client.id)||0,history:historyByClient.get(client.id)||0,matches:hasPreferences?available.filter(property=>propertyMatch(client,property).score>=45).length:0,nextActionAt:nextActionByClient.get(client.id)?.nextActionAt.toISOString()||null,nextActionType:nextActionByClient.get(client.id)?.nextActionType||null,
   };
  });
- return <CrmWorkspace key={`${selectedClientId}-${value(query,"novo")}`} query={query} view={view} columns={stageRows} cards={cards} clients={clientCards} dealTotal={dealCount.value} clientTotal={clientCount.value} selectedClientId={selectedClientId||undefined} openNew={value(query,"novo")==="1"}/>;
+ return <CrmWorkspace key={`${selectedClientId}-${value(query,"novo")}`} query={query} view={view} team={team} canAssign={user.role==="admin"} columns={stageRows} cards={cards} clients={clientCards} dealTotal={dealCount.value} clientTotal={clientCount.value} selectedClientId={selectedClientId||undefined} openNew={value(query,"novo")==="1"}/>;
 }
