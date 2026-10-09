@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Check, Copy, ExternalLink, FileText, Globe, Link2Off, MessageCircle, MoreHorizontal, Share2, UploadCloud, X } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
-import { publishProperty, unpublishProperty } from "@/app/painel/imoveis/actions";
+import { duplicateProperty, publishProperty, unpublishProperty } from "@/app/painel/imoveis/actions";
 import { registerPresentation } from "@/app/painel/clientes/actions";
 import { formatMoney } from "@/lib/format";
 import { isPubliclyVisible, publicPropertyPath, publicPropertyUrl, sharePropertyMessage, siteVisibility, whatsappShareUrl } from "@/lib/property-publication";
@@ -153,9 +153,10 @@ export function PropertyShareButton({ property, client, label = "Compartilhar" }
 }
 
 /** The card's "…" menu: publish, open on the site, unpublish — without crowding the card. */
-export function PropertyPublicationMenu({ property }: { property: SharableProperty }) {
+export function PropertyPublicationMenu({ property, full = false }: { property: SharableProperty; full?: boolean }) {
   const [open, setOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const live = isPubliclyVisible(property);
   const published = !!property.publishedAt;
@@ -170,9 +171,19 @@ export function PropertyPublicationMenu({ property }: { property: SharableProper
   }
 
   return (
+    <>
     <details className="property-menu" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary aria-label="Mais ações"><MoreHorizontal /></summary>
       <div>
+        {full ? (
+          <>
+            <form action={duplicateProperty}>
+              <input type="hidden" name="id" value={property.id}/>
+              <button type="submit"><Copy/> Duplicar</button>
+            </form>
+            <button type="button" onClick={() => { setOpen(false); setShareOpen(true); }}><Share2/> Compartilhar</button>
+          </>
+        ) : null}
         {live ? (
           <>
             <Link href={publicPropertyPath(property.slug)} target="_blank" rel="noreferrer"><ExternalLink /> Ver no site</Link>
@@ -187,5 +198,6 @@ export function PropertyPublicationMenu({ property }: { property: SharableProper
         {feedback ? <p role="status">{feedback}</p> : null}
       </div>
     </details>
-  );
+    {shareOpen ? <PropertyShareDialog property={property} onClose={() => setShareOpen(false)}/> : null}
+  </>;
 }
