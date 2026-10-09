@@ -10,6 +10,7 @@ import "./globals.css";
 import "./evolution.css";
 import "./admin-refinement.css";
 import "./public-site.css";
+import "./login/login.css";
 
 const sans = Manrope({ subsets: ["latin"], variable: "--font-sans" });
 
