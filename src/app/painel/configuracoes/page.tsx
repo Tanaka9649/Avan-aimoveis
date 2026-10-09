@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { SettingsForm } from "@/components/settings-form";
 import { BrandLogosEditor } from "@/components/brand-logos-editor";
@@ -7,17 +7,17 @@ import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import { DomainVerificationButton } from "@/components/domain-verification-button";
 import { TenantInviteForm } from "@/components/tenant-invite-form";
 import { getDb } from "@/db";
-import { clients, plans, reminderSettings, tenantMemberships, tenantModules, tenants, users } from "@/db/schema";
+import { plans, reminderSettings, tenantMemberships, tenantModules, tenants, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/access";
 import { moduleRegistry } from "@/lib/module-registry";
 import { moduleLabels, modules } from "@/lib/permissions";
 import { brandingLogos } from "@/lib/branding";
-import { assignClient, createAccount, saveCustomDomain, saveReminders, saveTenantBranding, saveTenantLogos, saveTenantModules, updateAccount } from "./actions";
+import { createAccount, saveCustomDomain, saveReminders, saveTenantBranding, saveTenantLogos, saveTenantModules, updateAccount } from "./actions";
 
 export default async function SettingsPage() {
   const admin = await requireAdmin();
   const db = getDb();
-  const [team, preferences, customers, tenantRows, planRows, tenantModuleRows] = await Promise.all([
+  const [team, preferences, tenantRows, planRows, tenantModuleRows] = await Promise.all([
     db.select({
       id: tenantMemberships.id,
       userId: users.id,
@@ -28,7 +28,6 @@ export default async function SettingsPage() {
       access: tenantMemberships.permissions,
     }).from(tenantMemberships).innerJoin(users, eq(users.id, tenantMemberships.userId)).where(eq(tenantMemberships.tenantId, admin.tenantId)).orderBy(asc(users.name)),
     db.select().from(reminderSettings).where(and(eq(reminderSettings.tenantId, admin.tenantId), eq(reminderSettings.key, "visits"))).limit(1),
-    db.select({ id: clients.id, name: clients.name }).from(clients).where(eq(clients.tenantId, admin.tenantId)).orderBy(desc(clients.createdAt)).limit(200),
     db.select().from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1),
     db.select({ modules: plans.modules, limits: plans.limits }).from(tenants).leftJoin(plans, eq(plans.code, tenants.plan)).where(eq(tenants.id, admin.tenantId)).limit(1),
     db.select({ module: tenantModules.module, enabled: tenantModules.enabled }).from(tenantModules).where(eq(tenantModules.tenantId, admin.tenantId)),
@@ -119,14 +118,6 @@ export default async function SettingsPage() {
         })}
       </section>
 
-      <section className="admin-card">
-        <h2>Atribuir cliente</h2>
-        <p>Defina quem será responsável pelo acompanhamento comercial do cliente.</p>
-        <SettingsForm action={assignClient} label="Atribuir responsável">
-          <label>Cliente<select name="clientId" required><option value="">Selecione</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name}</option>)}</select></label>
-          <label>Responsável<select name="userId" required><option value="">Selecione</option>{team.filter((person) => person.status === "active").map((person) => <option value={person.userId} key={person.id}>{person.name}</option>)}</select></label>
-        </SettingsForm>
-      </section>
     </>
   );
 
