@@ -6,7 +6,7 @@ Atualizado em 09/10/2026.
 |---|---|---|
 | 0 — Auditoria | Concluído | Inventário do projeto real, arquitetura, plano de execução e riscos documentados |
 | 1 — Data model | Concluído | Tenants, planos, memberships, convites, módulos, provisioning, analytics e auditoria; entidades operacionais com tenant obrigatório |
-| 2 — Migração Avança | Validado em branch isolada; Production aguarda aprovação explícita | 0008 preservou as contagens no clone de vercel-production; backup e relatório pré/pós-migração confirmados. 0009 de integridade relacional foi validada apenas localmente |
+| 2 — Migração Avança | Aplicada em Production; deploy SaaS ainda pendente | 0008 e 0009 aplicadas em vercel-production após backup fresco; contagens preservadas, backfill validado e 25 constraints relacionais confirmadas |
 | 3 — Contexto/isolamento | Concluído | Resolução por sessão, slug e hostname; consultas, APIs, storage, PDF e dados públicos escopados |
 | 4 — Membership/convites | Concluído | Memberships, convite com token hash/expiração/uso único, quota incluindo convites pendentes e senha de conta existente preservada |
 | 5 — Super Admin | Concluído | Dashboard global, busca/filtros, detalhe da empresa, status, plano, quotas, módulos e acesso auditado |
@@ -85,17 +85,20 @@ As seguintes variáveis foram registradas para Preview e Production:
 
 ROOT_DOMAIN não foi inventado porque ainda não há domínio raiz definitivo conectado. VERCEL_API_TOKEN não foi inventado nem exposto por ser um segredo operacional real.
 
-## Migração de Production não executada
+## Migração de Production executada
 
-A migration não foi aplicada ao Neon de Production. O checkpoint seguro já confirmou:
+As migrations 0008 e 0009 foram aplicadas ao Neon de Production em 09/10/2026 após aprovação explícita. O checkpoint confirmou:
 
 1. projeto Neon avan-aimoveis-dev (wandering-snow-32301627);
 2. branch com os dados atuais: vercel-production (br-raspy-snow-b58wt9zz);
 3. backup: backup-pre-saas-vercel-production-2026-10-08 (br-old-rice-b5xkemer);
 4. teste isolado: test-saas-migration-2026-10-08 (br-odd-water-b5e3f4vx);
-5. migration 0008 aprovada no clone, com contagens preservadas.
+5. migrations 0008 e 0009 validadas no clone antes de Production;
+6. backup fresco `backup-pre-saas-production-2026-10-09` (`br-cool-sunset-b520s5i0`) criado imediatamente antes da execução;
+7. contagens de Production preservadas e 25 constraints da 0009 confirmadas;
+8. journal Drizzle de Production atualizado com 0008 e 0009.
 
-Antes de Production, a 0009 deve ser aplicada e validada nessa branch isolada, seguida dos mesmos relatórios de contagem. A escrita em vercel-production continua exigindo aprovação explícita. Nenhuma credencial foi registrada no repositório.
+Atenção operacional: o deployment Vercel de Production ainda apontava para código pré-SaaS no momento da migration. O próximo passo crítico é promover código compatível com tenant_id ou realizar uma ação deliberada de compatibilidade/rollback antes de considerar os fluxos de escrita/login plenamente operacionais. Nenhuma credencial foi registrada no repositório.
 
 ## Bloqueios externos reais
 
@@ -105,7 +108,8 @@ Antes de Production, a 0009 deve ser aplicada e validada nessa branch isolada, s
 - Projeto: avan-aimoveis-dev
 - Branch operacional: vercel-production
 - Segurança: backup e branch isolada confirmados
-- Etapa pendente: validar 0009 na branch isolada; aplicar 0008/0009 em Production somente após aprovação explícita
+- Etapa concluída: 0009 validada em branch isolada e 0008/0009 aplicadas em vercel-production após aprovação explícita
+- Etapa crítica pendente: alinhar o deployment Vercel Production ao código SaaS compatível
 
 ### Vercel
 
