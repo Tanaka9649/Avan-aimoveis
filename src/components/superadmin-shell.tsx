@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LayoutDashboard, LogOut, Menu, PlusCircle, X } from "lucide-react";
+import { Building2, ClipboardList, LayoutDashboard, LogOut, Menu, PackageCheck, PlusCircle, UsersRound, X } from "lucide-react";
 import { useState } from "react";
 
 export function SuperAdminShell({
@@ -32,6 +32,10 @@ export function SuperAdminShell({
           <Link className={active("/superadmin") ? "active" : ""} href="/superadmin" onClick={() => setOpen(false)}><LayoutDashboard/><span>Visão global</span></Link>
           <Link className={active("/superadmin/empresas") && !pathname.endsWith("/nova") ? "active" : ""} href="/superadmin/empresas" onClick={() => setOpen(false)}><Building2/><span>Empresas</span></Link>
           <Link className={pathname.endsWith("/nova") ? "active" : ""} href="/superadmin/empresas/nova" onClick={() => setOpen(false)}><PlusCircle/><span>Nova empresa</span></Link>
+          <small>GESTÃO</small>
+          <Link className={active("/superadmin/planos") ? "active" : ""} href="/superadmin/planos" onClick={() => setOpen(false)}><PackageCheck/><span>Planos</span></Link>
+          <Link className={active("/superadmin/usuarios") ? "active" : ""} href="/superadmin/usuarios" onClick={() => setOpen(false)}><UsersRound/><span>Usuários</span></Link>
+          <Link className={active("/superadmin/auditoria") ? "active" : ""} href="/superadmin/auditoria" onClick={() => setOpen(false)}><ClipboardList/><span>Auditoria</span></Link>
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-profile"><span>{user.name.slice(0,2).toUpperCase()}</span><div><strong>{user.name}</strong><small>Super Admin</small></div></div>
