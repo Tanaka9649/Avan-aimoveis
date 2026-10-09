@@ -17,9 +17,9 @@ const limitLabel: Record<string, string> = {
 };
 
 function limitValue(key: string, value: number | null | undefined) {
+  if (key === "custom_domain") return value === 0 ? "Não incluído" : "Incluído";
   if (value == null) return "Ilimitado";
   if (key === "max_storage_bytes") return formatBytes(value);
-  if (key === "custom_domain") return value === 1 ? "Incluído" : "Não incluído";
   return Number(value).toLocaleString("pt-BR");
 }
 
