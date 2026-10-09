@@ -3,6 +3,7 @@ import {
   primaryKey, text, timestamp, uniqueIndex, uuid, varchar,
 } from "drizzle-orm/pg-core";
 import { defaultAccess, type Access } from "../../lib/permissions";
+import type { TenantBranding } from "../../lib/branding";
 
 export const userRole = pgEnum("user_role", ["admin", "equipe"]);
 export const globalRole = pgEnum("global_role", ["user", "super_admin"]);
@@ -29,7 +30,7 @@ export const tenants = pgTable("tenants", {
   phone: varchar("phone", { length: 30 }),
   whatsapp: varchar("whatsapp", { length: 30 }),
   email: varchar("email", { length: 254 }),
-  branding: jsonb("branding").$type<{ logoLight?: string; logoDark?: string; favicon?: string }>().default({}).notNull(),
+  branding: jsonb("branding").$type<TenantBranding>().default({}).notNull(),
   site: jsonb("site").$type<{ primaryColor?: string; secondaryColor?: string; accentColor?: string; title?: string; description?: string }>().default({}).notNull(),
   settings: jsonb("settings").$type<Record<string, unknown>>().default({}).notNull(),
   quotaOverrides: jsonb("quota_overrides").$type<Record<string, number | null>>().default({}).notNull(),
