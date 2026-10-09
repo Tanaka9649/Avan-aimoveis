@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
   Building2,
+  LayoutDashboard,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -26,7 +27,7 @@ import { canAccess, firstAllowedRoute, modules, type Access, type Module } from 
 import { BrandLogo } from "./brand-logo";
 
 const moduleMeta: Record<Module, { label: string; icon: typeof Building2 }> = {
-  dashboard: { label: "Visão geral", icon: BarChart3 },
+  dashboard: { label: "Visão geral", icon: LayoutDashboard },
   imoveis: { label: "Imóveis", icon: Building2 },
   clientes: { label: "Clientes", icon: Users },
   crm: { label: "CRM", icon: KanbanSquare },
@@ -127,6 +128,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
           <button className="header-theme" aria-label={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"} onClick={toggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
           <Link className="admin-view-site" href={publicBase} target="_blank">Ver site <ChevronRight /></Link>
         </header>
+        {user.globalRole === "super_admin" ? <div className="impersonation-banner"><span>Você está acessando {user.tenant.name} como Super Admin.</span><Link href="/superadmin">Voltar ao Super Admin</Link></div> : null}
         {children}
       </div>
     </div>
