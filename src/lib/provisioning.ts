@@ -7,11 +7,12 @@ import { defaultAccess, type Module } from "@/lib/permissions";
 import { moduleRegistry, validModuleCombination } from "@/lib/module-registry";
 import { hashToken, issueToken } from "@/lib/security";
 import { normalizeTenantSlug } from "@/lib/tenant-routing";
+import type { TenantBranding } from "@/lib/branding";
 
 export type ProvisionTenantInput = {
   name: string; slug: string; phone?: string; whatsapp?: string; email?: string;
   plan: "starter" | "pro" | "max" | "custom"; modules: Module[];
-  branding?: { logoLight?: string; logoDark?: string; favicon?: string };
+  branding?: TenantBranding;
   site?: { primaryColor?: string; secondaryColor?: string; accentColor?: string; title?: string; description?: string };
   admin: { name: string; email: string };
 };
