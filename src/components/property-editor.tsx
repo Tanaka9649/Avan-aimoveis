@@ -32,6 +32,7 @@ import {
 } from "@/lib/property-wizard";
 import "./property-wizard.css";
 import { PropertyMediaManager } from "./property-media-manager";
+import { MoneyInput } from "./money-input";
 
 type Values = Record<string, string>;
 const statuses: Values = {
@@ -133,6 +134,7 @@ export function PropertyEditor({
     price: "",
     area: "",
     bedrooms: "0",
+    suites: "0",
     bathrooms: "0",
     parking: "0",
     type: "Apartamento",
@@ -469,6 +471,7 @@ export function PropertyEditor({
                 <div className="wizard-counts">
                   {[
                     ["bedrooms", "Quartos"],
+                    ["suites", "Suítes"],
                     ["bathrooms", "Banheiros"],
                     ["parking", "Vagas"],
                   ].map(([name, label]) => (
@@ -638,7 +641,7 @@ export function PropertyEditor({
                       {values.state.toUpperCase()}
                     </p>
                     <p>
-                      {values.bedrooms} quartos · {values.bathrooms} banheiros ·{" "}
+                      {values.bedrooms} quartos · {values.suites} suítes · {values.bathrooms} banheiros ·{" "}
                       {values.parking} vagas · {Number(values.area || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m²
                     </p>
                   </div>
@@ -650,17 +653,12 @@ export function PropertyEditor({
                     </p>
                     <p>
                       Proprietário:{" "}
-                      {initial.ownerNames
-                        ? initial.ownerNames +
-                          (ownerName !== "Não informado"
-                            ? "; " + ownerName
-                            : "")
-                        : ownerName}
+                      {ownerName !== "Não informado" ? ownerName : (initial.ownerNames || ownerName)}
                     </p>
                   </SummaryBlock>
                   <SummaryBlock title="Características" onEdit={() => go(1)}>
                     <p>
-                      {values.bedrooms} quartos · {values.bathrooms} banheiros ·{" "}
+                      {values.bedrooms} quartos · {values.suites} suítes · {values.bathrooms} banheiros ·{" "}
                       {values.parking} vagas · {Number(values.area || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m² privativos
                     </p>
                   </SummaryBlock>
