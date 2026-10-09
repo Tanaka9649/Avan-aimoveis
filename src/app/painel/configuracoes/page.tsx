@@ -1,6 +1,8 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { SettingsForm } from "@/components/settings-form";
+import { BrandLogosEditor } from "@/components/brand-logos-editor";
+import { BrandingSettingsTabs } from "@/components/branding-settings-tabs";
 import { DomainVerificationButton } from "@/components/domain-verification-button";
 import { TenantInviteForm } from "@/components/tenant-invite-form";
 import { getDb } from "@/db";
@@ -8,7 +10,8 @@ import { clients, plans, reminderSettings, tenantMemberships, tenantModules, ten
 import { requireAdmin } from "@/lib/access";
 import { moduleRegistry } from "@/lib/module-registry";
 import { moduleLabels, modules } from "@/lib/permissions";
-import { assignClient, createAccount, saveCustomDomain, saveReminders, saveTenantBranding, saveTenantModules, updateAccount } from "./actions";
+import { brandingLogos } from "@/lib/branding";
+import { assignClient, createAccount, saveCustomDomain, saveReminders, saveTenantBranding, saveTenantLogos, saveTenantModules, updateAccount } from "./actions";
 
 export default async function SettingsPage() {
   const admin = await requireAdmin();
@@ -43,21 +46,28 @@ export default async function SettingsPage() {
 
       <section className="admin-card">
         <h2>Identidade e site</h2>
-        <p>As alterações são aplicadas somente ao site e ao painel de {tenant.name}.</p>
-        <SettingsForm action={saveTenantBranding} label="Salvar identidade">
-          <label>Nome da empresa<input name="name" required minLength={2} defaultValue={tenant.name}/></label>
-          <label>Telefone<input name="phone" defaultValue={tenant.phone || ""}/></label>
-          <label>WhatsApp<input name="whatsapp" defaultValue={tenant.whatsapp || ""}/></label>
-          <label>E-mail<input name="email" type="email" defaultValue={tenant.email || ""}/></label>
-          <label className="wide">Logo para fundo claro — URL<input name="logoLight" type="url" defaultValue={branding.logoLight || ""}/></label>
-          <label className="wide">Logo para fundo escuro — URL<input name="logoDark" type="url" defaultValue={branding.logoDark || ""}/></label>
-          <label className="wide">Favicon — URL<input name="favicon" type="url" defaultValue={branding.favicon || ""}/></label>
-          <label>Cor principal<input name="primaryColor" type="color" defaultValue={site.primaryColor || "#111827"}/></label>
-          <label>Cor secundária<input name="secondaryColor" type="color" defaultValue={site.secondaryColor || "#334155"}/></label>
-          <label>Cor de destaque<input name="accentColor" type="color" defaultValue={site.accentColor || "#d6a85f"}/></label>
-          <label className="wide">Título do site<input name="siteTitle" maxLength={180} defaultValue={site.title || ""}/></label>
-          <label className="wide">Descrição para SEO<textarea name="siteDescription" maxLength={320} defaultValue={site.description || ""}/></label>
-        </SettingsForm>
+        <p>As alterações são aplicadas somente ao site e ao painel de {tenant.name}. Em Logos do site, você pode combinar marcas de duas ou mais empresas parceiras.</p>
+        <BrandingSettingsTabs
+          details={
+            <SettingsForm action={saveTenantBranding} label="Salvar identidade">
+              <label>Nome da empresa<input name="name" required minLength={2} defaultValue={tenant.name}/></label>
+              <label>Telefone<input name="phone" defaultValue={tenant.phone || ""}/></label>
+              <label>WhatsApp<input name="whatsapp" defaultValue={tenant.whatsapp || ""}/></label>
+              <label>E-mail<input name="email" type="email" defaultValue={tenant.email || ""}/></label>
+              <label>Cor principal<input name="primaryColor" type="color" defaultValue={site.primaryColor || "#111827"}/></label>
+              <label>Cor secundária<input name="secondaryColor" type="color" defaultValue={site.secondaryColor || "#334155"}/></label>
+              <label>Cor de destaque<input name="accentColor" type="color" defaultValue={site.accentColor || "#d6a85f"}/></label>
+              <label className="wide">Título do site<input name="siteTitle" maxLength={180} defaultValue={site.title || ""}/></label>
+              <label className="wide">Descrição para SEO<textarea name="siteDescription" maxLength={320} defaultValue={site.description || ""}/></label>
+            </SettingsForm>
+          }
+          logos={
+            <SettingsForm action={saveTenantLogos} label="Salvar logos">
+              <BrandLogosEditor initialLogos={brandingLogos(branding)}/>
+              <label className="wide">Favicon — URL<input name="favicon" type="url" defaultValue={branding.favicon || ""}/></label>
+            </SettingsForm>
+          }
+        />
       </section>
 
       <section className="admin-card">
