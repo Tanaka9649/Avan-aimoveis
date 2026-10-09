@@ -66,49 +66,59 @@ export async function saveOwner(_: { ok: boolean; message: string }, formData: F
     };
   }
 
-  if (id) {
-    const [owner] = await db
-      .update(owners)
-      .set({
-        name: parsed.data.name,
-        phone: parsed.data.phone,
-        email: parsed.data.email || null,
-        notes: parsed.data.notes || null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(owners.id, id), eq(owners.tenantId, user.tenantId)))
-      .returning({ id: owners.id });
-
-    if (!owner) return { ok: false, message: "Proprietário não encontrado nesta empresa." };
-
-    await db.insert(activityLogs).values({
-      tenantId: user.tenantId,
-      userId: user.id,
-      entityType: "owner",
-      entityId: id,
-      action: "updated",
-    });
-  } else {
-    const [row] = await db
-      .insert(owners)
-      .values({
+  try {
+    if (id) {
+      const [owner] = await db
+        .update(owners)
+        .set({
+          name: parsed.data.name,
+          phone: parsed.data.phone,
+          email: parsed.data.email || null,
+          notes: parsed.data.notes || null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(owners.id, id), eq(owners.tenantId, user.tenantId)))
+        .returning({ id: owners.id });
+  
+      if (!owner) return { ok: false, message: "Proprietário não encontrado nesta empresa." };
+  
+      await db.insert(activityLogs).values({
         tenantId: user.tenantId,
-        name: parsed.data.name,
-        phone: parsed.data.phone,
-        email: parsed.data.email || null,
-        notes: parsed.data.notes || null,
-      })
-      .returning({ id: owners.id });
-
-    id = row.id;
-
-    await db.insert(activityLogs).values({
-      tenantId: user.tenantId,
-      userId: user.id,
-      entityType: "owner",
-      entityId: id,
-      action: "created",
-    });
+        userId: user.id,
+        entityType: "owner",
+        entityId: id,
+        action: "updated",
+      });
+    } else {
+      const [row] = await db
+        .insert(owners)
+        .values({
+          tenantId: user.tenantId,
+          name: parsed.data.name,
+          phone: parsed.data.phone,
+          email: parsed.data.email || null,
+          notes: parsed.data.notes || null,
+        })
+        .returning({ id: owners.id });
+  
+      id = row.id;
+  
+      await db.insert(activityLogs).values({
+        tenantId: user.tenantId,
+        userId: user.id,
+        entityType: "owner",
+        entityId: id,
+        action: "created",
+      });
+    }
+  
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("owners_tenant_phone_identity_uq") || message.includes("owners_tenant_email_identity_uq") || message.includes("owners_tenant_name_only_identity_uq")) {
+      return { ok: false, message: "Já existe um proprietário com os mesmos dados. Abra o cadastro existente em vez de criar outro." };
+    }
+    console.error("[saveOwner] failed", { error });
+    return { ok: false, message: "Não foi possível salvar o proprietário. Tente novamente." };
   }
 
   revalidatePath("/painel/proprietarios", "layout");
