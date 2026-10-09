@@ -1,6 +1,6 @@
 import {and,asc,count,desc,eq,ilike,inArray,isNotNull,or,sql} from "drizzle-orm";
 import {getDb} from "@/db";
-import {activities,clientFavorites,clientPropertyPresentations,clients,deals,properties,proposals,stages,visits} from "@/db/schema";
+import {activities,clientFavorites,clientPropertyPresentations,clients,deals,properties,proposals,stages,users,visits} from "@/db/schema";
 import {clientScope,requireModule} from "@/lib/access";
 import {formatMoney} from "@/lib/format";
 import {PAGE_SIZE,pageNumber,type Query,value} from "@/lib/list-query";
@@ -33,6 +33,9 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  const [selectedClient]=selectedClientId&&!clientRows.some(client=>client.id===selectedClientId)?await db.select().from(clients).where(and(eq(clients.id,selectedClientId),clientScope(user))).limit(1):[];
  const visibleClients=selectedClient?[selectedClient,...clientRows.slice(0,PAGE_SIZE-1)]:clientRows;
  const clientIds=visibleClients.map(client=>client.id);
+ const assignedUserIds=[...new Set(visibleClients.flatMap(client=>client.assignedTo?[client.assignedTo]:[]))];
+ const assignedUsers=assignedUserIds.length?await db.select({id:users.id,name:users.name}).from(users).where(inArray(users.id,assignedUserIds)):[];
+ const responsibleByUserId=new Map(assignedUsers.map(person=>[person.id,person.name] as const));
  const[dealStats,favoriteStats,presentationStats,visitStats,proposalStats,historyStats,nextActions]=clientIds.length?await Promise.all([
   db.select({clientId:deals.clientId,value:count()}).from(deals).where(and(eq(deals.tenantId,user.tenantId),inArray(deals.clientId,clientIds))).groupBy(deals.clientId),
   db.select({clientId:clientFavorites.clientId,value:count()}).from(clientFavorites).where(and(eq(clientFavorites.tenantId,user.tenantId),inArray(clientFavorites.clientId,clientIds))).groupBy(clientFavorites.clientId),
@@ -50,7 +53,7 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  const clientCards:CrmClient[]=visibleClients.map(client=>{
   const hasPreferences = client.budgetMinCents !== null || client.budgetMaxCents !== null || client.desiredTypes.length > 0 || client.desiredRegions.length > 0 || client.desiredFeatures.length > 0 || Boolean(client.minBedrooms || client.minBathrooms || client.minParkingSpaces || client.minArea);
   return {
-   id:client.id,name:client.name,phone:client.phone,email:client.email,origin:client.origin,budgetMin:client.budgetMinCents,budgetMax:client.budgetMaxCents,desiredTypes:client.desiredTypes,desiredRegions:client.desiredRegions,desiredFeatures:client.desiredFeatures,minBedrooms:client.minBedrooms??0,minBathrooms:client.minBathrooms??0,minParkingSpaces:client.minParkingSpaces??0,
+   id:client.id,name:client.name,phone:client.phone,email:client.email,origin:client.origin,responsible:client.assignedTo?responsibleByUserId.get(client.assignedTo)||null:null,budgetMin:client.budgetMinCents,budgetMax:client.budgetMaxCents,desiredTypes:client.desiredTypes,desiredRegions:client.desiredRegions,desiredFeatures:client.desiredFeatures,minBedrooms:client.minBedrooms??0,minBathrooms:client.minBathrooms??0,minParkingSpaces:client.minParkingSpaces??0,
    opportunities:dealCountByClient.get(client.id)||0,favorites:favoritesByClient.get(client.id)||0,presented:presentationsByClient.get(client.id)||0,visits:visitsByClient.get(client.id)||0,proposals:proposalsByClient.get(client.id)||0,history:historyByClient.get(client.id)||0,matches:hasPreferences?available.filter(property=>propertyMatch(client,property).score>=45).length:0,nextActionAt:nextActionByClient.get(client.id)?.nextActionAt.toISOString()||null,nextActionType:nextActionByClient.get(client.id)?.nextActionType||null,
   };
  });
