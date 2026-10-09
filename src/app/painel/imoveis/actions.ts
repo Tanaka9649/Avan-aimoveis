@@ -164,6 +164,8 @@ export async function saveProperty(_previous: { error: string; id?: string; save
       return { error: "O código informado já pertence a outro imóvel.", id };
     if (details.includes("properties_slug_uq"))
       return { error: "O endereço da página já pertence a outro imóvel.", id };
+    if (details.includes("owners_tenant_phone_identity_uq") || details.includes("owners_tenant_email_identity_uq") || details.includes("owners_tenant_name_only_identity_uq"))
+      return { error: "Esse proprietário já existe nesta empresa. Atualize a página e selecione o cadastro existente.", id };
     console.error("[saveProperty] failed", { id, error });
     return { error: "Não foi possível salvar o imóvel. Tente novamente.", id };
   }
