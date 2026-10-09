@@ -4,6 +4,8 @@ import { BarChart3, Building2, Globe2, Home, Users } from "lucide-react";
 import { getDb } from "@/db";
 import { analyticsEvents, properties, tenantAuditLogs, tenantMemberships, tenants } from "@/db/schema";
 import { requireSuperAdmin } from "@/lib/access";
+import { StatusBadge } from "@/components/admin-ui";
+import { auditActionLabel, auditEntityLabel, countText, planLabels } from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +35,10 @@ export default async function SuperAdminPage() {
       </header>
 
       <section className="metric-grid" aria-label="Indicadores globais">
-        <article className="metric-card"><div className="metric-card-top"><span>Empresas</span><Building2 /></div><strong>{tenantCount.value}</strong><small>{activeCount.value} ativas</small></article>
-        <article className="metric-card"><div className="metric-card-top"><span>Usuários ativos</span><Users /></div><strong>{userCount.value}</strong><small>em memberships ativas</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Empresas</span><Building2 /></div><strong>{tenantCount.value}</strong><small>{countText(Number(activeCount.value), "empresa ativa", "empresas ativas")}</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Usuários ativos</span><Users /></div><strong>{userCount.value}</strong><small>{countText(Number(userCount.value), "acesso ativo", "acessos ativos")}</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Imóveis</span><Home /></div><strong>{propertyCount.value}</strong><small>em todos os tenants</small></article>
-        <article className="metric-card"><div className="metric-card-top"><span>Domínios ativos</span><Globe2 /></div><strong>{domainCount.value}</strong><small>personalizados verificados</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Domínios ativos</span><Globe2 /></div><strong>{domainCount.value}</strong><small>{countText(Number(domainCount.value), "domínio verificado", "domínios verificados")}</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Tráfego — 30 dias</span><BarChart3 /></div><strong>{traffic.views}</strong><small>{traffic.visitors} visitantes únicos</small></article>
       </section>
 
@@ -45,12 +47,12 @@ export default async function SuperAdminPage() {
           <div className="card-title" style={{ padding: 18 }}><div><span>Operação</span><h2>Empresas recentes</h2></div><Link href="/superadmin/empresas">Ver todas</Link></div>
           <table>
             <thead><tr><th>Empresa</th><th>Plano</th><th>Status</th></tr></thead>
-            <tbody>{recentTenants.map((tenant) => <tr key={tenant.id}><td><Link href={"/superadmin/empresas/" + tenant.id}><strong>{tenant.name}</strong><small>/empresa/{tenant.slug}</small></Link></td><td>{tenant.plan}</td><td><span className={"status status-" + tenant.status}>{tenant.status}</span></td></tr>)}</tbody>
+            <tbody>{recentTenants.map((tenant) => <tr key={tenant.id}><td><Link href={"/superadmin/empresas/" + tenant.id}><strong>{tenant.name}</strong><small>/empresa/{tenant.slug}</small></Link></td><td>{planLabels[tenant.plan] || tenant.plan}</td><td><StatusBadge value={tenant.status}/></td></tr>)}</tbody>
           </table>
         </section>
         <section className="admin-card table-card">
           <div className="card-title" style={{ padding: 18 }}><div><span>Segurança</span><h2>Auditoria recente</h2></div></div>
-          {recentAudit.length ? <table><thead><tr><th>Ação</th><th>Quando</th></tr></thead><tbody>{recentAudit.map((entry) => <tr key={entry.id}><td><strong>{entry.action}</strong><small>{entry.entityType}</small></td><td>{entry.createdAt.toLocaleString("pt-BR")}</td></tr>)}</tbody></table> : <p className="table-empty">Nenhuma ação auditada.</p>}
+          {recentAudit.length ? <table><thead><tr><th>Ação</th><th>Quando</th></tr></thead><tbody>{recentAudit.map((entry) => <tr key={entry.id}><td><strong>{auditActionLabel(entry.action)}</strong><small>{auditEntityLabel(entry.entityType)}</small></td><td>{entry.createdAt.toLocaleString("pt-BR")}</td></tr>)}</tbody></table> : <p className="table-empty">Nenhuma ação auditada.</p>}
         </section>
       </div>
     </main>
