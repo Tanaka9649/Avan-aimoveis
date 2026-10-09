@@ -39,7 +39,7 @@ export async function saveProperty(_previous: { error: string; id?: string; save
   const owner=ownerInput.data;
   if(!owner.ownerId&&owner.ownerName&&owner.ownerName.length<2)return {error:"Informe o nome completo do proprietário."};
   if(!owner.ownerId&&owner.ownerPhone&&!isValidBrazilianPhone(owner.ownerPhone))return {error:"Informe um telefone válido com DDD para o proprietário ou deixe o campo em branco."};
-  const values = { code: p.code, title: p.title, slug: p.slug, type: p.type, priceCents: p.price, city: p.city, state: p.state, neighborhood: p.neighborhood, addressPrivate: p.address, description: p.description, bedrooms: p.bedrooms, bathrooms: p.bathrooms, parkingSpaces: p.parking, privateArea: p.area.toFixed(2), status: p.status, updatedAt: new Date() };
+  const values = { code: p.code, title: p.title, slug: p.slug, type: p.type, priceCents: p.price, city: p.city, state: p.state, neighborhood: p.neighborhood, addressPrivate: p.address, description: p.description, bedrooms: p.bedrooms, suites: p.suites, bathrooms: p.bathrooms, parkingSpaces: p.parking, privateArea: p.area.toFixed(2), status: p.status, updatedAt: new Date() };
   // Publication is its own decision, never a side effect of the commercial status, so re-saving a
   // listing no longer republishes it and no longer resets the date it went live.
   const wantsPublication = formData.get("publish") === "1";
