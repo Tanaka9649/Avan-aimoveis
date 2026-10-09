@@ -68,6 +68,28 @@ export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmC
  revalidatePath("/painel/busca");
  return{ok:true,message:raw?"Alterações salvas com sucesso.":"Cliente cadastrado com sucesso.",clientId:id};
 }
+export async function assignCrmClient(_:State,form:FormData):Promise<State>{
+ const user=await requireModule("crm");
+ if(user.role!=="admin")return{ok:false,message:"Apenas administradores podem alterar o responsável."};
+ const parsed=z.object({clientId:z.uuid(),userId:z.union([z.uuid(),z.literal("")])}).safeParse(Object.fromEntries(form));
+ if(!parsed.success)return{ok:false,message:"Selecione um responsável válido."};
+ const db=getDb();
+ const [client]=await db.select({id:clients.id,assignedTo:clients.assignedTo}).from(clients).where(and(eq(clients.id,parsed.data.clientId),eq(clients.tenantId,user.tenantId))).limit(1);
+ if(!client)return{ok:false,message:"Cliente indisponível."};
+ if(parsed.data.userId){
+  const [person]=await db.select({id:users.id}).from(users)
+   .innerJoin(tenantMemberships,and(eq(tenantMemberships.userId,users.id),eq(tenantMemberships.tenantId,user.tenantId),eq(tenantMemberships.status,"active")))
+   .where(and(eq(users.id,parsed.data.userId),eq(users.active,true))).limit(1);
+  if(!person)return{ok:false,message:"Responsável indisponível."};
+ }
+ await db.batch([
+  db.update(clients).set({assignedTo:parsed.data.userId||null,updatedAt:new Date()}).where(and(eq(clients.id,client.id),eq(clients.tenantId,user.tenantId))),
+  db.insert(activities).values({tenantId:user.tenantId,clientId:client.id,userId:user.id,type:"client_assigned",description:parsed.data.userId?"Responsável comercial atualizado.":"Cliente ficou sem responsável definido."}),
+ ]);
+ revalidatePath("/painel/crm");
+ return{ok:true,message:"Responsável atualizado."};
+}
+
 export async function dealChoices(){
  const user=await requireModule("crm");const db=getDb();const [stageRows,clientRows,propertyRows,team]=await Promise.all([db.select({id:stages.id,name:stages.name,isWon:stages.isWon,isLost:stages.isLost}).from(stages).where(eq(stages.tenantId,user.tenantId)).orderBy(asc(stages.position)),db.select({id:clients.id,name:clients.name,phone:clients.phone,assignedTo:clients.assignedTo}).from(clients).where(clientScope(user)).orderBy(asc(clients.name)),db.select({id:properties.id,title:properties.title,code:properties.code,priceCents:properties.priceCents,city:properties.city,neighborhood:properties.neighborhood,photoId:sql<string|null>`(select id from property_photos where property_id=${properties.id} and tenant_id=${user.tenantId}::uuid and processing_status='ready' order by is_cover desc, position limit 1)`}).from(properties).where(eq(properties.tenantId,user.tenantId)).orderBy(asc(properties.title)),user.role==="admin"?db.select({id:users.id,name:users.name}).from(users).innerJoin(tenantMemberships,and(eq(tenantMemberships.userId,users.id),eq(tenantMemberships.tenantId,user.tenantId),eq(tenantMemberships.status,"active"))).where(eq(users.active,true)):Promise.resolve([])]);return {stages:stageRows,clients:clientRows,properties:propertyRows,team};
 }
