@@ -17,7 +17,7 @@ export default async function SuperAdminPage() {
     db.select({ value: count() }).from(tenants).where(eq(tenants.status, "active")),
     db.select({ value: count() }).from(tenantMemberships).where(eq(tenantMemberships.status, "active")),
     db.select({ value: count() }).from(properties),
-    db.select({ value: count() }).from(tenants).where(eq(tenants.domainStatus, "active")),
+    db.select({ value: count() }).from(tenants).where(and(eq(tenants.domainStatus, "active"), isNotNull(tenants.customDomain))),
     db.select({ views: count(), visitors: countDistinct(analyticsEvents.anonymousSessionId) }).from(analyticsEvents).where(sql.raw("analytics_events.created_at >= now() - interval '30 days'")),
     db.select({ id: tenants.id, name: tenants.name, slug: tenants.slug, status: tenants.status, plan: tenants.plan }).from(tenants).orderBy(desc(tenants.createdAt)).limit(6),
     db.select({ id: tenantAuditLogs.id, action: tenantAuditLogs.action, entityType: tenantAuditLogs.entityType, createdAt: tenantAuditLogs.createdAt }).from(tenantAuditLogs).orderBy(desc(tenantAuditLogs.createdAt)).limit(8),
