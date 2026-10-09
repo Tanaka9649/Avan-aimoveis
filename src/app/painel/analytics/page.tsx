@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { sql } from "drizzle-orm";
-import { BarChart3, Eye, Heart, MessageCircle, Search, Send, Users } from "lucide-react";
+import { BarChart3, Eye, Heart, MessageCircle, Search, Send, TrendingUp, Users } from "lucide-react";
+import { MetricCard, PageHeader } from "@/components/admin-ui";
 import { getDb } from "@/db";
 import { requireModule } from "@/lib/access";
 
@@ -66,47 +67,66 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const propertyViews = values.property_view || 0;
   const conversion = propertyViews ? (contacts / propertyViews) * 100 : 0;
   const metrics = [
-    { label: "Visitantes únicos", value: uniqueVisitors.toLocaleString("pt-BR"), Icon: Users },
-    { label: "Visualizações do site", value: String(values.site_view || 0), Icon: Eye },
-    { label: "Visualizações de imóveis", value: String(propertyViews), Icon: BarChart3 },
-    { label: "Buscas", value: String(values.search || 0), Icon: Search },
-    { label: "Favoritos", value: String(values.favorite_add || 0), Icon: Heart },
-    { label: "Cliques no WhatsApp", value: String(values.whatsapp_click || 0), Icon: MessageCircle },
-    { label: "Interesses enviados", value: String(values.interest_submit || 0), Icon: Send },
-    { label: "Conversão para contato", value: `${conversion.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`, Icon: Send },
+    { label: "Visitantes únicos", value: uniqueVisitors.toLocaleString("pt-BR"), helper: "pessoas no período", icon: Users, tone: "blue" as const, featured: true },
+    { label: "Visualizações de imóveis", value: String(propertyViews), helper: "aberturas de anúncios", icon: Eye, tone: "blue" as const },
+    { label: "Cliques no WhatsApp", value: String(values.whatsapp_click || 0), helper: "intenções de contato", icon: MessageCircle, tone: "green" as const, featured: true },
+    { label: "Conversão para contato", value: `${conversion.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`, helper: "contatos ÷ visualizações", icon: TrendingUp, tone: "green" as const, featured: true },
+    { label: "Visualizações do site", value: String(values.site_view || 0), helper: "páginas visualizadas", icon: BarChart3, tone: "slate" as const },
+    { label: "Buscas", value: String(values.search || 0), helper: "pesquisas realizadas", icon: Search, tone: "slate" as const },
+    { label: "Favoritos", value: String(values.favorite_add || 0), helper: "imóveis salvos", icon: Heart, tone: "amber" as const },
+    { label: "Interesses enviados", value: String(values.interest_submit || 0), helper: "formulários enviados", icon: Send, tone: "amber" as const },
   ];
 
-  return <div className="admin-page">
-    <div className="admin-page-heading">
-      <div><span className="admin-eyebrow">Desempenho do site</span><h1>Analytics</h1><p>Métricas públicas, isoladas para este tenant e sem IP puro.</p></div>
-      <BarChart3 aria-hidden="true"/>
+  const periodHref = (days: number) => `/painel/analytics?period=${days}`;
+
+  return (
+    <div className="admin-content">
+      <PageHeader eyebrow="Desempenho" title="Analytics" description="Acompanhe tráfego, interesse e conversão do site desta empresa." />
+
+      <section className="admin-card analytics-period-card">
+        <div className="admin-tabs" aria-label="Período">
+          <Link className={!custom && period === 1 ? "active" : ""} href={periodHref(1)}>Hoje</Link>
+          <Link className={!custom && period === 7 ? "active" : ""} href={periodHref(7)}>7 dias</Link>
+          <Link className={!custom && period === 30 ? "active" : ""} href={periodHref(30)}>30 dias</Link>
+        </div>
+        <form className="entity-form" method="get">
+          <input type="hidden" name="period" value="custom"/>
+          <label>De<input type="date" name="from" required defaultValue={custom ? params.from : ""}/></label>
+          <label>Até<input type="date" name="to" required defaultValue={custom ? params.to : ""}/></label>
+          <div><button className="admin-button secondary">Aplicar período</button></div>
+        </form>
+      </section>
+
+      <section className="metric-grid analytics-metrics" aria-label="Indicadores do período">
+        {metrics.slice(0,4).map((metric) => <MetricCard key={metric.label} {...metric}/>)}
+      </section>
+      <section className="metric-grid secondary-kpis analytics-metrics" aria-label="Indicadores complementares">
+        {metrics.slice(4).map((metric) => <MetricCard key={metric.label} {...metric}/>)}
+      </section>
+
+      <section className="admin-card table-card analytics-table-card">
+        <div className="table-toolbar"><div><strong>Desempenho por imóvel</strong><span>Visualizações, visitantes e contatos no período.</span></div></div>
+        <div className="table-scroll">
+          <table>
+            <thead><tr><th>Imóvel</th><th>Visualizações</th><th>Visitantes</th><th>WhatsApp</th><th>Interesses</th><th>Conversão</th></tr></thead>
+            <tbody>{(topResult.rows as unknown as TopProperty[]).map((row) => {
+              const rowContacts = Number(row.whatsapp) + Number(row.leads);
+              const rowConversion = Number(row.views) ? rowContacts / Number(row.views) * 100 : 0;
+              return <tr key={row.id}><td><strong>{row.title}</strong></td><td>{Number(row.views).toLocaleString("pt-BR")}</td><td>{Number(row.visitors).toLocaleString("pt-BR")}</td><td>{Number(row.whatsapp).toLocaleString("pt-BR")}</td><td>{Number(row.leads).toLocaleString("pt-BR")}</td><td>{rowConversion.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</td></tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="admin-card table-card analytics-table-card">
+        <div className="table-toolbar"><div><strong>Origem do tráfego</strong><span>UTMs são usadas somente para análise e não alteram a origem comercial do CRM.</span></div></div>
+        <div className="table-scroll">
+          <table>
+            <thead><tr><th>Origem</th><th>Eventos</th></tr></thead>
+            <tbody>{(sourceResult.rows as unknown as TrafficSource[]).map((row) => <tr key={row.source}><td><strong>{row.source}</strong></td><td>{Number(row.total).toLocaleString("pt-BR")}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </section>
     </div>
-    <nav className="admin-tabs" aria-label="Período">
-      <Link href="/painel/analytics?period=1">Hoje</Link>
-      <Link href="/painel/analytics?period=7">7 dias</Link>
-      <Link href="/painel/analytics?period=30">30 dias</Link>
-    </nav>
-    <form className="entity-form" method="get">
-      <input type="hidden" name="period" value="custom"/>
-      <label>De<input type="date" name="from" required defaultValue={custom ? params.from : ""}/></label>
-      <label>Até<input type="date" name="to" required defaultValue={custom ? params.to : ""}/></label>
-      <div><button className="admin-secondary">Aplicar período</button></div>
-    </form>
-    <section className="metric-grid">{metrics.map(({ label, value, Icon }) => <article className="metric-card" key={label}><Icon aria-hidden="true"/><span>{label}</span><strong>{value}</strong></article>)}</section>
-    <section className="admin-card">
-      <div className="admin-card-heading"><h2>Desempenho por imóvel</h2><p>Visualizações, visitantes e contatos no período.</p></div>
-      <div className="admin-table-wrap"><table className="admin-table">
-        <thead><tr><th>Imóvel</th><th>Visualizações</th><th>Visitantes</th><th>WhatsApp</th><th>Interesses</th><th>Conversão</th></tr></thead>
-        <tbody>{(topResult.rows as unknown as TopProperty[]).map((row) => {
-          const rowContacts = Number(row.whatsapp) + Number(row.leads);
-          const rowConversion = Number(row.views) ? rowContacts / Number(row.views) * 100 : 0;
-          return <tr key={row.id}><td>{row.title}</td><td>{Number(row.views).toLocaleString("pt-BR")}</td><td>{Number(row.visitors).toLocaleString("pt-BR")}</td><td>{Number(row.whatsapp).toLocaleString("pt-BR")}</td><td>{Number(row.leads).toLocaleString("pt-BR")}</td><td>{rowConversion.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</td></tr>;
-        })}</tbody>
-      </table></div>
-    </section>
-    <section className="admin-card">
-      <div className="admin-card-heading"><h2>Origem do tráfego</h2><p>UTM é usada somente em analytics e não altera a origem comercial do CRM.</p></div>
-      <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Origem</th><th>Eventos</th></tr></thead><tbody>{(sourceResult.rows as unknown as TrafficSource[]).map((row) => <tr key={row.source}><td>{row.source}</td><td>{Number(row.total).toLocaleString("pt-BR")}</td></tr>)}</tbody></table></div>
-    </section>
-  </div>;
+  );
 }
