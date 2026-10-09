@@ -154,3 +154,48 @@ Validação:
 - Production: deployment `dpl_37amrDAizSRwUzRK5wgXwj422uqs`, READY.
 - Alias `imoveisplatform.vercel.app`: ativo, sem erro de alias.
 - Nenhuma migration ou alteração de dados foi necessária nesta rodada.
+
+
+## Hardening pós-auditoria interna — 09/10/2026
+
+A segunda auditoria da plataforma interna encontrou problemas de confiabilidade e performance que foram tratados na branch `feat/saas-multitenant`, sem alterar visualmente o site público ou os logins.
+
+### Dados e integridade
+
+- Backup `backup-pre-owner-dedupe-2026-10-09` criado antes da limpeza.
+- Duplicação histórica de proprietários corrigida em Production.
+- 8 imóveis e 76 fotos preservados integralmente.
+- Proprietários passaram de 20 registros históricos duplicados para 8 identidades canônicas.
+- Migration 0010 adiciona proteção de unicidade para impedir regressão.
+- Actions de imóvel e proprietário tratam conflito de identidade com mensagem amigável.
+
+### Performance e consistência
+
+- CRM passou a carregar somente as consultas necessárias para a visualização ativa (Funil ou Clientes), evitando o pacote completo de métricas em todas as visitas.
+- Editor de imóvel passou a carregar proprietários, vínculos, fotos, documentos e clientes compatíveis em paralelo.
+- Migration 0011 adiciona índices tenant-first para consultas frequentes.
+- Estado de domínio sem custom domain foi normalizado e a UI passou a seguir a mesma semântica do motor de entitlements.
+
+### UX/produto na branch
+
+- Busca global agora encontra oportunidade também pelo cliente/contato.
+- Perfil do usuário interno foi adicionado.
+- Editor de imóvel ganhou Suítes, tipo Terreno e resumo sem repetição de proprietário.
+- Analytics ganhou evolução diária e linguagem menos técnica.
+- Páginas 404 internas já existem para Painel e Super Admin.
+- Super Admin já possui Planos, Usuários e Auditoria com paginação/filtros.
+- Imóveis exibem apenas Editar + menu de ações no card na versão atual da branch.
+
+### Validação pendente de código
+
+Não houve deploy desta rodada por decisão explícita do usuário e porque a Vercel havia atingido o limite diário de deployments. O status do Vercel para o head atual não substitui typecheck/lint/test/build local/CI.
+
+Antes do próximo deploy é obrigatório executar:
+
+1. `npm run typecheck`;
+2. `npm run lint`;
+3. `npm test`;
+4. `npm run build`;
+5. `npx --no-install drizzle-kit check`.
+
+Nenhuma promoção para Production deve ocorrer se qualquer uma dessas validações falhar.
