@@ -103,7 +103,7 @@ export default async function TenantDetailPage({ params, searchParams }: { param
           <dl className="detail-list">
             <div><dt>Endereço padrão</dt><dd>{tenant.standardDomain ?? "/empresa/" + tenant.slug}</dd></div>
             <div><dt>Domínio personalizado</dt><dd>{tenant.customDomain ?? "Não configurado"}</dd></div>
-            <div><dt>Status do domínio</dt><dd>{domainStatusLabels[tenant.domainStatus] || tenant.domainStatus}</dd></div>
+            <div><dt>Status do domínio</dt><dd>{tenant.customDomain ? (domainStatusLabels[tenant.domainStatus] || tenant.domainStatus) : "Não configurado"}</dd></div>
             <div><dt>Plano</dt><dd>{planLabels[tenant.plan] || tenant.plan}</dd></div>
           </dl>
         </section>
