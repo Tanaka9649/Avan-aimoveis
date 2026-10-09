@@ -11,7 +11,7 @@ import { requireModule } from "@/lib/access";
 import { propertyInput } from "@/lib/property-input";
 import { canCreateResource } from "@/lib/entitlements";
 import { canPublish, publicationBlockers, publicPropertyUrl } from "@/lib/property-publication";
-import { isValidBrazilianPhone, normalizeEmail, normalizePhone, sameOwnerIdentity } from "@/lib/owner-identity";
+import { isValidBrazilianPhone, normalizeEmail, normalizePhone } from "@/lib/owner-identity";
 
 export async function saveProperty(_previous: { error: string; id?: string; saved?: boolean }, formData: FormData): Promise<{ error: string; id?: string; saved?: boolean }> {
   const user = await requireModule("imoveis");
@@ -118,24 +118,15 @@ export async function saveProperty(_previous: { error: string; id?: string; save
     }
 
     if (resolvedOwnerId && resolvedOwner) {
+      // The current editor exposes a single owner selector. Replacing that selection
+      // must replace the property link instead of accumulating a second owner row on
+      // every edit. No property record, photo or document is touched by this operation.
       if (rawId) {
-        const linkedOwners = await db
-          .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email })
-          .from(propertyOwners)
-          .innerJoin(owners, and(eq(owners.id, propertyOwners.ownerId), eq(owners.tenantId, user.tenantId)))
-          .where(and(eq(propertyOwners.tenantId, user.tenantId), eq(propertyOwners.propertyId, id)));
-
-        const onlyDuplicateIdentity =
-          linkedOwners.length > 1 &&
-          linkedOwners.every((linkedOwner) => sameOwnerIdentity(linkedOwner, resolvedOwner!));
-
-        if (onlyDuplicateIdentity) {
-          ownerQueries.push(
-            db.delete(propertyOwners).where(
-              and(eq(propertyOwners.tenantId, user.tenantId), eq(propertyOwners.propertyId, id)),
-            ),
-          );
-        }
+        ownerQueries.push(
+          db.delete(propertyOwners).where(
+            and(eq(propertyOwners.tenantId, user.tenantId), eq(propertyOwners.propertyId, id)),
+          ),
+        );
       }
 
       ownerQueries.push(
