@@ -352,3 +352,6 @@
   .admin-app .admin-button,.admin-app .admin-primary{min-height:40px}
   .admin-app .page-header-action-group>.admin-button{min-width:0}
 }
+
+.admin-app .crm-inline-search select{height:34px;max-width:220px;border:1px solid var(--admin-border);border-radius:6px;background:var(--admin-surface-2);color:var(--admin-text);padding:0 30px 0 9px;font-size:11px;font-weight:600}
+@media(max-width:700px){.admin-app .crm-inline-search{flex-wrap:wrap;padding-block:7px}.admin-app .crm-inline-search input{flex:1 1 220px}.admin-app .crm-inline-search select{max-width:none;flex:1 1 180px}}
