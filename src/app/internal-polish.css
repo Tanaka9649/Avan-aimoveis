@@ -325,3 +325,30 @@
 .admin-app .sidebar-profile-link{color:inherit;text-decoration:none}.admin-app .sidebar-profile-link>svg{width:15px;height:15px;margin-left:auto;color:var(--admin-muted);opacity:.7}.admin-app .sidebar-profile-link:hover{background:var(--admin-surface-2)}.admin-app .profile-grid{align-items:start}.admin-app .profile-permissions{display:grid;gap:12px;margin-top:14px}.admin-app .profile-permissions>div{display:grid;gap:4px;padding:12px;border:1px solid var(--admin-border-soft);border-radius:8px;background:var(--admin-surface-2)}.admin-app .profile-permissions span{color:var(--admin-muted);font-size:11px}.admin-app .profile-permissions strong{font-size:13px;font-weight:600}.admin-app .profile-security{margin-top:16px}
 
 .admin-app .analytics-trend-card{margin-bottom:16px}.admin-app .analytics-trend{min-height:220px;display:flex;align-items:end;gap:6px;overflow-x:auto;padding:18px 8px 4px}.admin-app .analytics-trend-day{min-width:34px;flex:1 0 34px;display:grid;grid-template-rows:150px auto auto;gap:5px;justify-items:center}.admin-app .analytics-trend-bar-wrap{width:100%;height:150px;display:flex;align-items:end;justify-content:center;border-bottom:1px solid var(--admin-border-soft)}.admin-app .analytics-trend-bar{display:block;width:min(22px,70%);min-height:4px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#60a5fa,#2563eb)}.admin-app .analytics-trend-day small{color:var(--admin-muted);font-size:9px}.admin-app .analytics-trend-day b{font-size:10px;font-weight:600}.admin-app .analytics-trend-legend{padding:10px 8px 0;border-top:1px solid var(--admin-border-soft);color:var(--admin-muted);font-size:10px}.admin-app .analytics-empty-chart{min-height:180px;display:grid;place-items:center;align-content:center;text-align:center;gap:7px;color:var(--admin-muted)}.admin-app .analytics-empty-chart svg{width:28px;color:#7eaaf9}.admin-app .analytics-empty-chart strong{color:var(--admin-text);font-size:13px}.admin-app .analytics-empty-chart span{font-size:11px}
+
+/* Keep internal actions compact and readable across dark/light themes. */
+.admin-app .admin-button,
+.admin-app .admin-primary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:8px 13px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.admin-app .admin-button>svg,
+.admin-app .admin-primary>svg{width:16px;height:16px;flex:0 0 auto}
+.admin-app label.check{display:flex;align-items:flex-start;gap:9px;min-height:34px;padding:8px 10px;border:1px solid var(--admin-border-soft);border-radius:7px;background:var(--admin-surface-2);color:var(--admin-text)}
+.admin-app label.check input[type="checkbox"]{width:16px;height:16px;min-height:16px;margin:1px 0 0;accent-color:var(--admin-blue);flex:0 0 auto}
+.admin-app fieldset{min-width:0;margin:0;border:1px solid var(--admin-border-soft);border-radius:8px;padding:12px;background:transparent}
+.admin-app fieldset legend{padding:0 6px;color:var(--admin-muted);font-size:11px;font-weight:600}
+.admin-app input[type="color"]{height:42px;padding:5px;cursor:pointer}
+.admin-app input[type="date"],
+.admin-app input[type="datetime-local"]{color-scheme:dark}
+.admin-app.theme-light input[type="date"],
+.admin-app.theme-light input[type="datetime-local"]{color-scheme:light}
+@media(max-width:620px){
+  .admin-app .admin-button,.admin-app .admin-primary{min-height:40px}
+  .admin-app .page-header-action-group>.admin-button{min-width:0}
+}
