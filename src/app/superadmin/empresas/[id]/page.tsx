@@ -154,7 +154,7 @@ export default async function TenantDetailPage({ params, searchParams }: { param
           <label>Máximo de oportunidades<input name="max_opportunities" type="number" min="0" defaultValue={limitValue(tenant.quotaOverrides, "max_opportunities")} /></label>
           <label>Máximo de documentos<input name="max_documents" type="number" min="0" defaultValue={limitValue(tenant.quotaOverrides, "max_documents")} /></label>
           <label>Armazenamento máximo (GB)<input name="max_storage_gb" type="number" min="0" step="0.1" defaultValue={storageOverrideGb(tenant.quotaOverrides)} placeholder="Usar limite do plano" /><small className="field-hint">Uso atual: {formatBytes(storageUsage)}. Deixe em branco para herdar o plano.</small></label>
-          <label className="wide">Domínio personalizado<select name="custom_domain" defaultValue={tenant.quotaOverrides.custom_domain === 1 ? "1" : "0"}><option value="0">Não permitido</option><option value="1">Permitido</option></select></label>
+          <label className="wide">Domínio personalizado<select name="custom_domain" defaultValue={tenant.quotaOverrides.custom_domain == null ? "" : tenant.quotaOverrides.custom_domain === 1 ? "1" : "0"}><option value="">Usar regra do plano ({entitlements?.limits.custom_domain === 1 ? "permitido" : "não permitido"})</option><option value="0">Bloquear para esta empresa</option><option value="1">Permitir para esta empresa</option></select></label>
         </SettingsForm>
       </section>
     </>
