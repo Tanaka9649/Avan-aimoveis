@@ -8,14 +8,14 @@ import {CrmDialog} from "./crm-dialog";
 import {OpportunityDrawer} from "./opportunity-drawer";
 import {saveCrmClient,type CrmClientState} from "@/app/painel/crm/actions";
 import {PageHeader} from "@/components/admin-ui";
-import {ListFilters,Pagination} from "@/components/list-tools";
+import {Pagination} from "@/components/list-tools";
 import {CrmBoard} from "@/components/crm-board";
 import {TagInput} from "@/components/tag-input";
 import type {Query} from "@/lib/list-query";
 import {maskPhone,moneyDigits} from "@/lib/crm-input";
 
 type Column={id:string;name:string;color:string;isWon:boolean;isLost:boolean};
-type DealCard={id:string;title:string;clientId:string;client:string;phone:string;email:string|null;stageId:string;value:string;tags:string[];nextActionAt:string|null;nextActionType:string|null;nextActionNote:string|null;stageDays:number;attachmentCount:number};
+type DealCard={id:string;title:string;clientId:string;client:string;phone:string;email:string|null;origin:string;responsible:string|null;property:string|null;stageId:string;value:string;tags:string[];nextActionAt:string|null;nextActionType:string|null;nextActionNote:string|null;stageDays:number;attachmentCount:number};
 export type CrmClient={id:string;name:string;phone:string;email:string|null;origin:string;budgetMin:number|null;budgetMax:number|null;desiredTypes:string[];desiredRegions:string[];desiredFeatures:string[];minBedrooms:number;minBathrooms:number;minParkingSpaces:number;opportunities:number;favorites:number;presented:number;visits:number;proposals:number;history:number;matches:number;nextActionAt:string|null;nextActionType:string|null};
 
 type Drawer={mode:"new"}|{mode:"view"|"edit";client:CrmClient};
@@ -85,12 +85,16 @@ export function CrmWorkspace({userId,query,view,columns,cards,clients,dealTotal,
  const[drawer,setDrawer]=useState<Drawer|null>(()=>openNew?{mode:"new"}:selected?{mode:"view",client:selected}:null);
  const[opportunity,setOpportunity]=useState(false);const[notice,setNotice]=useState(query.criado?"Oportunidade criada com sucesso.":"");
  const queryText=typeof query.q==="string"?query.q:"";
- const queryForFilters:Query=queryText?{q:queryText}:{};
  return <div className="admin-content crm-center">
-  <PageHeader eyebrow="Relacionamento" title="CRM comercial" description={view==="funil"?`${dealTotal} negócios no funil. Acompanhe cada oportunidade por etapa.`:`${clientTotal} contatos na base comercial.`} action={<div className="crm-header-actions"><button className="admin-button primary" onClick={()=>setDrawer({mode:"new"})}><Plus/> Novo cliente</button><button className="admin-button secondary" onClick={()=>setOpportunity(true)}>Nova oportunidade</button></div>}/>
+  <PageHeader eyebrow="Relacionamento" title="CRM comercial" description={view==="funil"?`${dealTotal} negócios no funil. Acompanhe cada oportunidade por etapa.`:`${clientTotal} contatos na base comercial.`} action={<div className="crm-header-actions"><button className="admin-button primary" onClick={()=>setOpportunity(true)}><Plus/> Nova oportunidade</button><button className="admin-button secondary" onClick={()=>setDrawer({mode:"new"})}>Novo cliente</button></div>}/>
   {notice?<div role="status" className="crm-toast success">{notice}<button type="button" onClick={()=>setNotice("")} aria-label="Dispensar mensagem">×</button></div>:null}
   <nav className="crm-view-tabs" aria-label="Visualização do CRM"><Link className={view==="funil"?"active":""} href={queryText?`/painel/crm?q=${encodeURIComponent(queryText)}`:"/painel/crm"}>Funil</Link><Link className={view==="clientes"?"active":""} href={`/painel/crm?view=clientes${queryText?`&q=${encodeURIComponent(queryText)}`:""}`}>Clientes</Link></nav>
-  <ListFilters scope="crm" userId={userId} query={queryForFilters}><input type="hidden" name="view" value={view}/></ListFilters>
+  <form className="crm-inline-search" action="/painel/crm" method="get" role="search">
+   <input type="hidden" name="view" value={view}/>
+   <Search aria-hidden="true"/>
+   <input name="q" type="search" defaultValue={queryText} placeholder={view==="funil"?"Buscar cliente, imóvel ou oportunidade":"Buscar cliente, telefone ou e-mail"} aria-label="Buscar no CRM"/>
+   {queryText?<Link href={view==="clientes"?"/painel/crm?view=clientes":"/painel/crm"}>Limpar</Link>:null}
+  </form>
   {view==="funil"?<CrmBoard columns={columns} cards={cards}/>:clients.length?<section className="crm-client-list" aria-label="Clientes do CRM">{clients.map(client=><article key={client.id}><button className="client-row-main" onClick={()=>setDrawer({mode:"view",client})}><span className="client-avatar"><UserRound/></span><div><strong>{client.name}</strong><small>{maskPhone(client.phone)} · {client.email||"Sem e-mail"}</small></div></button><span className="source-tag">{client.origin}</span><div className="client-row-meta"><span>{money(client.budgetMax)}</span><small>{client.desiredRegions.join(", ")||"Região não informada"}</small></div><div className="client-row-meta"><span>{client.opportunities} oportunidade(s)</span><small>{client.nextActionAt?`${client.nextActionType||"Próxima ação"} · ${new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeZone:"America/Sao_Paulo"}).format(new Date(client.nextActionAt))}`:"Sem próxima ação"}</small></div><div className="client-row-actions"><button type="button" onClick={()=>setDrawer({mode:"view",client})}>Abrir</button><button type="button" onClick={()=>setDrawer({mode:"edit",client})}>Editar</button><Link href={`/painel/crm/novo?cliente=${client.id}`}>Criar oportunidade</Link></div></article>)}</section>:<section className="crm-clients-empty"><Search/><h2>Nenhum cliente cadastrado</h2><p>Cadastre o primeiro contato para começar o atendimento.</p><button className="admin-button primary" onClick={()=>setDrawer({mode:"new"})}><Plus/> Novo cliente</button></section>}
   {view==="clientes"?<Pagination query={{...query,view}} page={Number(query.page)||1} total={clientTotal}/>:null}
   {drawer?<ClientDrawer drawer={drawer} onClose={()=>setDrawer(null)} onEdit={client=>setDrawer({mode:"edit",client})}/>:null}
