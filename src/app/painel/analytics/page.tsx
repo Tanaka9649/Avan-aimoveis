@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 type Summary = { event_type: string; total: number; visitors: number };
 type TopProperty = { id: string; title: string; views: number; visitors: number; whatsapp: number; leads: number };
 type TrafficSource = { source: string; total: number };
+type DailyTrend = { day: string; views: number; property_views: number; contacts: number };
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   const user = await requireModule("analytics");
@@ -21,7 +22,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const to = custom ? new Date(`${params.to}T23:59:59.999Z`) : null;
   const db = getDb();
 
-  const [summaryResult, uniqueResult, topResult, sourceResult] = await Promise.all([
+  const [summaryResult, uniqueResult, topResult, sourceResult, dailyResult] = await Promise.all([
     db.execute(sql`
       select event_type, count(*)::int as total, count(distinct anonymous_session_id)::int as visitors
       from analytics_events
@@ -58,6 +59,18 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       order by total desc
       limit 8
     `),
+    db.execute(sql`
+      select
+        to_char((created_at at time zone 'America/Sao_Paulo')::date, 'YYYY-MM-DD') as day,
+        count(*) filter (where event_type = 'site_view')::int as views,
+        count(*) filter (where event_type = 'property_view')::int as property_views,
+        count(*) filter (where event_type in ('whatsapp_click','interest_submit'))::int as contacts
+      from analytics_events
+      where tenant_id = ${user.tenantId}::uuid
+        and ((${custom} and created_at between ${from} and ${to}) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
+      group by (created_at at time zone 'America/Sao_Paulo')::date
+      order by (created_at at time zone 'America/Sao_Paulo')::date
+    `),
   ]);
 
   const rows = summaryResult.rows as unknown as Summary[];
@@ -77,6 +90,13 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     { label: "Interesses enviados", value: String(values.interest_submit || 0), helper: "formulários enviados", icon: Send, tone: "amber" as const },
   ];
 
+  const daily = (dailyResult.rows as unknown as DailyTrend[]).map((row) => ({
+    day: row.day,
+    views: Number(row.views),
+    propertyViews: Number(row.property_views),
+    contacts: Number(row.contacts),
+  }));
+  const maxDaily = Math.max(1, ...daily.map((row) => row.views + row.propertyViews + row.contacts));
   const periodHref = (days: number) => `/painel/analytics?period=${days}`;
 
   return (
@@ -104,6 +124,23 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         {metrics.slice(4).map((metric) => <MetricCard key={metric.label} {...metric}/>)}
       </section>
 
+      <section className="admin-card analytics-trend-card">
+        <div className="table-toolbar"><div><strong>Evolução no período</strong><span>Visitas ao site, visualizações de imóveis e contatos por dia.</span></div></div>
+        {daily.length ? <div className="analytics-trend" role="img" aria-label="Evolução diária de visitas, imóveis vistos e contatos">
+          {daily.map((row) => {
+            const total = row.views + row.propertyViews + row.contacts;
+            return <div className="analytics-trend-day" key={row.day}>
+              <div className="analytics-trend-bar-wrap" title={`${row.day}: ${total} interações`}>
+                <span className="analytics-trend-bar" style={{ height: `${Math.max(4, total / maxDaily * 100)}%` }}/>
+              </div>
+              <small>{new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" }).format(new Date(row.day + "T00:00:00Z"))}</small>
+              <b>{total}</b>
+            </div>;
+          })}
+        </div> : <div className="analytics-empty-chart"><BarChart3/><strong>Ainda não há dados suficientes neste período.</strong><span>Quando houver visitas e contatos, a evolução aparecerá aqui.</span></div>}
+        <div className="analytics-trend-legend"><span>Interações = páginas vistas + imóveis vistos + contatos</span></div>
+      </section>
+
       <section className="admin-card table-card analytics-table-card">
         <div className="table-toolbar"><div><strong>Desempenho por imóvel</strong><span>Visualizações, visitantes e contatos no período.</span></div></div>
         <div className="table-scroll">
@@ -119,7 +156,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       </section>
 
       <section className="admin-card table-card analytics-table-card">
-        <div className="table-toolbar"><div><strong>Origem do tráfego</strong><span>UTMs são usadas somente para análise e não alteram a origem comercial do CRM.</span></div></div>
+        <div className="table-toolbar"><div><strong>Origem do tráfego</strong><span>Esta origem é usada somente para análise e não altera a origem comercial do CRM.</span></div></div>
         <div className="table-scroll">
           <table>
             <thead><tr><th>Origem</th><th>Eventos</th></tr></thead>
