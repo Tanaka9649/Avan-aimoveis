@@ -37,7 +37,7 @@ export default async function SuperAdminPage() {
       <section className="metric-grid" aria-label="Indicadores globais">
         <article className="metric-card"><div className="metric-card-top"><span>Empresas</span><Building2 /></div><strong>{tenantCount.value}</strong><small>{countText(Number(activeCount.value), "empresa ativa", "empresas ativas")}</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Usuários ativos</span><Users /></div><strong>{userCount.value}</strong><small>{countText(Number(userCount.value), "acesso ativo", "acessos ativos")}</small></article>
-        <article className="metric-card"><div className="metric-card-top"><span>Imóveis</span><Home /></div><strong>{propertyCount.value}</strong><small>em todos os tenants</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Imóveis</span><Home /></div><strong>{propertyCount.value}</strong><small>em todas as empresas</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Domínios ativos</span><Globe2 /></div><strong>{domainCount.value}</strong><small>{countText(Number(domainCount.value), "domínio verificado", "domínios verificados")}</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Tráfego — 30 dias</span><BarChart3 /></div><strong>{traffic.views}</strong><small>{traffic.visitors} visitantes únicos</small></article>
       </section>
