@@ -5,7 +5,7 @@ import { getDb } from "@/db";
 import { tenantMemberships, tenants, users } from "@/db/schema";
 import { requireSuperAdmin } from "@/lib/access";
 import { PAGE_SIZE, pageNumber, type Query } from "@/lib/list-query";
-import { membershipRoleLabels, membershipStatusLabels } from "@/lib/ui-labels";
+import { membershipRoleLabels } from "@/lib/ui-labels";
 
 const single = (value: string | string[] | undefined) => typeof value === "string" ? value : "";
 
