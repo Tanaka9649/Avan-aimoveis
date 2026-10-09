@@ -32,15 +32,17 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
     db.select({ id: activityLogs.id, entityType: activityLogs.entityType, action: activityLogs.action, createdAt: activityLogs.createdAt }).from(activityLogs).where(and(eq(activityLogs.tenantId,user.tenantId),user.role === "admin" ? undefined : eq(activityLogs.userId, user.id))).orderBy(desc(activityLogs.createdAt)).limit(6),
   ]);
   const conversion = number(dealTotal.value) ? Math.round(number(salesMonth.count) / number(dealTotal.value) * 100) : 0;
-  const metrics = [
-    { label: "Clientes", value: String(clientTotal.value), helper: `+${newClients.value} neste mês`, icon: Users, tone: "blue" as const },
-    { label: "Negócios fechados", value: String(salesMonth.count), helper: "vendas no mês", icon: Handshake, tone: "green" as const, featured: true },
-    { label: "Visitas", value: String(futureVisits.value), helper: "agendadas a partir de hoje", icon: CalendarCheck, tone: "amber" as const },
-    { label: "Imóveis ativos", value: String(activeProperties.value), helper: "disponíveis no catálogo", icon: Building2, tone: "blue" as const, featured: true },
+  const primaryMetrics = [
+    { label: "Novos clientes", value: String(newClients.value), helper: `${clientTotal.value} clientes na base`, icon: Users, tone: "blue" as const, featured: true },
+    { label: "Visitas agendadas", value: String(futureVisits.value), helper: "a partir de hoje", icon: CalendarCheck, tone: "amber" as const },
     { label: "Propostas abertas", value: String(openProposals.value), helper: "em negociação", icon: HandCoins, tone: "amber" as const },
     { label: "Vendas no mês", value: formatMoney(number(salesMonth.amount)), helper: "volume realizado", icon: CircleDollarSign, tone: "green" as const, featured: true },
-    { label: "Comissão no mês", value: formatMoney(number(salesMonth.commission)), helper: "comissão registrada", icon: CircleDollarSign, tone: "green" as const, featured: true },
-    { label: "Taxa de conversão", value: conversion + "%", helper: "vendas ÷ negócios", icon: Gauge, tone: "slate" as const },
+  ];
+  const secondaryMetrics = [
+    { label: "Imóveis ativos", value: String(activeProperties.value), helper: "disponíveis no catálogo", icon: Building2, tone: "blue" as const },
+    { label: "Negócios fechados", value: String(salesMonth.count), helper: "vendas no mês", icon: Handshake, tone: "green" as const },
+    { label: "Comissão no mês", value: formatMoney(number(salesMonth.commission)), helper: "comissão registrada", icon: CircleDollarSign, tone: "green" as const },
+    { label: "Taxa de conversão", value: conversion + "%", helper: "vendas ÷ oportunidades", icon: Gauge, tone: "slate" as const },
   ];
   const [todayActions,topViews,topInterest,topWhatsapp]=await Promise.all([
     db.select({id:deals.id,client:clients.name,type:deals.nextActionType,note:deals.nextActionNote,at:deals.nextActionAt}).from(deals).innerJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(deals.tenantId,user.tenantId),scope,lte(deals.nextActionAt,endToday))).orderBy(asc(deals.nextActionAt)).limit(12),
@@ -51,7 +53,7 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
   const maxFunnel = Math.max(1, ...funnel.map((row) => number(row.value)));
   return <div className="admin-content">
     <PageHeader eyebrow="Visão geral" title="Painel operacional" description="Acompanhe os principais números e o andamento da operação."/>
-    <div className="metric-grid">{metrics.map((metric) => <MetricCard key={metric.label} {...metric}/>)}</div>
+    <div className="metric-grid">{primaryMetrics.map((metric) => <MetricCard key={metric.label} {...metric}/>)}</div><div className="metric-grid secondary-kpis">{secondaryMetrics.map((metric) => <MetricCard key={metric.label} {...metric}/>)}</div>
     <div className="dashboard-grid">
       <SectionCard title="O que precisa ser feito hoje" description="Ações vencidas e previstas para hoje." className="dashboard-wide" action={<Link className="text-action" href="/painel/crm">Abrir CRM</Link>}><div className="today-list">{todayActions.length?todayActions.map(item=><Link href={`/painel/crm/${item.id}`} key={item.id} className={item.at&&item.at<now?"is-overdue":""}><time>{item.at?new Intl.DateTimeFormat("pt-BR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Sao_Paulo"}).format(item.at):"—"}</time><div><strong>{item.type||"Retornar contato"} — {item.client}</strong><small>{item.note||"Sem observação"}</small></div></Link>):<p className="muted-copy">Nenhuma ação pendente para hoje.</p>}</div></SectionCard>
       <SectionCard title="Funil comercial" description="Negócios distribuídos por etapa." action={<Link className="text-action" href="/painel/crm">Abrir CRM</Link>}>
