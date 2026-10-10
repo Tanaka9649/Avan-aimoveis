@@ -63,12 +63,14 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [shortcutLabel, setShortcutLabel] = useState("Ctrl K");
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       setCollapsed(localStorage.getItem("avanca:sidebar") === "collapsed");
       setTheme(localStorage.getItem("avanca:theme") === "light" ? "light" : "dark");
+      setShortcutLabel(/Mac|iPhone|iPad/i.test(navigator.platform) ? "⌘ K" : "Ctrl K");
     });
     return () => cancelAnimationFrame(frame);
   }, []);
@@ -126,7 +128,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
         <header className="admin-header">
           <button className="admin-menu" aria-label="Abrir menu" onClick={() => setOpen(true)}><Menu /></button>
           <div className="header-context"><span>Painel</span><small>{pageLabel}</small></div>
-          <form className="admin-global-search" action={scoped("/painel/busca")} role="search"><Search /><input ref={searchRef} name="q" type="search" placeholder="Buscar clientes, imóveis e oportunidades" aria-label="Busca global"/><kbd>⌘ K</kbd></form>
+          <form className="admin-global-search" action={scoped("/painel/busca")} role="search"><Search /><input ref={searchRef} name="q" type="search" placeholder="Buscar clientes, imóveis e oportunidades" aria-label="Busca global"/><kbd>{shortcutLabel}</kbd></form>
           <button className="header-theme" aria-label={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"} onClick={toggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
           <Link className="admin-view-site" href={publicBase} target="_blank">Ver site <ChevronRight /></Link>
         </header>
