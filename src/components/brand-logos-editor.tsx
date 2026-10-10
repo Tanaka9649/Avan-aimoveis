@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
 import type { BrandLogoEntry } from "@/lib/branding";
+import { BrandAssetUpload } from "./brand-asset-upload";
 
 type EditableLogo = Required<Pick<BrandLogoEntry, "id">> & {
   name: string;
@@ -112,24 +113,23 @@ export function BrandLogosEditor({
               Nome da empresa ou marca
               <input value={current.name} maxLength={80} onChange={(event) => update("name", event.target.value)} placeholder="Ex.: Avança Imóveis"/>
             </label>
-            <label>
-              Logo para fundo claro — URL
-              <input value={current.logoLight} type="url" onChange={(event) => update("logoLight", event.target.value)} placeholder="https://..."/>
-            </label>
-            <label>
-              Logo para fundo escuro/transparente — URL
-              <input value={current.logoDark} type="url" onChange={(event) => update("logoDark", event.target.value)} placeholder="https://..."/>
-            </label>
+            <BrandAssetUpload label="Logo para fundo claro" value={current.logoLight} onChange={(value) => update("logoLight", value)}/>
+            <BrandAssetUpload label="Logo para fundo escuro/transparente" value={current.logoDark} onChange={(value) => update("logoDark", value)}/>
+            <details className="brand-url-fallback">
+              <summary>Usar URL externa como alternativa</summary>
+              <label>URL para fundo claro<input value={current.logoLight.startsWith("http") ? current.logoLight : ""} type="url" onChange={(event) => update("logoLight", event.target.value)} placeholder="https://..."/></label>
+              <label>URL para fundo escuro<input value={current.logoDark.startsWith("http") ? current.logoDark : ""} type="url" onChange={(event) => update("logoDark", event.target.value)} placeholder="https://..."/></label>
+            </details>
           </div>
 
           <div className="brand-logo-preview-grid">
             <div className="brand-logo-preview light">
               <span>Fundo claro</span>
-              {current.logoLight || current.logoDark ? <Image src={current.logoLight || current.logoDark} alt="Prévia da logo em fundo claro" width={240} height={82} unoptimized/> : <small>Adicione uma URL para visualizar.</small>}
+              {current.logoLight || current.logoDark ? <Image src={current.logoLight || current.logoDark} alt="Prévia da logo em fundo claro" width={240} height={82} unoptimized/> : <small>Envie um arquivo para visualizar.</small>}
             </div>
             <div className="brand-logo-preview dark">
               <span>Fundo escuro</span>
-              {current.logoDark || current.logoLight ? <Image src={current.logoDark || current.logoLight} alt="Prévia da logo em fundo escuro" width={240} height={82} unoptimized/> : <small>Adicione uma URL para visualizar.</small>}
+              {current.logoDark || current.logoLight ? <Image src={current.logoDark || current.logoLight} alt="Prévia da logo em fundo escuro" width={240} height={82} unoptimized/> : <small>Envie um arquivo para visualizar.</small>}
             </div>
           </div>
 
