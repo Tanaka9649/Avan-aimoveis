@@ -3,8 +3,9 @@ import { and, asc, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { Building2, CalendarCheck, CircleDollarSign, Gauge, HandCoins, Handshake, MessageCircle, Users } from "lucide-react";
 import { clientScope, requireModule } from "@/lib/access";
 import { getDb } from "@/db";
-import { activityLogs, clients, deals, properties, proposals, sales, stages, users, visits, whatsappClicks, propertyViews, clientPropertyPresentations } from "@/db/schema";
+import { activityLogs, analyticsEvents, clients, deals, properties, proposals, sales, stages, users, visits, clientPropertyPresentations } from "@/db/schema";
 import { formatMoney } from "@/lib/format";
+import { actionTiming, formatDateTime } from "@/lib/date-time";
 import { MetricCard, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 
 const number = (value: unknown) => Number(value || 0);
@@ -17,7 +18,7 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
   const scope = clientScope(user);
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
   const now = new Date();
-  const {period}=await searchParams;const days=period==="30"?30:7;const rangeStart=new Date(now.getTime()-days*86400000);const endToday=new Date();endToday.setHours(23,59,59,999);
+  const {period}=await searchParams;const days=period==="30"?30:7;const rangeStart=new Date(now.getTime()-days*86400000);const actionWindowEnd=new Date(now.getTime()+7*86400000);
   const [[clientTotal], [newClients], [activeProperties], [dealTotal], [futureVisits], [openProposals], [salesMonth], [whatsappMonth], funnel, propertyStatus, recentActivity] = await Promise.all([
     db.select({ value: count() }).from(clients).where(scope),
     db.select({ value: count() }).from(clients).where(and(scope, gte(clients.createdAt, monthStart))),
@@ -26,7 +27,7 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
     db.select({ value: count() }).from(visits).innerJoin(clients, and(eq(clients.id, visits.clientId),eq(clients.tenantId,visits.tenantId))).where(and(eq(visits.tenantId,user.tenantId),scope, gte(visits.scheduledAt, now), eq(visits.status, "agendada"))),
     db.select({ value: count() }).from(proposals).innerJoin(deals, and(eq(deals.id, proposals.dealId),eq(deals.tenantId,proposals.tenantId))).innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(proposals.tenantId,user.tenantId),scope, eq(proposals.status, "aberta"))),
     db.select({ count: count(), amount: sum(sales.amountCents), commission: sum(sales.commissionCents) }).from(sales).innerJoin(deals, and(eq(deals.id, sales.dealId),eq(deals.tenantId,sales.tenantId))).innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(sales.tenantId,user.tenantId),scope, gte(sales.soldAt, monthStart))),
-    db.select({ value: count() }).from(whatsappClicks).where(and(eq(whatsappClicks.tenantId,user.tenantId),gte(whatsappClicks.createdAt, monthStart))),
+    db.select({ value: count() }).from(analyticsEvents).where(and(eq(analyticsEvents.tenantId,user.tenantId),eq(analyticsEvents.eventType,"whatsapp_click"),gte(analyticsEvents.createdAt, monthStart))),
     db.select({ id: stages.id, name: stages.name, color: stages.color, value: scope ? sql<number>`count(${deals.id}) filter (where ${scope})` : count(deals.id) }).from(stages).leftJoin(deals,and(eq(deals.stageId,stages.id),eq(deals.tenantId,user.tenantId))).leftJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,user.tenantId))).where(eq(stages.tenantId,user.tenantId)).groupBy(stages.id).orderBy(asc(stages.position)),
     db.select({ status: properties.status, value: count() }).from(properties).where(eq(properties.tenantId,user.tenantId)).groupBy(properties.status),
     db.select({
@@ -62,18 +63,31 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
     { label: "Comissão no mês", value: formatMoney(number(salesMonth.commission)), helper: "comissão registrada", icon: CircleDollarSign, tone: "green" as const },
     { label: "Taxa de conversão", value: conversion + "%", helper: "vendas ÷ oportunidades", icon: Gauge, tone: "slate" as const },
   ];
-  const [todayActions,topViews,topInterest,topWhatsapp]=await Promise.all([
-    db.select({id:deals.id,client:clients.name,type:deals.nextActionType,note:deals.nextActionNote,at:deals.nextActionAt}).from(deals).innerJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(deals.tenantId,user.tenantId),scope,lte(deals.nextActionAt,endToday))).orderBy(asc(deals.nextActionAt)).limit(12),
-    db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(propertyViews.id)}).from(propertyViews).innerJoin(properties,and(eq(properties.id,propertyViews.propertyId),eq(properties.tenantId,user.tenantId))).where(and(eq(propertyViews.tenantId,user.tenantId),gte(propertyViews.createdAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(propertyViews.id))).limit(5),
+  const [actionRows,topViews,topInterest,topWhatsapp]=await Promise.all([
+    db.select({id:deals.id,client:clients.name,type:deals.nextActionType,note:deals.nextActionNote,at:deals.nextActionAt}).from(deals).innerJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(deals.tenantId,user.tenantId),scope,lte(deals.nextActionAt,actionWindowEnd))).orderBy(asc(deals.nextActionAt)).limit(20),
+    db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(analyticsEvents.id)}).from(analyticsEvents).innerJoin(properties,and(eq(properties.id,analyticsEvents.propertyId),eq(properties.tenantId,user.tenantId))).where(and(eq(analyticsEvents.tenantId,user.tenantId),eq(analyticsEvents.eventType,"property_view"),gte(analyticsEvents.createdAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(analyticsEvents.id))).limit(5),
     db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(clientPropertyPresentations.id)}).from(clientPropertyPresentations).innerJoin(clients,and(eq(clients.id,clientPropertyPresentations.clientId),eq(clients.tenantId,clientPropertyPresentations.tenantId))).innerJoin(properties,and(eq(properties.id,clientPropertyPresentations.propertyId),eq(properties.tenantId,clientPropertyPresentations.tenantId))).where(and(eq(clientPropertyPresentations.tenantId,user.tenantId),scope,gte(clientPropertyPresentations.presentedAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(clientPropertyPresentations.id))).limit(5),
-    db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(whatsappClicks.id)}).from(whatsappClicks).innerJoin(properties,and(eq(properties.id,whatsappClicks.propertyId),eq(properties.tenantId,user.tenantId))).where(and(eq(whatsappClicks.tenantId,user.tenantId),gte(whatsappClicks.createdAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(whatsappClicks.id))).limit(5),
+    db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(analyticsEvents.id)}).from(analyticsEvents).innerJoin(properties,and(eq(properties.id,analyticsEvents.propertyId),eq(properties.tenantId,user.tenantId))).where(and(eq(analyticsEvents.tenantId,user.tenantId),eq(analyticsEvents.eventType,"whatsapp_click"),gte(analyticsEvents.createdAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(analyticsEvents.id))).limit(5),
   ]);
+  const actionGroups = {
+    overdue: actionRows.filter((item) => item.at && actionTiming(item.at, now).bucket === "overdue"),
+    today: actionRows.filter((item) => item.at && actionTiming(item.at, now).bucket === "today"),
+    upcoming: actionRows.filter((item) => item.at && actionTiming(item.at, now).bucket === "upcoming"),
+  };
   const maxFunnel = Math.max(1, ...funnel.map((row) => number(row.value)));
   return <div className="admin-content">
     <PageHeader eyebrow="Visão geral" title="Painel operacional" description="Acompanhe os principais números e o andamento da operação."/>
     <div className="metric-grid">{primaryMetrics.map((metric) => <MetricCard key={metric.label} {...metric}/>)}</div><div className="metric-grid secondary-kpis">{secondaryMetrics.map((metric) => <MetricCard key={metric.label} {...metric}/>)}</div>
     <div className="dashboard-grid">
-      <SectionCard title="O que precisa ser feito hoje" description="Ações vencidas e previstas para hoje." className="dashboard-wide" action={<Link className="text-action" href="/painel/crm">Abrir CRM</Link>}><div className="today-list">{todayActions.length?todayActions.map(item=><Link href={`/painel/crm/${item.id}`} key={item.id} className={item.at&&item.at<now?"is-overdue":""}><time>{item.at?new Intl.DateTimeFormat("pt-BR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Sao_Paulo"}).format(item.at):"—"}</time><div><strong>{item.type||"Retornar contato"} — {item.client}</strong><small>{item.note||"Sem observação"}</small></div></Link>):<p className="muted-copy">Nenhuma ação pendente para hoje.</p>}</div></SectionCard>
+      <SectionCard title="Próximas ações" description="Atrasadas, previstas para hoje e compromissos dos próximos dias." className="dashboard-wide" action={<Link className="text-action" href="/painel/crm">Abrir CRM</Link>}>
+        <div className="dashboard-action-groups">
+          {(["overdue","today","upcoming"] as const).map((bucket) => {
+            const items=actionGroups[bucket];
+            const heading=bucket==="overdue"?"Atrasadas":bucket==="today"?"Hoje":"Próximas";
+            return <section key={bucket} className={"dashboard-action-group "+bucket}><header><strong>{heading}</strong><span>{items.length}</span></header><div className="today-list">{items.length?items.map(item=>{const timing=item.at?actionTiming(item.at,now):null;return <Link href={`/painel/crm/${item.id}`} key={item.id} className={bucket==="overdue"?"is-overdue":""}><span className="dashboard-action-time"><b>{timing?.label||"Sem data"}</b><time>{item.at?formatDateTime(item.at):"—"}</time></span><div><strong>{item.type||"Retornar contato"} — {item.client}</strong><small>{item.note||"Sem observação"}</small></div></Link>}):<p className="muted-copy">{bucket==="overdue"?"Nenhuma ação atrasada.":bucket==="today"?"Nenhuma ação prevista para hoje.":"Nenhuma ação nos próximos dias."}</p>}</div></section>
+          })}
+        </div>
+      </SectionCard>
       <SectionCard title="Funil comercial" description="Negócios distribuídos por etapa." action={<Link className="text-action" href="/painel/crm">Abrir CRM</Link>}>
         <div className="data-bars">{funnel.map((row) => <div key={row.id}><div><span><i style={{ background: row.color }}/>{row.name}</span><strong>{row.value}</strong></div><span><i style={{ width: `${number(row.value) / maxFunnel * 100}%`, background: row.color }}/></span></div>)}</div>
       </SectionCard>
@@ -81,7 +95,7 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
         <div className="status-summary">{propertyStatus.length ? propertyStatus.map((row) => <div key={row.status}><StatusBadge value={row.status}/><strong>{row.value}</strong></div>) : <p className="muted-copy">Nenhum imóvel cadastrado.</p>}</div>
       </SectionCard>
       <SectionCard title="Atividade recente" description="Últimas alterações registradas na plataforma." className="dashboard-wide">
-        <div className="activity-list">{recentActivity.length ? recentActivity.map((item) => <div key={item.id}><span className="activity-dot"/><div><strong>{activityText(item.entityType,item.action)}{item.entityName ? ` · ${item.entityName}` : ""}</strong><small>{item.actor ? `${item.actor} · ` : ""}{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(item.createdAt)}</small></div></div>) : <p className="muted-copy">Nenhuma atividade registrada.</p>}</div>
+        <div className="activity-list">{recentActivity.length ? recentActivity.map((item) => <div key={item.id}><span className="activity-dot"/><div><strong>{activityText(item.entityType,item.action)}{item.entityName ? ` · ${item.entityName}` : ""}</strong><small>{item.actor ? `${item.actor} · ` : ""}{formatDateTime(item.createdAt)}</small></div></div>) : <p className="muted-copy">Nenhuma atividade registrada.</p>}</div>
       </SectionCard>
       <SectionCard title="WhatsApp" description="Cliques registrados no mês." className="dashboard-secondary"><div className="secondary-metric"><MessageCircle/><strong>{whatsappMonth.value}</strong><span>interações</span></div></SectionCard>
       <SectionCard title="Imóveis em destaque" description={`Métricas reais dos últimos ${days} dias.`} className="dashboard-wide" action={<div className="period-switch"><Link className={days===7?"active":""} href="/painel?period=7">7 dias</Link><Link className={days===30?"active":""} href="/painel?period=30">30 dias</Link></div>}><div className="analytics-columns">{[["Mais visualizados",topViews],["Mais interessados",topInterest],["Mais cliques no WhatsApp",topWhatsapp]].map(([title,rows])=><div key={title as string}><h3>{title as string}</h3>{(rows as typeof topViews).length?(rows as typeof topViews).map((item,index)=><Link href={`/painel/imoveis/${item.id}`} key={item.id}><span>{index+1}</span><div><strong>{item.title}</strong><small>{item.region}</small></div><b>{item.value}</b></Link>):<p className="muted-copy">Ainda sem dados no período.</p>}</div>)}</div></SectionCard>
