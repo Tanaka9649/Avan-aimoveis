@@ -1,7 +1,6 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { applyDrizzleMigrations } from "@/test/apply-drizzle-migrations";
 import { drizzle } from "drizzle-orm/pglite";
 
 const mock = vi.hoisted(() => ({ db: null as unknown }));
@@ -17,11 +16,7 @@ let pg: PGlite;
 
 beforeAll(async () => {
   pg = new PGlite();
-  for (const file of readdirSync(resolve("drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-    for (const statement of readFileSync(resolve("drizzle", file), "utf8").split("--> statement-breakpoint")) {
-      if (statement.trim()) await pg.exec(statement);
-    }
-  }
+  await applyDrizzleMigrations(pg);
   mock.db = drizzle(pg);
   await pg.query("insert into tenants(id,name,slug,status,plan) values($1,'Tenant A','tenant-a','active','max'),($2,'Tenant B','tenant-b','active','max')", [TENANT_A, TENANT_B]);
   await pg.query(
