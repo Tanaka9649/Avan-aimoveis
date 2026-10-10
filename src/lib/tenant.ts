@@ -42,9 +42,9 @@ export const tenantByHost = cache(async (rawHost: string | null) => {
   const [tenant] = await getDb()
     .select()
     .from(tenants)
-    .where(and(
-      eq(tenants.domainStatus, "active"),
-      or(eq(tenants.customDomain, host), eq(tenants.standardDomain, host)),
+    .where(or(
+      eq(tenants.standardDomain, host),
+      and(eq(tenants.domainStatus, "active"), eq(tenants.customDomain, host)),
     ))
     .limit(1);
   return tenant ?? null;
