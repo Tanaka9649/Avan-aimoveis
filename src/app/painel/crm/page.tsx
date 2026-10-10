@@ -88,7 +88,8 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
        nextActionAt:deals.nextActionAt,
        nextActionType:deals.nextActionType,
        nextActionNote:deals.nextActionNote,
-       stageEnteredAt:deals.stageEnteredAt,
+       overdue:sql<boolean>`(${deals.nextActionAt} is not null and ${deals.nextActionAt} < now())`,
+       stageDays:sql<number>`greatest(0, floor(extract(epoch from (now() - ${deals.stageEnteredAt})) / 86400))::int`,
        responsible:sql<string | null>`(
          select u.name from users u where u.id = ${clients.assignedTo} limit 1
        )`,
@@ -114,14 +115,13 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
        .orderBy(asc(deals.position),asc(deals.id)),
    ]);
 
-   const referenceTime=Date.now();
    const cards=dealRows.map(card=>({
      ...card,
      attachmentCount:Number(card.attachmentCount),
      value:amount(card.value),
      nextActionAt:card.nextActionAt?.toISOString()??null,
-     overdue:Boolean(card.nextActionAt&&card.nextActionAt.getTime()<referenceTime),
-     stageDays:Math.max(0,Math.floor((referenceTime-card.stageEnteredAt.getTime())/86400000)),
+     overdue:Boolean(card.overdue),
+     stageDays:Number(card.stageDays),
    }));
 
    return <CrmWorkspace
