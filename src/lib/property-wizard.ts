@@ -21,8 +21,8 @@ export const propertySteps = [
   {
     title: "Características",
     heading: "Como é o imóvel?",
-    hint: "Informe as quantidades e a área privativa.",
-    fields: ["bedrooms", "suites", "bathrooms", "parking", "area"],
+    hint: "Informe as quantidades e as áreas correspondentes ao tipo de imóvel.",
+    fields: ["bedrooms", "suites", "bathrooms", "parking", "area", "lotArea"],
   },
   {
     title: "Localização",
@@ -69,7 +69,8 @@ const messages: Record<string, string> = {
   slug: "Use letras minúsculas, números e hífens.",
   price:
     "Informe um valor de R$ 0,01 até R$ 21.474.836,47, com até 2 casas decimais.",
-  area: "Informe uma área maior que zero, até 99.999.999,99 m².",
+  area: "Informe uma área construída ou privativa maior que zero, até 99.999.999,99 m².",
+  lotArea: "Informe uma área de terreno maior que zero, até 99.999.999,99 m².",
   bedrooms: "Informe um número inteiro de 0 a 100.",
   suites: "Informe um número inteiro de 0 a 100.",
   bathrooms: "Informe um número inteiro de 0 a 100.",
