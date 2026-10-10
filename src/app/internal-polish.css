@@ -376,3 +376,37 @@
 .admin-app .admin-editor-drawer select:focus,
 .admin-app .admin-editor-drawer textarea:focus{outline:2px solid var(--admin-blue);outline-offset:1px}
 .admin-app.sidebar-collapsed .sidebar-brand>a{min-width:38px;min-height:38px;border-radius:8px;background:var(--admin-surface-2)}
+
+.admin-app .dashboard-action-groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.admin-app .dashboard-action-group{min-width:0;border:1px solid var(--admin-border-soft);border-radius:9px;background:var(--admin-surface-2);overflow:hidden}
+.admin-app .dashboard-action-group>header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--admin-border-soft)}
+.admin-app .dashboard-action-group>header strong{font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.admin-app .dashboard-action-group>header span{display:grid;min-width:23px;height:23px;place-items:center;border-radius:999px;background:var(--admin-surface);font-size:10px}
+.admin-app .dashboard-action-group.overdue>header strong{color:#fca5a5}
+.admin-app .dashboard-action-time{display:grid;min-width:118px;gap:2px}
+.admin-app .dashboard-action-time b{font-size:10px;color:var(--admin-text)}
+.admin-app .dashboard-action-time time{font-size:9px;color:var(--admin-muted)}
+.admin-app .crm-action-overdue{color:#fca5a5;font-weight:700}
+.admin-app .admin-field-error{display:block;margin-top:4px;color:#fca5a5;font-size:10px;font-weight:600}
+.admin-app [aria-invalid="true"]{border-color:#ef4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.12)}
+.admin-app .membership-admin-controls{display:grid;gap:6px;min-width:300px}
+.admin-app .membership-admin-controls>form:first-child{display:flex;gap:6px;align-items:center}
+.admin-app .membership-admin-controls select{min-width:110px;min-height:36px;border:1px solid var(--admin-border);border-radius:7px;background:var(--admin-surface-2);color:var(--admin-text);padding:0 8px}
+.admin-app .table-row-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.admin-app .text-action.danger{color:#fca5a5}
+.admin-app .sa-plan-editor{margin-top:14px;border-top:1px solid var(--admin-border-soft);padding-top:12px}
+.admin-app .sa-plan-editor>summary{cursor:pointer;color:#93c5fd;font-size:11px;font-weight:700}
+.admin-app .sa-plan-editor .settings-form{margin-top:14px}
+.admin-app .brand-asset-upload{display:grid;gap:7px;min-width:0}
+.admin-app .brand-asset-upload>span{font-size:11px;color:var(--admin-muted);font-weight:600}
+.admin-app .brand-asset-upload-row{display:flex;gap:10px;align-items:center;min-width:0}
+.admin-app .brand-asset-upload-row>div:last-child{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.admin-app .brand-asset-mini-preview{display:grid;width:160px;min-width:160px;height:62px;place-items:center;overflow:hidden;border:1px solid var(--admin-border);border-radius:8px;background:#f8fafc}
+.admin-app .brand-asset-mini-preview img{max-width:145px;max-height:52px;object-fit:contain}
+.admin-app .brand-asset-upload.favicon .brand-asset-mini-preview{width:58px;min-width:58px;height:58px}
+.admin-app .brand-url-fallback{grid-column:1/-1;border:1px solid var(--admin-border-soft);border-radius:8px;padding:9px}
+.admin-app .brand-url-fallback>summary{cursor:pointer;color:var(--admin-muted);font-size:10px}
+.admin-app .brand-url-fallback[open]{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.admin-app .crm-inline-search select{min-width:150px}
+@media(max-width:1100px){.admin-app .dashboard-action-groups{grid-template-columns:1fr}.admin-app .membership-admin-controls{min-width:250px}.admin-app .membership-admin-controls>form:first-child{flex-wrap:wrap}}
+@media(max-width:620px){.admin-app .brand-asset-upload-row{align-items:flex-start;flex-direction:column}.admin-app .brand-url-fallback[open]{grid-template-columns:1fr}.admin-app .membership-admin-controls{min-width:220px}}
