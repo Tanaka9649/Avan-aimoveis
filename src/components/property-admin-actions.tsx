@@ -1,13 +1,12 @@
 "use client";
 import Link from "next/link";
-import { Check, Copy, ExternalLink, FileText, Globe, Link2Off, MessageCircle, Share2, UploadCloud, X } from "lucide-react";
+import { Check, Copy, ExternalLink, FileText, Globe, Link2Off, MessageCircle, MoreHorizontal, Share2, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { duplicateProperty, publishProperty, unpublishProperty } from "@/app/painel/imoveis/actions";
 import { registerPresentation } from "@/app/painel/clientes/actions";
 import { formatMoney } from "@/lib/format";
 import { isPubliclyVisible, publicPropertyPath, publicPropertyUrl, sharePropertyMessage, siteVisibility, whatsappShareUrl } from "@/lib/property-publication";
-import { AdminDropdownMenu } from "./admin-dropdown-menu";
 import "./property-share.css";
 
 export type SharableProperty = {
@@ -250,116 +249,6 @@ export function PropertyPublicationMenu({ property, full = false }: { property: 
         <button ref={buttonRef} type="button" aria-label="Mais ações" aria-haspopup="menu" aria-expanded={open} onClick={toggleMenu}><MoreHorizontal /></button>
       </div>
       {menu}
-      {shareOpen ? <PropertyShareDialog property={property} onClose={() => setShareOpen(false)} /> : null}
-    </>
-  );
-}: { property: SharableProperty; full?: boolean }) {
-  const [shareOpen, setShareOpen] = useState(false);
-  const [feedback, setFeedback] = useState("");
-  const [pending, startTransition] = useTransition();
-  const live = isPubliclyVisible(property);
-  const published = !!property.publishedAt;
-
-  function run(
-    close: () => void,
-    action: () => Promise<{ ok: boolean; message: string; missing?: string[] }>,
-  ) {
-    setFeedback("");
-    startTransition(async () => {
-      const result = await action();
-      setFeedback(result.ok ? result.message : [result.message, ...(result.missing || [])].join(" "));
-      if (result.ok) close();
-    });
-  }
-
-  return (
-    <>
-      <AdminDropdownMenu label="Mais ações" className="property-menu" buttonClassName="property-menu-trigger">
-        {(close) => (
-          <>
-            {full ? (
-              <>
-                <form action={duplicateProperty}>
-                  <input type="hidden" name="id" value={property.id} />
-                  <button type="submit" role="menuitem"><Copy /> Duplicar</button>
-                </form>
-                <button type="button" role="menuitem" onClick={() => { close(); setShareOpen(true); }}>
-                  <Share2 /> Compartilhar
-                </button>
-              </>
-            ) : null}
-            {live ? (
-              <>
-                <Link href={publicPropertyPath(property.slug)} target="_blank" rel="noreferrer" role="menuitem">
-                  <ExternalLink /> Ver no site
-                </Link>
-                <button type="button" role="menuitem" disabled={pending} onClick={() => run(close, () => unpublishProperty(property.id))}>
-                  <Link2Off /> Despublicar
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                role="menuitem"
-                disabled={pending || property.status === "vendido"}
-                onClick={() => run(close, () => publishProperty(property.id))}
-              >
-                <Globe /> {published ? "Republicar no site" : "Publicar no site"}
-              </button>
-            )}
-            <a href={`/api/properties/${property.id}/pdf`} role="menuitem"><FileText /> Gerar PDF</a>
-            {feedback ? <p role="status">{feedback}</p> : null}
-          </>
-        )}
-      </AdminDropdownMenu>
-      {shareOpen ? <PropertyShareDialog property={property} onClose={() => setShareOpen(false)} /> : null}
-    </>
-  );
-}: { property: SharableProperty; full?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [feedback, setFeedback] = useState("");
-  const [pending, startTransition] = useTransition();
-  const live = isPubliclyVisible(property);
-  const published = !!property.publishedAt;
-
-  function run(action: () => Promise<{ ok: boolean; message: string; missing?: string[] }>) {
-    setFeedback("");
-    startTransition(async () => {
-      const result = await action();
-      setFeedback(result.ok ? result.message : [result.message, ...(result.missing || [])].join(" "));
-      if (result.ok) setOpen(false);
-    });
-  }
-
-  return (
-    <>
-      <details className="property-menu" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
-        <summary aria-label="Mais ações"><MoreHorizontal /></summary>
-        <div>
-          {full ? (
-            <>
-              <form action={duplicateProperty}>
-                <input type="hidden" name="id" value={property.id} />
-                <button type="submit"><Copy /> Duplicar</button>
-              </form>
-              <button type="button" onClick={() => { setOpen(false); setShareOpen(true); }}><Share2 /> Compartilhar</button>
-            </>
-          ) : null}
-          {live ? (
-          <>
-            <Link href={publicPropertyPath(property.slug)} target="_blank" rel="noreferrer"><ExternalLink /> Ver no site</Link>
-            <button type="button" disabled={pending} onClick={() => run(() => unpublishProperty(property.id))}><Link2Off /> Despublicar</button>
-          </>
-        ) : (
-          <button type="button" disabled={pending || property.status === "vendido"} onClick={() => run(() => publishProperty(property.id))}>
-            <Globe /> {published ? "Republicar no site" : "Publicar no site"}
-          </button>
-        )}
-        <a href={`/api/properties/${property.id}/pdf`}><FileText /> Gerar PDF</a>
-          {feedback ? <p role="status">{feedback}</p> : null}
-        </div>
-      </details>
       {shareOpen ? <PropertyShareDialog property={property} onClose={() => setShareOpen(false)} /> : null}
     </>
   );
