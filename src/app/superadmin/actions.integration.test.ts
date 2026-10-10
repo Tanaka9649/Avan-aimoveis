@@ -50,7 +50,7 @@ beforeAll(async () => {
     "insert into users(id,name,email,password_hash,role,global_role,active) values($1,'Super','super@example.invalid','unused','admin','super_admin',true),($2,'Admin','admin@example.invalid','unused','admin','user',true),($3,'Corretor','agent@example.invalid','unused','equipe','user',true),($4,'Segundo Admin','admin2@example.invalid','unused','admin','user',true)",
     [mock.actor.id, adminUserId, agentUserId, secondAdminId],
   );
-  const admin = await pg.query<{id:string}>("insert into tenant_memberships(tenant_id,user_id,role,status,permissions,activated_at) values($1,$2,'admin','active',$4,now()) returning id", [tenantId, adminUserId, agentUserId, JSON.stringify({modules,clients:"all"})]);
+  const admin = await pg.query<{id:string}>("insert into tenant_memberships(tenant_id,user_id,role,status,permissions,activated_at) values($1,$2,'admin','active',$3,now()) returning id", [tenantId, adminUserId, JSON.stringify({modules,clients:"all"})]);
   adminMembershipId = admin.rows[0].id;
   const agent = await pg.query<{id:string}>("insert into tenant_memberships(tenant_id,user_id,role,status,permissions,activated_at) values($1,$2,'agent','active',$3,now()) returning id", [tenantId, agentUserId, JSON.stringify({modules,clients:"all"})]);
   agentMembershipId = agent.rows[0].id;
