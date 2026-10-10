@@ -3,18 +3,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/access";
 import { PHOTO_BUCKET, signedUploadUrl, tenantStorageKey } from "@/lib/storage";
+import { brandingExtension, MAX_BRANDING_BYTES } from "@/lib/branding-upload";
 
 export const runtime = "nodejs";
 
-const MAX_BRANDING_BYTES = 5 * 1024 * 1024;
-const mimeExtensions: Record<string, string> = {
-  "image/png": ".png",
-  "image/jpeg": ".jpg",
-  "image/webp": ".webp",
-  "image/svg+xml": ".svg",
-  "image/x-icon": ".ico",
-  "image/vnd.microsoft.icon": ".ico",
-};
 const input = z.object({
   name: z.string().min(1).max(240),
   type: z.string().min(1).max(100),
@@ -25,7 +17,7 @@ export async function POST(request: Request) {
   const admin = await requireAdmin();
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revise o arquivo selecionado." }, { status: 400 });
-  const extension = mimeExtensions[parsed.data.type];
+  const extension = brandingExtension(parsed.data.type);
   if (!extension) return NextResponse.json({ error: "Use PNG, JPG, WEBP, SVG ou ICO." }, { status: 400 });
 
   const asset = randomUUID() + extension;
