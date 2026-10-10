@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Building2, Palette, Globe2, Boxes, UserRound, ClipboardCheck } from "lucide-react";
 import { modules, moduleLabels, type Module } from "@/lib/permissions";
 import { BrandLogosEditor } from "@/components/brand-logos-editor";
@@ -71,6 +71,20 @@ export function TenantWizard() {
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const toggle = (module: Module) => set("modules", draft.modules.includes(module) ? draft.modules.filter((item) => item !== module) : [...draft.modules, module]);
 
+  const fieldErrors = useMemo(() => {
+    const errors: Partial<Record<keyof Draft, string>> = {};
+    if (step === 0) {
+      if (draft.name.trim().length < 2) errors.name = "Informe o nome da empresa.";
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug)) errors.slug = "Informe um endereço válido para a empresa.";
+      if (!emailOk(draft.email)) errors.email = "Informe um e-mail comercial válido.";
+    }
+    if (step === 4) {
+      if (draft.adminName.trim().length < 2) errors.adminName = "Informe o nome do administrador.";
+      if (!emailOk(draft.adminEmail) || !draft.adminEmail) errors.adminEmail = "Informe um e-mail válido para o administrador.";
+    }
+    return errors;
+  }, [draft, step]);
+
   const validation = useMemo(() => {
     if (step === 0) {
       if (draft.name.trim().length < 2) return "Informe o nome da empresa.";
@@ -85,9 +99,17 @@ export function TenantWizard() {
     return "";
   }, [draft, step]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
+
   function next() {
     if (validation) {
       setMessage(validation);
+      requestAnimationFrame(() => {
+        const invalid = document.querySelector<HTMLElement>('[aria-invalid="true"]');
+        invalid?.focus();
+      });
       return;
     }
     setMessage("");
@@ -154,15 +176,15 @@ export function TenantWizard() {
       <div className="tenant-wizard-card">
         {step === 0 ? (
           <div className="entity-form">
-            <label>Nome da empresa<input value={draft.name} onChange={(event) => {
+            <label>Nome da empresa<input aria-invalid={Boolean(fieldErrors.name)} value={draft.name} onChange={(event) => {
               const name = event.target.value;
               set("name", name);
               if (!slugTouched) set("slug", slugify(name));
-            }} placeholder="Ex.: XP Imóveis"/></label>
-            <label>Endereço da empresa<input value={draft.slug} onChange={(event) => { setSlugTouched(true); set("slug", slugify(event.target.value)); }} placeholder="xp-imoveis"/><small className="field-hint">Será usado em /empresa/{draft.slug || "nome-da-empresa"}.</small></label>
+            }} placeholder="Ex.: XP Imóveis"/>{fieldErrors.name ? <small className="admin-field-error">{fieldErrors.name}</small> : null}</label>
+            <label>Endereço da empresa<input aria-invalid={Boolean(fieldErrors.slug)} value={draft.slug} onChange={(event) => { setSlugTouched(true); set("slug", slugify(event.target.value)); }} placeholder="xp-imoveis"/>{fieldErrors.slug ? <small className="admin-field-error">{fieldErrors.slug}</small> : null}<small className="field-hint">Será usado em /empresa/{draft.slug || "nome-da-empresa"}.</small></label>
             <label>Telefone<input value={draft.phone} onChange={(event) => set("phone", event.target.value)} placeholder="(00) 0000-0000"/></label>
             <label>WhatsApp<input value={draft.whatsapp} onChange={(event) => set("whatsapp", event.target.value)} placeholder="(00) 00000-0000"/></label>
-            <label className="wide">E-mail comercial<input type="email" value={draft.email} onChange={(event) => set("email", event.target.value)} placeholder="contato@empresa.com.br"/></label>
+            <label className="wide">E-mail comercial<input aria-invalid={Boolean(fieldErrors.email)} type="email" value={draft.email} onChange={(event) => set("email", event.target.value)} placeholder="contato@empresa.com.br"/>{fieldErrors.email ? <small className="admin-field-error">{fieldErrors.email}</small> : null}</label>
           </div>
         ) : null}
 
@@ -193,8 +215,8 @@ export function TenantWizard() {
 
         {step === 4 ? (
           <div className="entity-form">
-            <label>Nome do administrador<input value={draft.adminName} onChange={(event) => set("adminName", event.target.value)} placeholder="Nome completo"/></label>
-            <label>E-mail do administrador<input type="email" value={draft.adminEmail} onChange={(event) => set("adminEmail", event.target.value)} placeholder="admin@empresa.com.br"/></label>
+            <label>Nome do administrador<input aria-invalid={Boolean(fieldErrors.adminName)} value={draft.adminName} onChange={(event) => set("adminName", event.target.value)} placeholder="Nome completo"/>{fieldErrors.adminName ? <small className="admin-field-error">{fieldErrors.adminName}</small> : null}</label>
+            <label>E-mail do administrador<input aria-invalid={Boolean(fieldErrors.adminEmail)} type="email" value={draft.adminEmail} onChange={(event) => set("adminEmail", event.target.value)} placeholder="admin@empresa.com.br"/>{fieldErrors.adminEmail ? <small className="admin-field-error">{fieldErrors.adminEmail}</small> : null}</label>
             <p className="wide muted-copy">O administrador receberá um convite temporário para definir a própria senha. Nenhuma senha é criada pelo Super Admin.</p>
           </div>
         ) : null}
