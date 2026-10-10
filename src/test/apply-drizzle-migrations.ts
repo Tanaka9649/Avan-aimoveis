@@ -15,7 +15,7 @@ export async function applyDrizzleMigrations(pg: PGlite) {
 
     await pg.transaction(async (transaction) => {
       for (const statement of statements) {
-        await transaction.query(statement);
+        await transaction.exec(statement);
       }
     });
   }
