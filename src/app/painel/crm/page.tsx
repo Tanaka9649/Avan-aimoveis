@@ -21,6 +21,8 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  const selectedClientId=value(query,"cliente");
  const responsibleFilter=value(query,"responsavel");
  const responsibleId=z.uuid().safeParse(responsibleFilter).success?responsibleFilter:"";
+ const originFilter=value(query,"origem").trim();
+ const actionFilter=value(query,"acao");
 
  const dealSearch=search?or(
    ilike(deals.title,`%${search}%`),
@@ -58,7 +60,15 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
    )`,
  ):undefined;
 
- const dealWhere=and(eq(deals.tenantId,user.tenantId),clientScope(user),dealSearch);
+ const dealWhere=and(
+   eq(deals.tenantId,user.tenantId),
+   clientScope(user),
+   dealSearch,
+   responsibleId?eq(clients.assignedTo,responsibleId):undefined,
+   originFilter?eq(clients.origin,originFilter):undefined,
+   actionFilter==="atrasada"?sql<boolean>`${deals.nextActionAt} is not null and ${deals.nextActionAt} < now()`:undefined,
+   actionFilter==="sem-proxima"?sql<boolean>`${deals.nextActionAt} is null`:undefined,
+ );
  const clientWhere=and(clientScope(user),clientSearch,responsibleId?eq(clients.assignedTo,responsibleId):undefined);
 
  const [[dealCount],[clientCount]]=await Promise.all([
@@ -69,7 +79,7 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
  ]);
 
  if(view==="funil"){
-   const [stageRows,dealRows]=await Promise.all([
+   const [stageRows,dealRows,team]=await Promise.all([
      db.select({id:stages.id,name:stages.name,color:stages.color,isWon:stages.isWon,isLost:stages.isLost})
        .from(stages)
        .where(eq(stages.tenantId,user.tenantId))
@@ -113,6 +123,17 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
        .innerJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,deals.tenantId)))
        .where(dealWhere)
        .orderBy(asc(deals.position),asc(deals.id)),
+     user.role==="admin"
+       ? db.select({id:users.id,name:users.name})
+           .from(users)
+           .innerJoin(tenantMemberships,and(
+             eq(tenantMemberships.userId,users.id),
+             eq(tenantMemberships.tenantId,user.tenantId),
+             eq(tenantMemberships.status,"active"),
+           ))
+           .where(eq(users.active,true))
+           .orderBy(asc(users.name))
+       : Promise.resolve([]),
    ]);
 
    const cards=dealRows.map(card=>({
@@ -127,8 +148,8 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
    return <CrmWorkspace
      query={query}
      view="funil"
-     team={[]}
-     canAssign={false}
+     team={team}
+     canAssign={user.role==="admin"}
      columns={stageRows}
      cards={cards}
      clients={[]}
