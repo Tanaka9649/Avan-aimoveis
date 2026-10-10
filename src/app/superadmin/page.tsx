@@ -6,6 +6,7 @@ import { analyticsEvents, properties, tenantAuditLogs, tenantMemberships, tenant
 import { requireSuperAdmin } from "@/lib/access";
 import { StatusBadge } from "@/components/admin-ui";
 import { auditActionLabel, auditEntityLabel, countText, planLabels } from "@/lib/ui-labels";
+import { formatDateTime } from "@/lib/date-time";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export default async function SuperAdminPage() {
         </section>
         <section className="admin-card table-card">
           <div className="card-title" style={{ padding: 18 }}><div><span>Segurança</span><h2>Auditoria recente</h2></div></div>
-          {recentAudit.length ? <table><thead><tr><th>Ação</th><th>Quando</th></tr></thead><tbody>{recentAudit.map((entry) => <tr key={entry.id}><td><strong>{auditActionLabel(entry.action)}</strong><small>{auditEntityLabel(entry.entityType)}</small></td><td>{entry.createdAt.toLocaleString("pt-BR")}</td></tr>)}</tbody></table> : <p className="table-empty">Nenhuma ação auditada.</p>}
+          {recentAudit.length ? <table><thead><tr><th>Ação</th><th>Quando</th></tr></thead><tbody>{recentAudit.map((entry) => <tr key={entry.id}><td><strong>{auditActionLabel(entry.action)}</strong><small>{auditEntityLabel(entry.entityType)}</small></td><td>{formatDateTime(entry.createdAt)}</td></tr>)}</tbody></table> : <p className="table-empty">Nenhuma ação auditada.</p>}
         </section>
       </div>
     </main>
