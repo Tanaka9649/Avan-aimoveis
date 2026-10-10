@@ -38,7 +38,7 @@ function planForm() {
   form.set("max_documents", "200");
   form.set("max_storage_gb", "2");
   form.set("custom_domain", "0");
-  for (const module of modules) form.set("module:" + module, "on");
+  for (const moduleKey of modules) form.set("module:" + moduleKey, "on");
   return form;
 }
 
