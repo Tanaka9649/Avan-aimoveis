@@ -24,7 +24,8 @@ export function AdminDropdownMenu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const close = useCallback(() => {
+  const close = useCallback(() => setOpen(false), []);
+  const closeAndFocus = useCallback(() => {
     setOpen(false);
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
@@ -56,7 +57,7 @@ export function AdminDropdownMenu({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        close();
+        closeAndFocus();
       }
     };
     const reposition = () => place();
@@ -73,7 +74,7 @@ export function AdminDropdownMenu({
       window.removeEventListener("resize", reposition);
       window.removeEventListener("scroll", reposition, true);
     };
-  }, [close, open, place]);
+  }, [closeAndFocus, open, place]);
 
   return (
     <span className={"admin-dropdown " + className}>
@@ -95,7 +96,7 @@ export function AdminDropdownMenu({
       {open && typeof document !== "undefined"
         ? createPortal(
           <>
-            <button className="admin-dropdown-backdrop" type="button" aria-label="Fechar menu" onClick={close} />
+            <button className="admin-dropdown-backdrop" type="button" aria-label="Fechar menu" onClick={closeAndFocus} />
             <div
               ref={menuRef}
               className="admin-dropdown-menu"
