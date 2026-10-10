@@ -32,6 +32,8 @@ describe("property input", () => {
     const result = propertyInput.safeParse({
       ...valid,
       type: "Terreno",
+      area: "",
+      lotArea: "250",
       bedrooms: "0",
       suites: "0",
       bathrooms: "0",
@@ -44,6 +46,11 @@ describe("property input", () => {
     for (const price of ["21474836.48", "1e6", "2.001", "-1", "0"]) {
       expect(propertyInput.safeParse({ ...valid, price }).success).toBe(false);
     }
+  });
+
+  it("requires lot area for Terreno but keeps it optional for Casa", () => {
+    expect(propertyInput.safeParse({ ...valid, type: "Terreno", area: "", lotArea: "" }).success).toBe(false);
+    expect(propertyInput.safeParse({ ...valid, type: "Casa", lotArea: "" }).success).toBe(true);
   });
 
   it("rejects suites outside the supported range", () => {
