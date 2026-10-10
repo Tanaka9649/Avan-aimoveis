@@ -5,7 +5,7 @@ import {redirect} from "next/navigation";
 import {revalidatePath} from "next/cache";
 import {z} from "zod";
 import {getDb} from "@/db";
-import {clients,deals,stages,activities,dealProperties,properties,users,tenantMemberships} from "@/db/schema";
+import {clients,deals,stages,activities,dealProperties,properties,proposals,users,tenantMemberships} from "@/db/schema";
 import {requireModule,clientScope} from "@/lib/access";
 import {clientInput,optionalMoney} from "@/lib/client-input";
 import {dealPosition} from "@/lib/crm-input";
@@ -149,4 +149,25 @@ export async function reopenOpportunity(formData: FormData) {
     }),
   ]);
   revalidatePath("/painel", "layout");
+}
+
+
+export async function saleClosingChoices(dealId: string) {
+  const user = await requireModule("crm");
+  if (!z.uuid().safeParse(dealId).success) return { properties: [], proposals: [] };
+  const db = getDb();
+  const [propertyRows, proposalRows] = await Promise.all([
+    db.select({ id: properties.id, title: properties.title, code: properties.code, priceCents: properties.priceCents })
+      .from(properties)
+      .where(and(eq(properties.tenantId, user.tenantId), ne(properties.status, "vendido")))
+      .orderBy(asc(properties.title)),
+    db.select({ id: proposals.id, amountCents: proposals.amountCents })
+      .from(proposals)
+      .where(and(eq(proposals.tenantId, user.tenantId), eq(proposals.dealId, dealId), eq(proposals.status, "aceita")))
+      .orderBy(asc(proposals.createdAt)),
+  ]);
+  return {
+    properties: propertyRows.map((property) => ({ id: property.id, label: `${property.code} · ${property.title}`, priceCents: property.priceCents })),
+    proposals: proposalRows.map((proposal) => ({ id: proposal.id, label: `Proposta aceita · R$ ${(proposal.amountCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` })),
+  };
 }
