@@ -133,6 +133,7 @@ export function PropertyEditor({
     slug: "",
     price: "",
     area: "",
+    lotArea: "",
     bedrooms: "0",
     suites: "0",
     bathrooms: "0",
@@ -259,7 +260,7 @@ export function PropertyEditor({
     neighborhood: values.neighborhood,
     city: values.city,
     state: values.state,
-    area: Number(values.area || 0),
+    area: Number(values.area || values.lotArea || 0),
     photoCount: photos.length,
   }).filter((check) => !check.done).map((check) => check.label);
   const ownerName =
@@ -527,13 +528,21 @@ export function PropertyEditor({
                   ))}
                 </div>
                 <div className="wizard-grid">
-                  {field("area", "Área privativa (m²)", {
+                  {values.type !== "Terreno" ? field("area", values.type === "Apartamento" || values.type === "Cobertura" || values.type === "Studio" ? "Área privativa (m²)" : "Área construída (m²)", {
                     type: "number",
                     min: 0.01,
                     max: 99999999.99,
                     step: "0.01",
                     placeholder: "120",
-                  })}
+                  }) : null}
+                  {values.type === "Casa" || values.type === "Terreno" ? field("lotArea", "Área do terreno (m²)", {
+                    type: "number",
+                    min: 0.01,
+                    max: 99999999.99,
+                    step: "0.01",
+                    placeholder: "250",
+                    optional: values.type !== "Terreno",
+                  }) : null}
                 </div>
               </>
             ) : null}
@@ -642,7 +651,7 @@ export function PropertyEditor({
                     </p>
                     <p>
                       {values.bedrooms} quartos · {values.suites} suítes · {values.bathrooms} banheiros ·{" "}
-                      {values.parking} vagas · {Number(values.area || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m²
+                      {values.parking} vagas · {values.type === "Terreno" ? `${Number(values.lotArea || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m² de terreno` : `${Number(values.area || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m²`}
                     </p>
                   </div>
                 </div>
@@ -659,7 +668,7 @@ export function PropertyEditor({
                   <SummaryBlock title="Características" onEdit={() => go(1)}>
                     <p>
                       {values.bedrooms} quartos · {values.suites} suítes · {values.bathrooms} banheiros ·{" "}
-                      {values.parking} vagas · {Number(values.area || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m² privativos
+                      {values.parking} vagas · {values.type === "Terreno" ? `${Number(values.lotArea || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m² de terreno` : `${Number(values.area || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m² ${values.type === "Casa" ? "construídos" : "privativos"}`}{values.type === "Casa" && values.lotArea ? ` · ${Number(values.lotArea).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} m² de terreno` : ""}
                     </p>
                   </SummaryBlock>
                   <SummaryBlock title="Localização" onEdit={() => go(2)}>
