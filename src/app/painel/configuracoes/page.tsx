@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { SettingsForm } from "@/components/settings-form";
 import { BrandLogosEditor } from "@/components/brand-logos-editor";
+import { BrandAssetUpload } from "@/components/brand-asset-upload";
 import { BrandingSettingsTabs } from "@/components/branding-settings-tabs";
 import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import { DomainVerificationButton } from "@/components/domain-verification-button";
@@ -66,7 +67,7 @@ export default async function SettingsPage() {
         logos={
           <SettingsForm action={saveTenantLogos} label="Salvar logos">
             <BrandLogosEditor initialLogos={brandingLogos(branding)}/>
-            <label className="wide">Favicon — URL<input name="favicon" type="url" defaultValue={branding.favicon || ""}/></label>
+            <BrandAssetUpload label="Favicon" inputName="favicon" favicon value={branding.favicon || ""}/>
           </SettingsForm>
         }
       />
