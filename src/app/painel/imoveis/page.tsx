@@ -94,6 +94,7 @@ export default async function AdminPropertiesPage({
       description: properties.description,
       features: properties.features,
       bedrooms: properties.bedrooms,
+      suites: properties.suites,
       bathrooms: properties.bathrooms,
       parking: properties.parkingSpaces,
       publishedAt: properties.publishedAt,
@@ -257,6 +258,7 @@ export default async function AdminPropertiesPage({
                   <strong>{formatMoney(p.price)}</strong>
                   <div className="admin-property-specs">
                     <span>{p.bedrooms} quartos</span>
+                    {p.suites > 0 ? <span>{p.suites} {p.suites === 1 ? "suíte" : "suítes"}</span> : null}
                     <span>{p.bathrooms} banheiros</span>
                     <span>{p.parking} vagas</span>
                   </div>
