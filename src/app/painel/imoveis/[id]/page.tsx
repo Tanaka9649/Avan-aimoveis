@@ -127,6 +127,7 @@ export default async function EditPropertyPage({
             type: p.type,
             price: (p.priceCents / 100).toFixed(2),
             area: p.privateArea || "",
+            lotArea: p.lotArea || "",
             bedrooms: p.bedrooms,
             suites: p.suites,
             bathrooms: p.bathrooms,
