@@ -4,8 +4,8 @@ import {applyDrizzleMigrations} from "@/test/apply-drizzle-migrations";
 import {drizzle} from "drizzle-orm/pglite";
 const mock=vi.hoisted(()=>({db:null as unknown,user:{id:"30000000-0000-4000-8000-000000000001",tenantId:"00000000-0000-4000-8000-000000000001",role:"admin",access:{clients:"all"}}}));
 vi.mock("@/db",()=>({getDb:()=>mock.db}));vi.mock("@/lib/access",()=>({requireModule:async()=>mock.user,clientScope:()=>undefined}));vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));vi.mock("next/navigation",()=>({redirect:vi.fn()}));
-import {saveCrmClient,saveDeal} from "./actions";
-import {saveSale} from "../propostas/actions";
+import {reopenOpportunity,saveCrmClient,saveDeal} from "./actions";
+import {saveProposal,saveSale} from "../propostas/actions";
 const id=(n:number)=>`30000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 let pg:PGlite;let clientId:string;let dealId:string;
 const form=(values:Record<string,string>)=>{const f=new FormData();for(const[k,v]of Object.entries(values))f.set(k,v);return f;};
@@ -21,4 +21,16 @@ describe.sequential("client → opportunity → sale",()=>{
  it("creates a client and detects duplicate contact",async()=>{const data={name:"Cliente teste",phone:"(34) 99999-0000",email:"cliente@example.invalid",origin:"Site",budgetMin:"",budgetMax:"",desiredTypes:"",desiredRegions:"",desiredFeatures:"",minBedrooms:"0",minBathrooms:"0",minParkingSpaces:"0"};const state=await saveCrmClient({ok:false,message:""},form(data));expect(state.ok).toBe(true);clientId=state.clientId!;const duplicate=await saveCrmClient({ok:false,message:""},form(data));expect(duplicate.ok).toBe(false);expect(duplicate.duplicate?.id).toBe(clientId);});
  it("creates without a property and retains the scheduled contact for dashboard queries",async()=>{const result=await saveDeal({ok:false,message:""},form({id:"",clientId,title:"Casa no Centro",stageId:id(2),amount:"400000.50",nextActionAt:"2026-09-22T14:00:00-03:00",nextActionType:"Ligar",nextActionNote:"Retornar ao cliente",lostReason:"",note:"Nota de teste",assignedTo:mock.user.id,returnToBoard:"1"}));expect(result.ok).toBe(true);const{rows}=await pg.query<{id:string;estimated_value_cents:number;next_action_at:Date;next_action_note:string}>("select * from deals");dealId=rows[0].id;expect(rows[0].estimated_value_cents).toBe(40000050);expect(new Date(rows[0].next_action_at).toISOString()).toBe("2026-09-22T17:00:00.000Z");expect(rows[0].next_action_note).toBe("Retornar ao cliente");expect((await pg.query("select * from deal_properties")).rows).toHaveLength(0);});
  it("completes the sale atomically and rejects duplicate submissions",async()=>{const values={dealId,propertyId:id(5),proposalId:"",advertised:"400000",amount:"390000",commissionPercent:"5",soldAt:"2026-09-22",notes:"Fechamento teste"};expect((await saveSale({ok:false,message:""},form(values))).ok).toBe(true);const errorLog=vi.spyOn(console,"error").mockImplementation(()=>{});expect((await saveSale({ok:false,message:""},form(values))).ok).toBe(false);errorLog.mockRestore();expect((await pg.query("select * from sales")).rows).toHaveLength(1);expect((await pg.query("select * from activities where type='venda'")).rows).toHaveLength(1);expect((await pg.query<{stage_id:string;next_action_note:string}>("select * from deals")).rows[0]).toMatchObject({stage_id:id(3),next_action_note:"Retornar ao cliente"});});
+ it("blocks commercial work on a lost opportunity until it is explicitly reopened",async()=>{
+   const lostClient=id(6),lostDeal=id(7),property=id(8);
+   await pg.query("insert into clients(tenant_id,id,name,phone,origin) values($1,$2,'Cliente perdido','34999990001','Site')",[mock.user.tenantId,lostClient]);
+   await pg.query("insert into properties(tenant_id,id,code,title,slug,type,price_cents,description,state,city,neighborhood,address_private) values($1,$2,'TEST-2','Casa reabertura','casa-reabertura','Casa',25000000,'Teste','MG','Frutal','Centro','Teste')",[mock.user.tenantId,property]);
+   await pg.query("insert into deals(tenant_id,id,client_id,stage_id,title,position,lost_reason) values($1,$2,$3,$4,'Negócio perdido',1024,'Sem retorno')",[mock.user.tenantId,lostDeal,lostClient,id(4)]);
+   const proposal={dealId:lostDeal,propertyId:property,advertised:"250000",amount:"240000",counter:"",validUntil:"",status:"enviada",notes:"Teste"};
+   expect((await saveProposal({ok:false,message:""},form(proposal))).ok).toBe(false);
+   const reopen=new FormData();reopen.set("id",lostDeal);await reopenOpportunity(reopen);
+   const row=(await pg.query<{stage_id:string;lost_reason:string|null}>("select stage_id,lost_reason from deals where id=$1",[lostDeal])).rows[0];
+   expect(row).toMatchObject({stage_id:id(2),lost_reason:null});
+   expect((await saveProposal({ok:false,message:""},form(proposal))).ok).toBe(true);
+ });
 });
