@@ -11,16 +11,16 @@
 .site-badge.is-live{background:rgba(74,222,128,.14);color:#4ade80}
 .site-badge.is-offline{background:rgba(148,163,184,.16);color:var(--admin-muted,#8f9aaa)}
 .page-header-badges{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
-.property-menu{position:relative}
-.property-menu summary{display:flex;align-items:center;justify-content:center;width:35px;min-height:35px;border:1px solid var(--admin-border);border-radius:7px;background:var(--admin-surface-2);color:var(--admin-text);list-style:none;cursor:pointer}
-.property-menu summary::-webkit-details-marker{display:none}
-.property-menu summary svg{width:15px}
-.property-menu>div{position:absolute;right:0;bottom:calc(100% + 6px);z-index:20;display:grid;gap:4px;width:210px;padding:8px;border:1px solid var(--admin-border);border-radius:9px;background:var(--admin-surface);box-shadow:0 16px 36px rgba(0,0,0,.34)}
-.property-menu>div a,.property-menu>div button{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:8px 9px;border:0;border-radius:6px;background:none;color:var(--admin-text);font:inherit;font-size:11px;text-align:left;cursor:pointer}
-.property-menu>div a:hover,.property-menu>div button:hover:not(:disabled){background:var(--admin-surface-2)}
-.property-menu>div button:disabled{opacity:.5;cursor:not-allowed}
-.property-menu>div svg{width:14px;flex:none}
-.property-menu>div p{margin:4px 2px 0;color:var(--admin-muted);font-size:10px}
+.property-menu{position:relative;display:inline-flex}
+.property-menu>button{display:flex;align-items:center;justify-content:center;width:35px;min-height:35px;border:1px solid var(--admin-border);border-radius:7px;background:var(--admin-surface-2);color:var(--admin-text);cursor:pointer}
+.property-menu>button svg{width:15px}
+.property-menu-backdrop{position:fixed;inset:0;z-index:178;border:0;background:transparent;cursor:default}
+.property-menu-popover{position:fixed;z-index:179;display:grid;gap:4px;width:220px;max-height:min(320px,calc(100dvh - 16px));overflow:auto;padding:8px;border:1px solid var(--admin-border);border-radius:9px;background:var(--admin-surface);box-shadow:0 18px 44px rgba(0,0,0,.42)}
+.property-menu-popover a,.property-menu-popover button{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:8px 9px;border:0;border-radius:6px;background:none;color:var(--admin-text);font:inherit;font-size:11px;text-align:left;cursor:pointer}
+.property-menu-popover a:hover,.property-menu-popover button:hover:not(:disabled),.property-menu-popover a:focus-visible,.property-menu-popover button:focus-visible{background:var(--admin-surface-2);outline:2px solid color-mix(in srgb,var(--admin-blue) 55%,transparent);outline-offset:-2px}
+.property-menu-popover button:disabled{opacity:.5;cursor:not-allowed}
+.property-menu-popover svg{width:14px;flex:none}
+.property-menu-popover p{margin:4px 2px 0;color:var(--admin-muted);font-size:10px}
 .admin-property-photo img{transition:opacity .25s ease}
 @media(prefers-reduced-motion:reduce){.admin-property-photo img{transition:none}}
 .admin-property-flags{position:absolute;left:10px;top:10px;display:flex;flex-wrap:wrap;gap:6px}
