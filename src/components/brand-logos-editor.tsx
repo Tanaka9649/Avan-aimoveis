@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
 import type { BrandLogoEntry } from "@/lib/branding";
@@ -124,11 +125,11 @@ export function BrandLogosEditor({
           <div className="brand-logo-preview-grid">
             <div className="brand-logo-preview light">
               <span>Fundo claro</span>
-              {current.logoLight || current.logoDark ? <img src={current.logoLight || current.logoDark} alt="Prévia da logo em fundo claro"/> : <small>Adicione uma URL para visualizar.</small>}
+              {current.logoLight || current.logoDark ? <Image src={current.logoLight || current.logoDark} alt="Prévia da logo em fundo claro" width={240} height={82} unoptimized/> : <small>Adicione uma URL para visualizar.</small>}
             </div>
             <div className="brand-logo-preview dark">
               <span>Fundo escuro</span>
-              {current.logoDark || current.logoLight ? <img src={current.logoDark || current.logoLight} alt="Prévia da logo em fundo escuro"/> : <small>Adicione uma URL para visualizar.</small>}
+              {current.logoDark || current.logoLight ? <Image src={current.logoDark || current.logoLight} alt="Prévia da logo em fundo escuro" width={240} height={82} unoptimized/> : <small>Adicione uma URL para visualizar.</small>}
             </div>
           </div>
 
