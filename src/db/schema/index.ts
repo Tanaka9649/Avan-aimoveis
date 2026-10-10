@@ -146,6 +146,7 @@ export const properties = pgTable("properties", {
   bathrooms: integer("bathrooms").default(0).notNull(),
   parkingSpaces: integer("parking_spaces").default(0).notNull(),
   privateArea: numeric("private_area", { precision: 10, scale: 2 }),
+  lotArea: numeric("lot_area", { precision: 10, scale: 2 }),
   description: text("description").notNull(),
   features: jsonb("features").$type<string[]>().default([]).notNull(),
   state: varchar("state", { length: 2 }).notNull(),
