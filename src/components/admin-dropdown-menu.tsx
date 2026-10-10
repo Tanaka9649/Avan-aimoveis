@@ -106,7 +106,7 @@ export function AdminDropdownMenu({
               {children(close)}
             </div>
           </>,
-          document.body,
+          document.querySelector(".admin-app") || document.body,
         )
         : null}
     </span>
