@@ -6,7 +6,7 @@ Atualizado após a rodada completa de refinamento interno pós-auditoria em 2026
 
 - Site público e telas de login permanecem visualmente congelados.
 - Nenhum merge automático foi realizado.
-- Nenhum deploy em Production foi realizado nesta rodada.
+- Deploy em Production realizado após autorização explícita em 2026-10-10.
 - Imóveis, fotos, clientes, oportunidades, documentos, propostas, vendas e usuários reais foram preservados.
 
 ## Banco / Production
@@ -21,16 +21,18 @@ Estado real confirmado após a rodada:
 - property_owner_links: 8
 - clients: 2
 - deals: 2
-- `properties.lot_area`: ainda NÃO aplicado em Production
+- `properties.lot_area`: aplicado em Production e preservado como NULL nos 8 imóveis existentes
 
 Migrations já aplicadas em Production:
 - `0010_owner_identity_integrity.sql`
 - `0011_internal_consistency_performance.sql`
-
-Migration nova criada, mas NÃO aplicada em Production:
 - `0012_property_lot_area.sql`
-- mudança aditiva: adiciona apenas `properties.lot_area numeric(10,2)`
-- sem backfill e sem alteração automática dos imóveis existentes
+
+0012 em Production:
+- adiciona apenas `properties.lot_area numeric(10,2)`;
+- sem backfill;
+- sem alteração automática dos imóveis existentes;
+- journal registrado com hash `b73dc544a36709d5d53a3e504c5addef9665a6b9b98ac3a23191180ed64dfc0b`.
 
 Validação isolada da 0012:
 - branch Neon: `test-0012-lot-area-2026-10-10`
@@ -76,17 +78,19 @@ Rodada concluída:
 - npx --no-install drizzle-kit check: OK
 - npm audit --omit=dev --audit-level=high: OK — 0 vulnerabilidades
 
-A integração Vercel gerou Preview automaticamente para a branch. Production não recebeu deploy.
+A integração Vercel gerou Preview automaticamente para a branch. Após autorização explícita, o commit `3257203aeabb9101da156a86915f5829924a999f` foi publicado em Production no deployment `dpl_39Xi7GUU84pvY9J8txLYrYsqTcLX` e o alias `imoveisplatform.vercel.app` foi apontado para ele.
 
 ## Observação de smoke test
 
 O build lista e compila as rotas internas, inclusive os catch-alls de 404. A ferramenta conectada à Vercel não teve permissão para abrir o Preview protegido (403 no bypass), então não foi possível fazer smoke test visual autenticado pelo conector. Não usar credenciais reais para contornar essa proteção.
 
-## Próximo passo seguro
+## Estado atual de Production
 
-Antes de qualquer deploy que use o novo campo `lot_area` em Production:
-1. aplicar `0012_property_lot_area.sql` na branch operacional somente com autorização explícita;
-2. comparar novamente as contagens reais;
-3. só depois preparar/promover o deploy aprovado.
+- migration `0012_property_lot_area.sql`: aplicada;
+- deployment: `dpl_39Xi7GUU84pvY9J8txLYrYsqTcLX`;
+- commit publicado: `3257203aeabb9101da156a86915f5829924a999f`;
+- alias principal: `imoveisplatform.vercel.app`;
+- contagens pós-migration preservadas: 8 imóveis, 76 fotos, 8 proprietários, 8 vínculos, 2 clientes e 2 oportunidades;
+- nenhum imóvel existente recebeu valor automático em `lot_area`.
 
-Não reaplicar `0010` ou `0011`.
+Não reaplicar `0010`, `0011` ou `0012`.
