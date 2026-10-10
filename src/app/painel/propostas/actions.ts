@@ -18,10 +18,11 @@ export async function saveProposal(_: { ok: boolean; message: string }, formData
   if (parsed.data.validUntil && !valid) return { ok: false, message: "Informe uma validade válida." };
   const db = getDb();
   const [dealRows, propertyRows] = await Promise.all([
-    db.select({ id: deals.id, clientId: clients.id }).from(deals).innerJoin(clients, and(eq(clients.id, deals.clientId), eq(clients.tenantId, user.tenantId))).where(and(eq(deals.id, parsed.data.dealId), eq(deals.tenantId, user.tenantId), clientScope(user))).limit(1),
+    db.select({ id: deals.id, clientId: clients.id, isLost: stages.isLost }).from(deals).innerJoin(clients, and(eq(clients.id, deals.clientId), eq(clients.tenantId, user.tenantId))).innerJoin(stages, and(eq(stages.id, deals.stageId), eq(stages.tenantId, user.tenantId))).where(and(eq(deals.id, parsed.data.dealId), eq(deals.tenantId, user.tenantId), clientScope(user))).limit(1),
     db.select({ id: properties.id }).from(properties).where(and(eq(properties.id, parsed.data.propertyId), eq(properties.tenantId, user.tenantId))).limit(1),
   ]);
   if (!dealRows[0] || !propertyRows[0]) return { ok: false, message: "Oportunidade ou imóvel indisponível." };
+  if (dealRows[0].isLost) return { ok: false, message: "Reabra a oportunidade perdida antes de criar uma proposta." };
   await db.batch([
     db.insert(proposals).values({ tenantId: user.tenantId, dealId: parsed.data.dealId, propertyId: parsed.data.propertyId, advertisedAmountCents: parsed.data.advertised, amountCents: parsed.data.amount, counterAmountCents: parsed.data.counter || null, validUntil: valid, status: parsed.data.status, notes: parsed.data.notes || null }),
     db.insert(activities).values({ tenantId: user.tenantId, dealId: parsed.data.dealId, clientId: dealRows[0].clientId, userId: user.id, type: "proposta", description: "Proposta registrada" }),
@@ -53,6 +54,7 @@ export async function saveSale(_: { ok: boolean; message: string }, formData: Fo
     .where(and(eq(deals.id, parsed.data.dealId), eq(deals.tenantId, user.tenantId), clientScope(user))).limit(1);
   const [property] = await db.select({ id: properties.id }).from(properties).where(and(eq(properties.id, parsed.data.propertyId), eq(properties.tenantId, user.tenantId))).limit(1);
   if (!deal || !property) return { ok: false, message: "Oportunidade ou imóvel indisponível." };
+  if (deal.isLost) return { ok: false, message: "Reabra a oportunidade perdida antes de concluir a venda." };
   if (parsed.data.proposalId) {
     const [proposal] = await db.select({ id: proposals.id, status: proposals.status }).from(proposals).where(and(eq(proposals.tenantId, user.tenantId), eq(proposals.id, parsed.data.proposalId), eq(proposals.dealId, deal.id), eq(proposals.propertyId, property.id))).limit(1);
     if (!proposal) return { ok: false, message: "A proposta não pertence a esta oportunidade e imóvel." };
