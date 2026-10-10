@@ -1,7 +1,6 @@
-import {readFileSync,readdirSync} from "node:fs";
-import {resolve} from "node:path";
 import {beforeAll,afterAll,describe,expect,it,vi} from "vitest";
 import {PGlite} from "@electric-sql/pglite";
+import {applyDrizzleMigrations} from "@/test/apply-drizzle-migrations";
 import {drizzle} from "drizzle-orm/pglite";
 const mock=vi.hoisted(()=>({db:null as unknown,user:{id:"30000000-0000-4000-8000-000000000001",tenantId:"00000000-0000-4000-8000-000000000001",role:"admin",access:{clients:"all"}}}));
 vi.mock("@/db",()=>({getDb:()=>mock.db}));vi.mock("@/lib/access",()=>({requireModule:async()=>mock.user,clientScope:()=>undefined}));vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));vi.mock("next/navigation",()=>({redirect:vi.fn()}));
@@ -10,7 +9,7 @@ import {saveSale} from "../propostas/actions";
 const id=(n:number)=>`30000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 let pg:PGlite;let clientId:string;let dealId:string;
 const form=(values:Record<string,string>)=>{const f=new FormData();for(const[k,v]of Object.entries(values))f.set(k,v);return f;};
-beforeAll(async()=>{pg=new PGlite();for(const file of readdirSync(resolve("drizzle")).filter(f=>f.endsWith(".sql")).sort()){for(const statement of readFileSync(resolve("drizzle",file),"utf8").split("--> statement-breakpoint"))if(statement.trim())await pg.exec(statement);}
+beforeAll(async()=>{pg=new PGlite();await applyDrizzleMigrations(pg);
  const db=drizzle(pg);mock.db=Object.assign(db,{batch:async(queries:{toSQL:()=>{sql:string;params:unknown[]}}[])=>pg.transaction(async tx=>{const results=[];for(const query of queries){const q=query.toSQL();results.push(await tx.query(q.sql,q.params));}return results;})});
  await pg.query("insert into users(id,name,email,password_hash,role) values($1,'Teste','teste@example.invalid','unused','admin')",[mock.user.id]);
  await pg.query("insert into tenant_memberships(tenant_id,user_id,role,status,permissions,activated_at) values($1,$2,'owner','active',$3,now())",[mock.user.tenantId,mock.user.id,JSON.stringify({modules:["dashboard","imoveis","clientes","crm","visitas","propostas","proprietarios","analytics"],clients:"all"})]);
