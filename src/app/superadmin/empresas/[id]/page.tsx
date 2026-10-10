@@ -30,7 +30,6 @@ import {
   domainStatusLabels,
   formatBytes,
   membershipRoleLabels,
-  membershipStatusLabels,
   planLabels,
   provisionStatusLabels,
   provisionStepLabel,
