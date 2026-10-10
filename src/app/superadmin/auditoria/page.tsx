@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { PageHeader } from "@/components/admin-ui";
 import { Pagination } from "@/components/list-tools";
@@ -6,6 +7,7 @@ import { tenantAuditLogs, tenants, users } from "@/db/schema";
 import { requireSuperAdmin } from "@/lib/access";
 import { PAGE_SIZE, pageNumber, type Query } from "@/lib/list-query";
 import { auditActionLabel, auditEntityLabel } from "@/lib/ui-labels";
+import { formatDateTime } from "@/lib/date-time";
 
 const single = (value: string | string[] | undefined) => typeof value === "string" ? value : "";
 const metadataSummary = (metadata: Record<string, unknown>) => {
@@ -61,7 +63,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         <form className="entity-form" method="get">
           <label className="wide">Buscar<input name="q" defaultValue={q} placeholder="Ação, usuário ou empresa"/></label>
           <label>Empresa<select name="empresa" defaultValue={tenantId}><option value="">Todas</option>{tenantOptions.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>
-          <div className="wide filter-actions"><button className="admin-button primary">Aplicar filtros</button>{q || tenantId ? <a className="admin-button secondary" href="/superadmin/auditoria">Limpar</a> : null}</div>
+          <div className="wide filter-actions"><button className="admin-button primary">Aplicar filtros</button>{q || tenantId ? <Link className="admin-button secondary" href="/superadmin/auditoria">Limpar</Link> : null}</div>
         </form>
       </section>
       <section className="admin-card table-card">
@@ -72,7 +74,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
             <td>{row.tenantName || "Plataforma"}</td>
             <td>{row.actorName || "Sistema"}</td>
             <td><small>{metadataSummary(row.metadata)}</small></td>
-            <td>{row.createdAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}</td>
+            <td>{formatDateTime(row.createdAt)}</td>
           </tr>)}</tbody>
         </table></div> : <div className="table-empty roomy"><h2>Nenhum registro encontrado</h2><p>Não há eventos de auditoria que correspondam aos filtros atuais.</p></div>}
       </section>
