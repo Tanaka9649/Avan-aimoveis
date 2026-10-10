@@ -24,7 +24,7 @@ const cardColumns = {
   suites: properties.suites,
   bathrooms: properties.bathrooms,
   parkingSpaces: properties.parkingSpaces,
-  area: properties.privateArea,
+  area: sql<string | null>`coalesce(${properties.privateArea}, ${properties.lotArea})`,
 };
 
 type CardRow = { [K in keyof typeof cardColumns]: K extends "area" ? string | null : K extends "priceCents" | "bedrooms" | "suites" | "bathrooms" | "parkingSpaces" ? number : string };
