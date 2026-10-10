@@ -39,7 +39,7 @@ export async function saveProperty(_previous: { error: string; id?: string; save
   const owner=ownerInput.data;
   if(!owner.ownerId&&owner.ownerName&&owner.ownerName.length<2)return {error:"Informe o nome completo do proprietário."};
   if(!owner.ownerId&&owner.ownerPhone&&!isValidBrazilianPhone(owner.ownerPhone))return {error:"Informe um telefone válido com DDD para o proprietário ou deixe o campo em branco."};
-  const values = { code: p.code, title: p.title, slug: p.slug, type: p.type, priceCents: p.price, city: p.city, state: p.state, neighborhood: p.neighborhood, addressPrivate: p.address, description: p.description, bedrooms: p.bedrooms, suites: p.suites, bathrooms: p.bathrooms, parkingSpaces: p.parking, privateArea: p.area.toFixed(2), status: p.status, updatedAt: new Date() };
+  const values = { code: p.code, title: p.title, slug: p.slug, type: p.type, priceCents: p.price, city: p.city, state: p.state, neighborhood: p.neighborhood, addressPrivate: p.address, description: p.description, bedrooms: p.bedrooms, suites: p.suites, bathrooms: p.bathrooms, parkingSpaces: p.parking, privateArea: p.area ? p.area.toFixed(2) : null, lotArea: p.lotArea ? p.lotArea.toFixed(2) : null, status: p.status, updatedAt: new Date() };
   // Publication is its own decision, never a side effect of the commercial status, so re-saving a
   // listing no longer republishes it and no longer resets the date it went live.
   const wantsPublication = formData.get("publish") === "1";
@@ -96,7 +96,7 @@ export async function saveProperty(_previous: { error: string; id?: string; save
     if(rawId){const [found]=await db.select({id:properties.id,publishedAt:properties.publishedAt}).from(properties).where(and(eq(properties.id,id),eq(properties.tenantId,user.tenantId),ne(properties.status,"vendido")));if(!found)return {error:"Imóvel indisponível ou vendido."};current=found;}
     if (wantsPublication) {
       const [photos] = rawId ? await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.tenantId,user.tenantId),eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready"))) : [{ value: 0 }];
-      const candidate = { status: p.status, title: p.title, priceCents: p.price, description: p.description, neighborhood: p.neighborhood, city: p.city, state: p.state, area: p.area, photoCount: Number(photos.value) };
+      const candidate = { status: p.status, title: p.title, priceCents: p.price, description: p.description, neighborhood: p.neighborhood, city: p.city, state: p.state, area: p.area || p.lotArea || 0, photoCount: Number(photos.value) };
       if (!canPublish(candidate))
         return { error: `Para publicar no site, complete: ${publicationBlockers(candidate).join(", ")}.`, id };
       // Publishing keeps the original go-live date, so re-publishing never rewrites history.
@@ -188,14 +188,14 @@ export async function publishProperty(id: string): Promise<PublicationResult> {
   if (!z.uuid().safeParse(id).success) return { ok: false, message: "Imóvel inválido." };
   const db = getDb();
   const [property] = await db
-    .select({ id: properties.id, slug: properties.slug, status: properties.status, publishedAt: properties.publishedAt, title: properties.title, priceCents: properties.priceCents, description: properties.description, neighborhood: properties.neighborhood, city: properties.city, state: properties.state, area: properties.privateArea })
+    .select({ id: properties.id, slug: properties.slug, status: properties.status, publishedAt: properties.publishedAt, title: properties.title, priceCents: properties.priceCents, description: properties.description, neighborhood: properties.neighborhood, city: properties.city, state: properties.state, area: properties.privateArea, lotArea: properties.lotArea })
     .from(properties)
     .where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId)))
     .limit(1);
   if (!property) return { ok: false, message: "Imóvel não encontrado." };
   if (property.status === "vendido") return { ok: false, message: "Imóveis vendidos não podem ser publicados." };
   const [photos] = await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.tenantId,user.tenantId),eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready")));
-  const candidate = { ...property, area: property.area, photoCount: Number(photos.value) };
+  const candidate = { ...property, area: property.area || property.lotArea, photoCount: Number(photos.value) };
   if (!canPublish(candidate))
     return { ok: false, message: "Complete o cadastro antes de publicar.", missing: publicationBlockers(candidate) };
   await db.batch([
