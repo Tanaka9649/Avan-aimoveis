@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { Check, Copy, ExternalLink, FileText, Globe, Link2Off, MessageCircle, Share2, UploadCloud, X } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { duplicateProperty, publishProperty, unpublishProperty } from "@/app/painel/imoveis/actions";
 import { registerPresentation } from "@/app/painel/clientes/actions";
 import { formatMoney } from "@/lib/format";
@@ -155,6 +156,104 @@ export function PropertyShareButton({ property, client, label = "Compartilhar" }
 
 /** The card's "…" menu: publish, open on the site, unpublish — without crowding the card. */
 export function PropertyPublicationMenu({ property, full = false }: { property: SharableProperty; full?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const live = isPubliclyVisible(property);
+  const published = !!property.publishedAt;
+
+  const close = useCallback(() => setOpen(false), []);
+
+  const toggleMenu = () => {
+    if (open) {
+      close();
+      return;
+    }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = 220;
+    const estimatedHeight = 260;
+    const gap = 7;
+    const left = Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width));
+    const openBelow = window.innerHeight - rect.bottom >= Math.min(estimatedHeight, rect.top - 8);
+    const top = openBelow
+      ? Math.min(window.innerHeight - estimatedHeight - 8, rect.bottom + gap)
+      : Math.max(8, rect.top - estimatedHeight - gap);
+    setPosition({ top: Math.max(8, top), left });
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        close();
+        buttonRef.current?.focus();
+      }
+    };
+    const onViewportChange = () => close();
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("scroll", onViewportChange, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("scroll", onViewportChange, true);
+    };
+  }, [open, close]);
+
+  function run(action: () => Promise<{ ok: boolean; message: string; missing?: string[] }>) {
+    setFeedback("");
+    startTransition(async () => {
+      const result = await action();
+      setFeedback(result.ok ? result.message : [result.message, ...(result.missing || [])].join(" "));
+      if (result.ok) close();
+    });
+  }
+
+  const menu = open ? createPortal(
+    <>
+      <button className="property-menu-backdrop" type="button" aria-label="Fechar menu de ações" onClick={() => { close(); buttonRef.current?.focus(); }}/>
+      <div className="property-menu-popover" role="menu" aria-label={`Ações de ${property.title}`} style={{ top: position.top, left: position.left }}>
+        {full ? (
+          <>
+            <form action={duplicateProperty}>
+              <input type="hidden" name="id" value={property.id} />
+              <button type="submit" role="menuitem"><Copy /> Duplicar</button>
+            </form>
+            <button type="button" role="menuitem" onClick={() => { close(); setShareOpen(true); }}><Share2 /> Compartilhar</button>
+          </>
+        ) : null}
+        {live ? (
+          <>
+            <Link role="menuitem" href={publicPropertyPath(property.slug)} target="_blank" rel="noreferrer" onClick={close}><ExternalLink /> Ver no site</Link>
+            <button type="button" role="menuitem" disabled={pending} onClick={() => run(() => unpublishProperty(property.id))}><Link2Off /> Despublicar</button>
+          </>
+        ) : (
+          <button type="button" role="menuitem" disabled={pending || property.status === "vendido"} onClick={() => run(() => publishProperty(property.id))}>
+            <Globe /> {published ? "Republicar no site" : "Publicar no site"}
+          </button>
+        )}
+        <a role="menuitem" href={`/api/properties/${property.id}/pdf`} onClick={close}><FileText /> Gerar PDF</a>
+        {feedback ? <p role="status">{feedback}</p> : null}
+      </div>
+    </>,
+    document.body,
+  ) : null;
+
+  return (
+    <>
+      <div className="property-menu">
+        <button ref={buttonRef} type="button" aria-label="Mais ações" aria-haspopup="menu" aria-expanded={open} onClick={toggleMenu}><MoreHorizontal /></button>
+      </div>
+      {menu}
+      {shareOpen ? <PropertyShareDialog property={property} onClose={() => setShareOpen(false)} /> : null}
+    </>
+  );
+}: { property: SharableProperty; full?: boolean }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [pending, startTransition] = useTransition();
