@@ -1,71 +1,92 @@
 # CURRENT_CHECKPOINT
 
-Atualizado após a rodada de hardening pós-auditoria interna.
+Atualizado após a rodada completa de refinamento interno pós-auditoria em 2026-10-10.
 
-## Escopo
+## Escopo preservado
 
-- Não alterar visualmente site público ou telas de login.
-- Não realizar deploy até nova autorização explícita.
-- Preservar integralmente imóveis, fotos, clientes e oportunidades existentes.
+- Site público e telas de login permanecem visualmente congelados.
+- Nenhum merge automático foi realizado.
+- Nenhum deploy em Production foi realizado nesta rodada.
+- Imóveis, fotos, clientes, oportunidades, documentos, propostas, vendas e usuários reais foram preservados.
 
 ## Banco / Production
 
 Projeto Neon: `avan-aimoveis-dev`
 Branch operacional: `vercel-production`
 
-Backup criado antes da deduplicação de proprietários:
-- `backup-pre-owner-dedupe-2026-10-09`
-- branch ID `br-noisy-leaf-b5jwzw49`
-
-Migrations aplicadas:
-- `0010_owner_identity_integrity.sql`
-- `0011_internal_consistency_performance.sql`
-
-Validação mais recente:
+Estado real confirmado após a rodada:
 - properties: 8
 - property_photos: 76
 - owners: 8
 - property_owner_links: 8
 - clients: 2
 - deals: 2
-- proposals: 0
-- sales: 0
-- estados de domínio inconsistentes: 0
-- índices de integridade/performance esperados: 14
+- `properties.lot_area`: ainda NÃO aplicado em Production
 
-A deduplicação removeu somente registros duplicados de proprietários e vínculos redundantes. Nenhum imóvel ou foto foi excluído.
+Migrations já aplicadas em Production:
+- `0010_owner_identity_integrity.sql`
+- `0011_internal_consistency_performance.sql`
+
+Migration nova criada, mas NÃO aplicada em Production:
+- `0012_property_lot_area.sql`
+- mudança aditiva: adiciona apenas `properties.lot_area numeric(10,2)`
+- sem backfill e sem alteração automática dos imóveis existentes
+
+Validação isolada da 0012:
+- branch Neon: `test-0012-lot-area-2026-10-10`
+- branch ID: `br-falling-frost-b5ce9ke1`
+- origem: `vercel-production`
+- journal registrado na branch de teste
+- contagens antes/depois preservadas: 8 imóveis, 76 fotos, 8 proprietários, 8 vínculos, 2 clientes, 2 oportunidades
+- `lot_area` dos imóveis existentes permaneceu NULL
 
 ## Código na branch feat/saas-multitenant
 
-Concluído ou em andamento:
-- proteção contra nova duplicação de proprietários;
-- substituição do vínculo de proprietário no editor em vez de acumular vínculos;
-- CRM otimizado por visualização ativa;
-- filtro de clientes por responsável;
-- cards do CRM com responsável, imóvel, origem, WhatsApp e próxima ação;
-- fechamento de venda com lookup mais leve;
-- proposta vinculada à venda precisa estar aceita;
-- editor de imóvel com Suítes e tipo Terreno;
-- carregamento paralelo no editor de imóvel;
-- busca global ampliada;
-- Analytics com evolução diária e linguagem menos técnica;
-- dashboard com atividade recente mais contextual;
-- perfil interno do usuário;
-- 404 interno do Painel e do Super Admin;
-- controles dark/light reforçados;
-- Super Admin e Configurações reorganizados nas rodadas anteriores.
+Rodada concluída:
+- banner de acesso como empresa integrado ao fluxo do painel;
+- tabela de clientes responsiva com ações em menu;
+- menu de ações dos imóveis com posicionamento seguro e teste dedicado;
+- controles/formulários internos reforçados para dark/light mode;
+- helpers centralizados de data/hora em `America/Sao_Paulo`;
+- labels internos centralizados em PT-BR;
+- 404 interno real para Painel, Super Admin e painel de tenant;
+- validação visível e foco no erro no wizard de nova empresa;
+- dashboard com ações Atrasadas / Hoje / Próximas;
+- Dashboard e Analytics alinhados à fonte canônica de eventos;
+- área do terreno separada da área privativa/construída via migration aditiva;
+- suítes exibidas nas listagens quando > 0;
+- filtros compactos no funil, follow-up atrasado textual e microcopy revisada;
+- fluxo único de fechamento de venda com validação de proposta aceita quando informada;
+- oportunidades perdidas precisam ser reabertas antes de proposta/venda;
+- planos administráveis usando o motor de entitlements existente;
+- gestão segura de usuários globais e memberships por empresa;
+- auditoria mais legível;
+- upload real de branding com storage tenant-scoped, validação de MIME/bytes e URLs persistentes estáveis;
+- componentes reutilizáveis para dropdown flutuante e controles administrativos;
+- cobertura de regressão ampliada.
 
-## Validação de código ainda necessária antes de deploy
+## Validação automatizada
 
-Executar obrigatoriamente:
-1. npm run typecheck
-2. npm run lint
-3. npm test
-4. npm run build
-5. npx --no-install drizzle-kit check
+Última validação completa em GitHub Actions:
+- npm ci: OK
+- npm run typecheck: OK
+- npm run lint: OK
+- npm test: OK — 32 arquivos / 139 testes
+- npm run build: OK
+- npx --no-install drizzle-kit check: OK
+- npm audit --omit=dev --audit-level=high: OK — 0 vulnerabilidades
 
-Não fazer deploy se qualquer validação falhar.
+A integração Vercel gerou Preview automaticamente para a branch. Production não recebeu deploy.
 
-## Observação sobre timeout
+## Observação de smoke test
 
-Se a conversa atingir timeout novamente, retomar deste arquivo e não repetir migrations 0010/0011 nem a deduplicação de proprietários.
+O build lista e compila as rotas internas, inclusive os catch-alls de 404. A ferramenta conectada à Vercel não teve permissão para abrir o Preview protegido (403 no bypass), então não foi possível fazer smoke test visual autenticado pelo conector. Não usar credenciais reais para contornar essa proteção.
+
+## Próximo passo seguro
+
+Antes de qualquer deploy que use o novo campo `lot_area` em Production:
+1. aplicar `0012_property_lot_area.sql` na branch operacional somente com autorização explícita;
+2. comparar novamente as contagens reais;
+3. só depois preparar/promover o deploy aprovado.
+
+Não reaplicar `0010` ou `0011`.
