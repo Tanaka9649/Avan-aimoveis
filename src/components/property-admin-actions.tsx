@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Check, Copy, ExternalLink, FileText, Globe, Link2Off, MessageCircle, MoreHorizontal, Share2, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { floatingMenuPosition } from "@/lib/floating-menu";
 import { duplicateProperty, publishProperty, unpublishProperty } from "@/app/painel/imoveis/actions";
 import { registerPresentation } from "@/app/painel/clientes/actions";
 import { formatMoney } from "@/lib/format";
@@ -173,15 +174,14 @@ export function PropertyPublicationMenu({ property, full = false }: { property: 
     }
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const width = 220;
-    const estimatedHeight = 260;
-    const gap = 7;
-    const left = Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width));
-    const openBelow = window.innerHeight - rect.bottom >= Math.min(estimatedHeight, rect.top - 8);
-    const top = openBelow
-      ? Math.min(window.innerHeight - estimatedHeight - 8, rect.bottom + gap)
-      : Math.max(8, rect.top - estimatedHeight - gap);
-    setPosition({ top: Math.max(8, top), left });
+    const next = floatingMenuPosition({
+      rect,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      width: 220,
+      height: 260,
+    });
+    setPosition({ top: next.top, left: next.left });
     setOpen(true);
   };
 
