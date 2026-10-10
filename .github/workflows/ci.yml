@@ -25,3 +25,6 @@ jobs:
         env:
           NEXT_PUBLIC_SITE_URL: https://preview.example.com
       - run: npx --no-install drizzle-kit check
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      - run: npm audit --omit=dev --audit-level=high
