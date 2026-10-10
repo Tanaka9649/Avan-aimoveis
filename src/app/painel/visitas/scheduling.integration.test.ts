@@ -1,7 +1,6 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { applyDrizzleMigrations } from "@/test/apply-drizzle-migrations";
 import { drizzle } from "drizzle-orm/pglite";
 
 const mock = vi.hoisted(() => ({ db: null as unknown, user: { id: "40000000-0000-4000-8000-000000000001", tenantId: "00000000-0000-4000-8000-000000000001", role: "admin", access: { clients: "all" } } }));
@@ -19,9 +18,7 @@ let pg: PGlite;
 
 beforeAll(async () => {
   pg = new PGlite();
-  for (const file of readdirSync(resolve("drizzle")).filter((name) => name.endsWith(".sql")).sort())
-    for (const statement of readFileSync(resolve("drizzle", file), "utf8").split("--> statement-breakpoint"))
-      if (statement.trim()) await pg.exec(statement);
+  await applyDrizzleMigrations(pg);
   const db = drizzle(pg);
   mock.db = Object.assign(db, {
     batch: async (queries: { toSQL: () => { sql: string; params: unknown[] } }[]) =>
