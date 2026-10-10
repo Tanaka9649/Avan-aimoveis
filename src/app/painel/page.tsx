@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { Building2, CalendarCheck, CircleDollarSign, Gauge, HandCoins, Handshake, MessageCircle, Users } from "lucide-react";
 import { clientScope, requireModule } from "@/lib/access";
 import { getDb } from "@/db";
-import { activityLogs, clients, deals, owners, properties, proposals, sales, stages, users, visits, whatsappClicks, propertyViews, clientPropertyPresentations } from "@/db/schema";
+import { activityLogs, clients, deals, properties, proposals, sales, stages, users, visits, whatsappClicks, propertyViews, clientPropertyPresentations } from "@/db/schema";
 import { formatMoney } from "@/lib/format";
 import { MetricCard, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 
