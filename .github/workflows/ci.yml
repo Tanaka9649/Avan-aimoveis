@@ -4,7 +4,7 @@ on:
   push:
     branches: ['**']
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -17,14 +17,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm install --package-lock-only --save-exact next@16.4.0 eslint-config-next@16.4.0 sharp@0.35.5
-      - run: npm audit fix --package-lock-only --omit=dev
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dependency-refresh
-          path: |
-            package.json
-            package-lock.json
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
@@ -36,13 +28,3 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       - run: npm audit --omit=dev --audit-level=high
-      - name: Commit patched dependency files
-        if: github.ref == 'refs/heads/feat/saas-multitenant'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: patch production dependencies [skip ci]"
-            git push
-          fi
