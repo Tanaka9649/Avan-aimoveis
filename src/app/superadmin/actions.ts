@@ -3,10 +3,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq, ne } from "drizzle-orm";
+import { and, count, eq, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { sessions, tenantModules, tenantSlugHistory, tenants } from "@/db/schema";
+import { plans, sessions, tenantMemberships, tenantModules, tenantSlugHistory, tenants, users } from "@/db/schema";
 import { requireSuperAdmin } from "@/lib/access";
 import { SESSION_COOKIE, TENANT_COOKIE } from "@/lib/auth";
 import { moduleRegistry, validModuleCombination } from "@/lib/module-registry";
@@ -265,4 +265,142 @@ export async function accessTenant(formData: FormData) {
     expires: expiresAt,
   });
   redirect(tenant.slug === ROOT_TENANT_SLUG ? "/painel" : "/empresa/" + tenant.slug + "/painel");
+}
+
+
+const planCodeSchema = z.enum(["starter", "pro", "max", "custom"]);
+const membershipRoleSchema = z.enum(["owner", "admin", "manager", "agent", "viewer"]);
+const membershipStatusSchema = z.enum(["active", "suspended"]);
+
+export async function updatePlanDefinition(
+  planValue: string,
+  _state: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const actor = await requireSuperAdmin();
+  const planCode = planCodeSchema.safeParse(planValue);
+  if (!planCode.success) return failure("Plano inválido.");
+  try {
+    const storageGbRaw = String(formData.get("max_storage_gb") ?? "").trim();
+    const storageGb = storageGbRaw ? Number(storageGbRaw.replace(",", ".")) : null;
+    if (storageGb !== null && (!Number.isFinite(storageGb) || storageGb < 0)) throw new Error("invalid_limit");
+    const enabledModules = modules.filter((module) => formData.get("module:" + module) === "on");
+    if (!enabledModules.length || !validModuleCombination(enabledModules)) return failure("Revise os módulos e suas dependências.");
+
+    const limits = {
+      max_users: readLimit(formData, "max_users"),
+      max_properties: readLimit(formData, "max_properties"),
+      max_clients: readLimit(formData, "max_clients"),
+      max_opportunities: readLimit(formData, "max_opportunities"),
+      max_documents: readLimit(formData, "max_documents"),
+      max_storage_bytes: storageGb === null ? null : Math.round(storageGb * 1024 * 1024 * 1024),
+      custom_domain: String(formData.get("custom_domain") ?? "0") === "1" ? 1 : 0,
+    };
+    const db = getDb();
+    const [current] = await db.select({ limits: plans.limits, modules: plans.modules }).from(plans).where(eq(plans.code, planCode.data)).limit(1);
+    if (!current) return failure("Plano não encontrado.");
+    await db.update(plans).set({ limits, modules: enabledModules, updatedAt: new Date() }).where(eq(plans.code, planCode.data));
+    await auditTenantAction({
+      actorUserId: actor.id,
+      action: "plan.updated",
+      entityType: "plan",
+      entityId: planCode.data,
+      metadata: { previousLimits: current.limits, limits, previousModules: current.modules, modules: enabledModules },
+    });
+    revalidatePath("/superadmin/planos");
+    revalidatePath("/superadmin/empresas");
+    return { ok: true, message: "Plano atualizado. Empresas que herdam este plano usarão os novos limites sem exclusão de dados." };
+  } catch {
+    return failure("Use limites válidos. Deixe em branco somente quando o plano deve ser ilimitado.");
+  }
+}
+
+async function keepsTenantAdministrator(tenantId: string, membershipId: string) {
+  const db = getDb();
+  const [row] = await db.select({ value: count() }).from(tenantMemberships).where(and(
+    eq(tenantMemberships.tenantId, tenantId),
+    eq(tenantMemberships.status, "active"),
+    or(eq(tenantMemberships.role, "owner"), eq(tenantMemberships.role, "admin")),
+    ne(tenantMemberships.id, membershipId),
+  ));
+  return Number(row.value) > 0;
+}
+
+export async function updateTenantMembership(
+  tenantIdValue: string,
+  membershipIdValue: string,
+  _state: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const actor = await requireSuperAdmin();
+  const tenantId = tenantIdSchema.safeParse(tenantIdValue);
+  const membershipId = z.uuid().safeParse(membershipIdValue);
+  const parsed = z.object({ role: membershipRoleSchema, status: membershipStatusSchema }).safeParse(Object.fromEntries(formData));
+  if (!tenantId.success || !membershipId.success || !parsed.success) return failure("Revise papel e status do acesso.");
+  const db = getDb();
+  const [current] = await db.select({ id: tenantMemberships.id, role: tenantMemberships.role, status: tenantMemberships.status, userId: tenantMemberships.userId })
+    .from(tenantMemberships)
+    .where(and(eq(tenantMemberships.id, membershipId.data), eq(tenantMemberships.tenantId, tenantId.data)))
+    .limit(1);
+  if (!current) return failure("Acesso não encontrado.");
+  const losingAdmin = current.status === "active" && (current.role === "owner" || current.role === "admin") &&
+    (parsed.data.status !== "active" || (parsed.data.role !== "owner" && parsed.data.role !== "admin"));
+  if (losingAdmin && !await keepsTenantAdministrator(tenantId.data, current.id)) return failure("Mantenha ao menos um proprietário ou administrador ativo na empresa.");
+  await db.update(tenantMemberships).set({ ...parsed.data, updatedAt: new Date() }).where(and(eq(tenantMemberships.id, current.id), eq(tenantMemberships.tenantId, tenantId.data)));
+  if (parsed.data.status === "suspended") await db.delete(sessions).where(and(eq(sessions.tenantId, tenantId.data), eq(sessions.userId, current.userId)));
+  await auditTenantAction({
+    tenantId: tenantId.data,
+    actorUserId: actor.id,
+    action: "membership.updated",
+    entityType: "membership",
+    entityId: current.id,
+    metadata: { previousRole: current.role, role: parsed.data.role, previousStatus: current.status, status: parsed.data.status },
+  });
+  paths(tenantId.data);
+  return { ok: true, message: "Acesso atualizado." };
+}
+
+export async function removeTenantMembership(tenantIdValue: string, membershipIdValue: string) {
+  const actor = await requireSuperAdmin();
+  const tenantId = tenantIdSchema.safeParse(tenantIdValue);
+  const membershipId = z.uuid().safeParse(membershipIdValue);
+  if (!tenantId.success || !membershipId.success) return;
+  const db = getDb();
+  const [current] = await db.select({ id: tenantMemberships.id, role: tenantMemberships.role, status: tenantMemberships.status, userId: tenantMemberships.userId })
+    .from(tenantMemberships)
+    .where(and(eq(tenantMemberships.id, membershipId.data), eq(tenantMemberships.tenantId, tenantId.data)))
+    .limit(1);
+  if (!current) return;
+  if (current.status === "active" && (current.role === "owner" || current.role === "admin") && !await keepsTenantAdministrator(tenantId.data, current.id)) return;
+  await db.delete(tenantMemberships).where(and(eq(tenantMemberships.id, current.id), eq(tenantMemberships.tenantId, tenantId.data)));
+  await db.delete(sessions).where(and(eq(sessions.tenantId, tenantId.data), eq(sessions.userId, current.userId)));
+  await auditTenantAction({
+    tenantId: tenantId.data,
+    actorUserId: actor.id,
+    action: "membership.removed",
+    entityType: "membership",
+    entityId: current.id,
+    metadata: { userId: current.userId, role: current.role },
+  });
+  paths(tenantId.data);
+}
+
+export async function setGlobalUserActive(formData: FormData) {
+  const actor = await requireSuperAdmin();
+  const parsed = z.object({ userId: z.uuid(), active: z.enum(["0", "1"]) }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success || parsed.data.userId === actor.id) return;
+  const db = getDb();
+  const [target] = await db.select({ id: users.id, globalRole: users.globalRole, active: users.active }).from(users).where(eq(users.id, parsed.data.userId)).limit(1);
+  if (!target || target.globalRole === "super_admin") return;
+  const active = parsed.data.active === "1";
+  await db.update(users).set({ active, updatedAt: new Date() }).where(eq(users.id, target.id));
+  if (!active) await db.delete(sessions).where(eq(sessions.userId, target.id));
+  await auditTenantAction({
+    actorUserId: actor.id,
+    action: active ? "user.reactivated" : "user.suspended",
+    entityType: "user",
+    entityId: target.id,
+    metadata: { previousActive: target.active, active },
+  });
+  revalidatePath("/superadmin/usuarios");
 }
