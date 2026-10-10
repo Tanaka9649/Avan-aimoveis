@@ -206,9 +206,8 @@
 .admin-app .admin-section-tabcontent > .admin-card { margin-bottom: 14px; }
 
 .admin-app .impersonation-banner {
-  position: sticky;
-  top: 64px;
-  z-index: 55;
+  position: relative;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -216,8 +215,8 @@
   min-height: 34px;
   padding: 6px 16px;
   border-bottom: 1px solid rgba(59,130,246,.26);
-  background: rgba(37,99,235,.16);
-  color: #cfe1ff;
+  background: #17315f;
+  color: #f5f9ff;
   font-size: 12px;
 }
 .admin-app .impersonation-banner a { color: #fff; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
@@ -355,3 +354,25 @@
 
 .admin-app .crm-inline-search select{height:34px;max-width:220px;border:1px solid var(--admin-border);border-radius:6px;background:var(--admin-surface-2);color:var(--admin-text);padding:0 30px 0 9px;font-size:11px;font-weight:600}
 @media(max-width:700px){.admin-app .crm-inline-search{flex-wrap:wrap;padding-block:7px}.admin-app .crm-inline-search input{flex:1 1 220px}.admin-app .crm-inline-search select{max-width:none;flex:1 1 180px}}
+
+.admin-app.theme-light .impersonation-banner{border-bottom-color:#b8d0f8;background:#dbeafe;color:#172554}
+.admin-app.theme-light .impersonation-banner a{color:#1d4ed8}
+.admin-app .admin-editor-drawer input:not([type="checkbox"]):not([type="radio"]),
+.admin-app .admin-editor-drawer select,
+.admin-app .admin-editor-drawer textarea{
+  width:100%;
+  min-height:42px;
+  border:1px solid var(--admin-border);
+  border-radius:8px;
+  background:var(--admin-surface-2);
+  color:var(--admin-text);
+  color-scheme:dark;
+}
+.admin-app .admin-editor-drawer select option{background:var(--admin-surface);color:var(--admin-text)}
+.admin-app.theme-light .admin-editor-drawer input:not([type="checkbox"]):not([type="radio"]),
+.admin-app.theme-light .admin-editor-drawer select,
+.admin-app.theme-light .admin-editor-drawer textarea{background:#fff;color:#172033;color-scheme:light;border-color:#d5dde8}
+.admin-app .admin-editor-drawer input:focus,
+.admin-app .admin-editor-drawer select:focus,
+.admin-app .admin-editor-drawer textarea:focus{outline:2px solid var(--admin-blue);outline-offset:1px}
+.admin-app.sidebar-collapsed .sidebar-brand>a{min-width:38px;min-height:38px;border-radius:8px;background:var(--admin-surface-2)}
