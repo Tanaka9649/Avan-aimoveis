@@ -1,3 +1,33 @@
+export const propertyStatusLabels: Record<string, string> = {
+  rascunho: "Rascunho",
+  disponivel: "Disponível",
+  reservado: "Reservado",
+  vendido: "Vendido",
+  arquivado: "Arquivado",
+};
+
+export const originLabels: Record<string, string> = {
+  site: "Site",
+  "novo-lead": "Novo lead",
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  indicacao: "Indicação",
+  prospeccao: "Prospecção",
+  "trafego-pago": "Tráfego pago",
+};
+
+export const moduleValueLabels: Record<string, string> = {
+  dashboard: "Visão geral",
+  imoveis: "Imóveis",
+  clientes: "Clientes",
+  crm: "CRM",
+  visitas: "Visitas",
+  propostas: "Propostas e vendas",
+  proprietarios: "Proprietários",
+  analytics: "Analytics",
+};
+
 export const tenantStatusLabels: Record<string, string> = {
   configuring: "Configurando",
   trial: "Teste",
@@ -47,8 +77,11 @@ export function uiLabel(value: string) {
     || membershipStatusLabels[value]
     || domainStatusLabels[value]
     || provisionStatusLabels[value]
+    || propertyStatusLabels[value]
+    || originLabels[value]
+    || moduleValueLabels[value]
     || planLabels[value]
-    || value.replaceAll("_", " ");
+    || value.replaceAll("_", " ").replaceAll("-", " ");
 }
 
 export function formatBytes(bytes: number) {
