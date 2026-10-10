@@ -13,6 +13,7 @@ const values = {
   price: "450000.01",
   area: "120",
   bedrooms: "3",
+  suites: "1",
   bathrooms: "2",
   parking: "2",
   state: "MG",
