@@ -18,8 +18,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const period = ["1", "7", "30"].includes(params.period || "") ? Number(params.period) : 30;
   const validDate = /^\d{4}-\d{2}-\d{2}$/;
   const custom = params.period === "custom" && validDate.test(params.from || "") && validDate.test(params.to || "");
-  const from = custom ? new Date(`${params.from}T00:00:00.000Z`) : null;
-  const to = custom ? new Date(`${params.to}T23:59:59.999Z`) : null;
+  const fromDate = custom ? params.from! : null;
+  const toDate = custom ? params.to! : null;
   const db = getDb();
 
   const [summaryResult, uniqueResult, topResult, sourceResult, dailyResult] = await Promise.all([
@@ -27,14 +27,14 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       select event_type, count(*)::int as total, count(distinct anonymous_session_id)::int as visitors
       from analytics_events
       where tenant_id = ${user.tenantId}::uuid
-        and ((${custom} and created_at between ${from} and ${to}) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
+        and ((${custom} and (created_at at time zone 'America/Sao_Paulo')::date between ${fromDate}::date and ${toDate}::date) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
       group by event_type
     `),
     db.execute(sql`
       select count(distinct anonymous_session_id)::int as visitors
       from analytics_events
       where tenant_id = ${user.tenantId}::uuid
-        and ((${custom} and created_at between ${from} and ${to}) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
+        and ((${custom} and (created_at at time zone 'America/Sao_Paulo')::date between ${fromDate}::date and ${toDate}::date) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
     `),
     db.execute(sql`
       select p.id, p.title,
@@ -44,7 +44,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         count(*) filter (where e.event_type = 'interest_submit')::int as leads
       from properties p
       left join analytics_events e on e.property_id = p.id and e.tenant_id = p.tenant_id
-        and ((${custom} and e.created_at between ${from} and ${to}) or (${!custom} and e.created_at >= now() - make_interval(days => ${period})))
+        and ((${custom} and (e.created_at at time zone 'America/Sao_Paulo')::date between ${fromDate}::date and ${toDate}::date) or (${!custom} and e.created_at >= now() - make_interval(days => ${period})))
       where p.tenant_id = ${user.tenantId}::uuid
       group by p.id, p.title
       order by views desc, leads desc, whatsapp desc
@@ -54,22 +54,31 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       select coalesce(nullif(utm_source, ''), 'Direto / não informado') as source, count(*)::int as total
       from analytics_events
       where tenant_id = ${user.tenantId}::uuid
-        and ((${custom} and created_at between ${from} and ${to}) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
+        and ((${custom} and (created_at at time zone 'America/Sao_Paulo')::date between ${fromDate}::date and ${toDate}::date) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
       group by coalesce(nullif(utm_source, ''), 'Direto / não informado')
       order by total desc
       limit 8
     `),
     db.execute(sql`
+      with bounds as (
+        select
+          case when ${custom} then ${fromDate}::date else (now() at time zone 'America/Sao_Paulo')::date - (${period}::int - 1) end as start_day,
+          case when ${custom} then ${toDate}::date else (now() at time zone 'America/Sao_Paulo')::date end as end_day
+      ),
+      days as (
+        select generate_series(start_day, end_day, interval '1 day')::date as day from bounds
+      )
       select
-        to_char((created_at at time zone 'America/Sao_Paulo')::date, 'YYYY-MM-DD') as day,
-        count(*) filter (where event_type = 'site_view')::int as views,
-        count(*) filter (where event_type = 'property_view')::int as property_views,
-        count(*) filter (where event_type in ('whatsapp_click','interest_submit'))::int as contacts
-      from analytics_events
-      where tenant_id = ${user.tenantId}::uuid
-        and ((${custom} and created_at between ${from} and ${to}) or (${!custom} and created_at >= now() - make_interval(days => ${period})))
-      group by (created_at at time zone 'America/Sao_Paulo')::date
-      order by (created_at at time zone 'America/Sao_Paulo')::date
+        to_char(days.day, 'YYYY-MM-DD') as day,
+        count(e.id) filter (where e.event_type = 'site_view')::int as views,
+        count(e.id) filter (where e.event_type = 'property_view')::int as property_views,
+        count(e.id) filter (where e.event_type in ('whatsapp_click','interest_submit'))::int as contacts
+      from days
+      left join analytics_events e
+        on e.tenant_id = ${user.tenantId}::uuid
+       and (e.created_at at time zone 'America/Sao_Paulo')::date = days.day
+      group by days.day
+      order by days.day
     `),
   ]);
 
