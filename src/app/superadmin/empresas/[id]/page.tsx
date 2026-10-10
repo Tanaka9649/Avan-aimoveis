@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AdminSectionTabs } from "@/components/admin-section-tabs";
 import { SettingsForm } from "@/components/settings-form";
 import { StatusBadge } from "@/components/admin-ui";
+import { MembershipAdminControls } from "@/components/membership-admin-controls";
 import { getDb } from "@/db";
 import {
   analyticsEvents,
@@ -19,7 +20,9 @@ import {
 } from "@/db/schema";
 import { requireSuperAdmin } from "@/lib/access";
 import { getUsage, tenantEntitlements, type LimitKey } from "@/lib/entitlements";
+import { formatDateTime } from "@/lib/date-time";
 import { moduleRegistry } from "@/lib/module-registry";
+import { moduleLabels, type Module } from "@/lib/permissions";
 import {
   auditActionLabel,
   auditEntityLabel,
@@ -49,11 +52,16 @@ const storageOverrideGb = (overrides: Record<string, number | null>) => {
   return typeof bytes === "number" ? Number((bytes / 1073741824).toFixed(2)) : "";
 };
 const metadataText = (metadata: Record<string, unknown>) => {
-  const value = JSON.stringify(metadata);
-  return value.length > 120 ? value.slice(0, 117) + "…" : value;
+  const entries = Object.entries(metadata).filter(([, value]) => value !== null && value !== undefined);
+  if (!entries.length) return "Sem detalhes adicionais";
+  return entries.slice(0, 4).map(([key, value]) => {
+    const label = key.replaceAll("_", " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+    const shown = Array.isArray(value) ? value.join(", ") : typeof value === "object" ? "dados registrados" : String(value);
+    return `${label}: ${shown}`;
+  }).join(" · ");
 };
 
-export default async function TenantDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ access?: string }> }) {
+export default async function TenantDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ access?: string; aba?: string }> }) {
   await requireSuperAdmin();
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -92,12 +100,12 @@ export default async function TenantDetailPage({ params, searchParams }: { param
   const overview = (
     <>
       <section className="metric-grid" aria-label="Uso da empresa">
-        <article className="metric-card"><div className="metric-card-top"><span>Usuários</span></div><strong>{quota(userUsage, "max_users")}</strong><small>{countText(Number(memberCount.value), "acesso ativo", "acessos ativos")}, incluindo convites na quota</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Usuários</span></div><strong>{quota(userUsage, "max_users")}</strong><small>{countText(Number(memberCount.value), "acesso ativo", "acessos ativos")}, incluindo convites no limite</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Imóveis</span></div><strong>{quota(Number(propertyCount.value), "max_properties")}</strong><small>cadastros preservados</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Clientes</span></div><strong>{quota(Number(clientCount.value), "max_clients")}</strong><small>somente desta empresa</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Oportunidades</span></div><strong>{quota(Number(dealCount.value), "max_opportunities")}</strong><small>pipeline isolado</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Documentos</span></div><strong>{quota(documentUsage, "max_documents")}</strong><small>imóveis e oportunidades</small></article>
-        <article className="metric-card"><div className="metric-card-top"><span>Armazenamento</span></div><strong>{quota(storageUsage, "max_storage_bytes")}</strong><small>uso atual do tenant</small></article>
+        <article className="metric-card"><div className="metric-card-top"><span>Armazenamento</span></div><strong>{quota(storageUsage, "max_storage_bytes")}</strong><small>uso atual da empresa</small></article>
         <article className="metric-card"><div className="metric-card-top"><span>Eventos — 30 dias</span></div><strong>{Number(traffic.value).toLocaleString("pt-BR")}</strong><small>interações no site</small></article>
       </section>
 
@@ -127,10 +135,10 @@ export default async function TenantDetailPage({ params, searchParams }: { param
   const identity = (
     <section className="admin-card">
       <h2>Identidade da empresa</h2>
-      <p>Nome, contatos e endereço público. Mudanças de slug preservam histórico para redirecionamento.</p>
+      <p>Nome, contatos e endereço público. Mudanças no endereço da empresa preservam o histórico para redirecionamento.</p>
       <SettingsForm action={updateTenantIdentity.bind(null, tenant.id)} label="Salvar identidade">
         <label>Nome<input name="name" defaultValue={tenant.name} required /></label>
-        <label>Slug<input name="slug" defaultValue={tenant.slug} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" /></label>
+        <label>Endereço da empresa<input name="slug" defaultValue={tenant.slug} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" /></label>
         <label>E-mail<input name="email" type="email" defaultValue={tenant.email ?? ""} /></label>
         <label>Telefone<input name="phone" defaultValue={tenant.phone ?? ""} /></label>
         <label className="wide">WhatsApp<input name="whatsapp" defaultValue={tenant.whatsapp ?? ""} /></label>
@@ -169,7 +177,7 @@ export default async function TenantDetailPage({ params, searchParams }: { param
       <h2>Módulos da empresa</h2>
       <p>A disponibilidade final também depende do plano e das permissões dos usuários.</p>
       <SettingsForm action={updateTenantModules.bind(null, tenant.id)} label="Salvar módulos">
-        {moduleRegistry.map((definition) => <label className="check" key={definition.key}><input type="checkbox" name={"module:" + definition.key} defaultChecked={enabledModules.has(definition.key)} /><span><strong>{definition.label}</strong><br/><small>{definition.description}{definition.dependencies.length ? " · depende de " + definition.dependencies.join(", ") : ""}</small></span></label>)}
+        {moduleRegistry.map((definition) => <label className="check" key={definition.key}><input type="checkbox" name={"module:" + definition.key} defaultChecked={enabledModules.has(definition.key)} /><span><strong>{definition.label}</strong><br/><small>{definition.description}{definition.dependencies.length ? " · depende de " + definition.dependencies.map((item) => moduleLabels[item as Module] || item).join(", ") : ""}</small></span></label>)}
       </SettingsForm>
     </section>
   );
@@ -177,7 +185,7 @@ export default async function TenantDetailPage({ params, searchParams }: { param
   const userContent = (
     <section className="admin-card table-card">
       <div className="table-toolbar"><div><strong>Usuários da empresa</strong><span>{countText(members.length, "pessoa cadastrada", "pessoas cadastradas")}</span></div></div>
-      {members.length ? <div className="table-scroll"><table><thead><tr><th>Usuário</th><th>Papel</th><th>Status</th></tr></thead><tbody>{members.map((member) => <tr key={member.id}><td><strong>{member.name}</strong><small>{member.email}</small></td><td>{membershipRoleLabels[member.role] || member.role}</td><td>{membershipStatusLabels[member.status] || member.status}</td></tr>)}</tbody></table></div> : <p className="table-empty">Nenhum usuário cadastrado.</p>}
+      {members.length ? <div className="table-scroll"><table><thead><tr><th>Usuário</th><th>Papel</th><th>Status</th><th>Administrar acesso</th></tr></thead><tbody>{members.map((member) => <tr key={member.id}><td><strong>{member.name}</strong><small>{member.email}</small></td><td>{membershipRoleLabels[member.role] || member.role}</td><td><StatusBadge value={member.status}/></td><td><MembershipAdminControls tenantId={tenant.id} membershipId={member.id} role={member.role} status={member.status} userName={member.name}/></td></tr>)}</tbody></table></div> : <p className="table-empty">Nenhum usuário cadastrado.</p>}
     </section>
   );
 
@@ -191,7 +199,7 @@ export default async function TenantDetailPage({ params, searchParams }: { param
   const auditContent = (
     <section className="admin-card table-card">
       <div className="table-toolbar"><div><strong>Auditoria</strong><span>Últimas ações administrativas registradas</span></div></div>
-      {audits.length ? <div className="table-scroll"><table><thead><tr><th>Ação</th><th>Entidade</th><th>Detalhes</th><th>Quando</th></tr></thead><tbody>{audits.map((entry) => <tr key={entry.id}><td><strong>{auditActionLabel(entry.action)}</strong></td><td>{auditEntityLabel(entry.entityType)}</td><td><small>{metadataText(entry.metadata)}</small></td><td>{entry.createdAt.toLocaleString("pt-BR")}</td></tr>)}</tbody></table></div> : <p className="table-empty">Nenhuma ação auditada.</p>}
+      {audits.length ? <div className="table-scroll"><table><thead><tr><th>Ação</th><th>Entidade</th><th>Detalhes</th><th>Quando</th></tr></thead><tbody>{audits.map((entry) => <tr key={entry.id}><td><strong>{auditActionLabel(entry.action)}</strong></td><td>{auditEntityLabel(entry.entityType)}</td><td><small>{metadataText(entry.metadata)}</small></td><td>{formatDateTime(entry.createdAt)}</td></tr>)}</tbody></table></div> : <p className="table-empty">Nenhuma ação auditada.</p>}
     </section>
   );
 
@@ -205,7 +213,7 @@ export default async function TenantDetailPage({ params, searchParams }: { param
       </header>
       {query.access === "indisponivel" ? <p className="admin-form-error" role="alert">Reative a empresa antes de acessar o contexto operacional.</p> : null}
 
-      <AdminSectionTabs items={[
+      <AdminSectionTabs initial={query.aba} items={[
         { id: "visao", label: "Visão geral", content: overview },
         { id: "identidade", label: "Identidade", content: identity },
         { id: "plano", label: "Plano e limites", content: planAndLimits },
