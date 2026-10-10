@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, eq, or } from "drizzle-orm";
 import { headers } from "next/headers";
 import { getDb } from "@/db";
@@ -12,12 +13,12 @@ export function tenantOperational(status: TenantRecord["status"]) {
   return status === "active" || status === "trial";
 }
 
-export async function rootTenant() {
+export const rootTenant = cache(async () => {
   const [tenant] = await getDb().select().from(tenants).where(eq(tenants.id, ROOT_TENANT_ID)).limit(1);
   return tenant ?? null;
-}
+});
 
-export async function tenantBySlug(slug: string) {
+export const tenantBySlug = cache(async (slug: string) => {
   const normalized = normalizeTenantSlug(slug);
   if (!normalized) return null;
   const db = getDb();
@@ -31,9 +32,9 @@ export async function tenantBySlug(slug: string) {
   if (!legacy) return null;
   const [historicalTenant] = await db.select().from(tenants).where(eq(tenants.id, legacy.tenantId)).limit(1);
   return historicalTenant ? { tenant: historicalTenant, redirectSlug: historicalTenant.slug } : null;
-}
+});
 
-export async function tenantByHost(rawHost: string | null) {
+export const tenantByHost = cache(async (rawHost: string | null) => {
   const host = normalizeHostname(rawHost);
   if (!host) return null;
   const base = normalizeHostname(process.env.ROOT_DOMAIN || new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").host);
@@ -47,14 +48,14 @@ export async function tenantByHost(rawHost: string | null) {
     ))
     .limit(1);
   return tenant ?? null;
-}
+});
 
 /**
  * Resolves the tenant for route handlers and server components.
  * An unknown host never falls back to the root tenant: this prevents a misconfigured
  * custom domain from exposing the platform's own inventory.
  */
-export async function tenantForRequest(): Promise<TenantRecord | null> {
+export const tenantForRequest = cache(async (): Promise<TenantRecord | null> => {
   const requestHeaders = await headers();
   const slug = requestHeaders.get("x-tenant-slug");
   if (slug) {
@@ -76,7 +77,7 @@ export async function tenantForRequest(): Promise<TenantRecord | null> {
     return root && tenantOperational(root.status) ? root : null;
   }
   return null;
-}
+});
 
 export function tenantPublicPathBase(tenant: Pick<TenantRecord, "slug" | "customDomain" | "domainStatus">) {
   return tenant.slug === ROOT_TENANT_SLUG || (tenant.customDomain && tenant.domainStatus === "active")
