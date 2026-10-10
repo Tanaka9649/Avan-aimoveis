@@ -7,6 +7,7 @@ import { tenantMemberships, tenants, users } from "@/db/schema";
 import { requireSuperAdmin } from "@/lib/access";
 import { PAGE_SIZE, pageNumber, type Query } from "@/lib/list-query";
 import { membershipRoleLabels } from "@/lib/ui-labels";
+import { setGlobalUserActive } from "../actions";
 
 const single = (value: string | string[] | undefined) => typeof value === "string" ? value : "";
 
@@ -27,9 +28,11 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
     db.select({ value: count() }).from(tenantMemberships).innerJoin(users, eq(users.id, tenantMemberships.userId)).innerJoin(tenants, eq(tenants.id, tenantMemberships.tenantId)).where(where),
     db.select({
       id: tenantMemberships.id,
+      userId: users.id,
       name: users.name,
       email: users.email,
       globalRole: users.globalRole,
+      userActive: users.active,
       tenantId: tenants.id,
       tenantName: tenants.name,
       role: tenantMemberships.role,
@@ -56,13 +59,14 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
       </section>
       <section className="admin-card table-card">
         <div className="table-scroll"><table>
-          <thead><tr><th>Usuário</th><th>Empresa</th><th>Papel</th><th>Status</th><th>Conta global</th></tr></thead>
+          <thead><tr><th>Usuário</th><th>Empresa</th><th>Papel</th><th>Status</th><th>Conta global</th><th>Ações</th></tr></thead>
           <tbody>{rows.map((row) => <tr key={row.id}>
             <td><strong>{row.name}</strong><small>{row.email}</small></td>
             <td><Link href={"/superadmin/empresas/" + row.tenantId}>{row.tenantName}</Link></td>
             <td>{membershipRoleLabels[row.role] || row.role}</td>
             <td><StatusBadge value={row.status}/></td>
-            <td>{row.globalRole === "super_admin" ? "Super Admin" : "Usuário"}</td>
+            <td>{row.globalRole === "super_admin" ? "Super Admin" : row.userActive ? "Usuário ativo" : "Usuário suspenso"}</td>
+            <td><div className="table-row-actions"><Link className="text-action" href={"/superadmin/empresas/" + row.tenantId}>Ver empresa</Link>{row.globalRole !== "super_admin" ? <form action={setGlobalUserActive}><input type="hidden" name="userId" value={row.userId}/><input type="hidden" name="active" value={row.userActive ? "0" : "1"}/><button className="admin-button secondary">{row.userActive ? "Suspender usuário" : "Reativar usuário"}</button></form> : null}</div></td>
           </tr>)}</tbody>
         </table></div>
         {!rows.length ? <div className="table-empty roomy"><h2>Nenhum usuário encontrado</h2><p>Ajuste os filtros para ampliar a busca.</p></div> : null}
