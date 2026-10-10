@@ -7,14 +7,13 @@ import {DndContext,DragOverlay,MouseSensor,TouchSensor,KeyboardSensor,useSensor,
 import {SortableContext,useSortable,verticalListSortingStrategy,sortableKeyboardCoordinates} from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
 import {moveOpportunity} from "@/app/painel/crm/move";
-import {salePropertyChoices} from "@/app/painel/crm/actions";
-import {saveSale} from "@/app/painel/propostas/actions";
+import {saleClosingChoices} from "@/app/painel/crm/actions";
 import {placeCard} from "@/lib/kanban";
 import {actionTiming,formatDateTime} from "@/lib/date-time";
 import {uiLabel} from "@/lib/ui-labels";
 import {CrmDialog} from "./crm-dialog";
 import {lossReasons} from "./deal-editor";
-import {MoneyField,SearchPicker,DatePicker} from "./crm-fields";
+import {SaleForm} from "./commercial-forms";
 import {OpportunityAttachments} from "./opportunity-attachments";
 type Column={id:string;name:string;color:string;isWon:boolean;isLost:boolean};
 type Card={id:string;title:string;clientId:string;client:string;phone:string;email:string|null;origin:string;responsible:string|null;property:string|null;stageId:string;value:string;tags:string[];nextActionAt:string|null;nextActionType:string|null;nextActionNote:string|null;overdue:boolean;stageDays:number;attachmentCount:number};
@@ -30,10 +29,10 @@ const SortableCard=memo(function SortableCard({card,columns,disabled,onOpen,onMo
 });
 function BoardColumn({column,count,hidden,children}:{column:Column;count:number;hidden:boolean;children:ReactNode}){const{setNodeRef,isOver}=useDroppable({id:column.id});return <section ref={setNodeRef} className={`kanban-column${hidden?" is-mobile-hidden":""}${isOver?" drop-target":""}`}><header><div><i style={{background:column.color}}/><strong>{column.name}</strong></div><span>{count}</span></header><div className="kanban-stack">{children}{!count?<p className="column-empty">Solte uma oportunidade aqui</p>:null}</div></section>;}
 function ClosingSale({card,onClose,onSaved}:{card:Card;onClose:()=>void;onSaved:()=>void|Promise<void>}){
- const[properties,setProperties]=useState<Awaited<ReturnType<typeof salePropertyChoices>>|null>(null);const[propertyId,setPropertyId]=useState("");const[date,setDate]=useState("");const[pending,setPending]=useState(false);const[error,setError]=useState("");
- useEffect(()=>{let active=true;salePropertyChoices().then(rows=>{if(active)setProperties(rows);}).catch(()=>{if(active)setError("Não foi possível carregar os imóveis.");});return()=>{active=false;};},[]);
- const property=properties?.find(p=>p.id===propertyId);
- return <CrmDialog title="Concluir venda" description={`${card.client} · ${card.title}`} onClose={()=>{if(!pending)onClose();}}><form className="deal-editor" action={async form=>{setPending(true);setError("");try{const result=await saveSale({ok:false,message:""},form);if(result.ok)await onSaved();else setError(result.message);}catch{setError("Não foi possível concluir a venda. Tente novamente.");}finally{setPending(false);}}}><div className="crm-drawer-scroll"><input type="hidden" name="dealId" value={card.id}/><input type="hidden" name="proposalId" value=""/>{properties?<SearchPicker label="Imóvel vendido *" name="propertyId" value={propertyId?[propertyId]:[]} onChange={ids=>setPropertyId(ids[0]||"")} options={properties.map(p=>({id:p.id,label:`${p.code} · ${p.title}`}))}/>:<p>Carregando imóveis…</p>}<div className="crm-form-grid" key={propertyId}><MoneyField name="advertised" label="Valor anunciado" initial={property?String(property.priceCents/100):""} required/><MoneyField name="amount" label="Valor final *" initial={property?String(property.priceCents/100):""} required/><label>Comissão (%)<input name="commissionPercent" type="number" min="0" max="100" step="0.01" required/></label><DatePicker value={date} onChange={setDate}/><input type="hidden" name="soldAt" value={date}/><label className="wide">Observações<textarea name="notes" maxLength={5000} rows={3}/></label></div>{error?<p role="alert">{error}</p>:null}</div><footer className="crm-drawer-actions"><button type="button" className="admin-button secondary" disabled={pending} onClick={onClose}>Cancelar</button><button className="admin-button primary" disabled={pending||!date||!propertyId}>{pending?"Concluindo…":"Confirmar venda"}</button></footer></form></CrmDialog>;
+ const[choices,setChoices]=useState<Awaited<ReturnType<typeof saleClosingChoices>>|null>(null);
+ const[error,setError]=useState("");
+ useEffect(()=>{let active=true;saleClosingChoices(card.id).then(rows=>{if(active)setChoices(rows);}).catch(()=>{if(active)setError("Não foi possível carregar os dados da venda.");});return()=>{active=false;};},[card.id]);
+ return <CrmDialog title="Concluir venda" description={`${card.client} · ${card.title}`} onClose={onClose}>{choices?<SaleForm deals={[]} properties={choices.properties} proposals={choices.proposals} defaultDealId={card.id} onSaved={onSaved}/>:<div className="crm-drawer-scroll"><p>{error||"Carregando dados da venda…"}</p></div>}</CrmDialog>;
 }
 export function CrmBoard({columns,cards}:{columns:Column[];cards:Card[]}){
  const router=useRouter();const[source,setSource]=useState(cards);const[items,setItems]=useState(cards);if(cards!==source){setSource(cards);setItems(cards);}
