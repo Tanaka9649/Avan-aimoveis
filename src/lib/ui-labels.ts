@@ -2,6 +2,7 @@ export const propertyStatusLabels: Record<string, string> = {
   rascunho: "Rascunho",
   disponivel: "Disponível",
   reservado: "Reservado",
+  pausado: "Pausado",
   vendido: "Vendido",
   arquivado: "Arquivado",
 };
@@ -105,6 +106,11 @@ export const auditActionLabels: Record<string, string> = {
   "tenant.modules_updated": "Módulos atualizados",
   "tenant.admin_access_started": "Acesso administrativo iniciado",
   "tenant_provisioning_retried": "Provisionamento repetido",
+  "plan.updated": "Plano atualizado",
+  "membership.updated": "Acesso de usuário atualizado",
+  "membership.removed": "Acesso de usuário removido",
+  "user.suspended": "Usuário suspenso",
+  "user.reactivated": "Usuário reativado",
   "branding_updated": "Identidade visual atualizada",
   "branding_logos_updated": "Logos atualizadas",
   "modules_updated": "Módulos atualizados",
@@ -118,6 +124,8 @@ export const auditEntityLabels: Record<string, string> = {
   property: "Imóvel",
   client: "Cliente",
   deal: "Oportunidade",
+  plan: "Plano",
+  user: "Usuário",
 };
 
 export const provisionStepLabels: Record<string, string> = {
