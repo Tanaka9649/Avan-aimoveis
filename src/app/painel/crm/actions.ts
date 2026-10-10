@@ -108,3 +108,45 @@ export async function salePropertyChoices() {
     .where(and(eq(properties.tenantId, user.tenantId), ne(properties.status, "vendido")))
     .orderBy(asc(properties.title));
 }
+
+
+export async function reopenOpportunity(formData: FormData) {
+  const user = await requireModule("crm");
+  const parsed = z.object({ id: z.uuid() }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const db = getDb();
+  const [current] = await db.select({
+    id: deals.id,
+    clientId: deals.clientId,
+    stageId: deals.stageId,
+    isLost: stages.isLost,
+  }).from(deals)
+    .innerJoin(stages, and(eq(stages.id, deals.stageId), eq(stages.tenantId, deals.tenantId)))
+    .innerJoin(clients, and(eq(clients.id, deals.clientId), eq(clients.tenantId, deals.tenantId)))
+    .where(and(eq(deals.id, parsed.data.id), eq(deals.tenantId, user.tenantId), clientScope(user)))
+    .limit(1);
+  if (!current?.isLost) return;
+  const [target] = await db.select({ id: stages.id, name: stages.name })
+    .from(stages)
+    .where(and(eq(stages.tenantId, user.tenantId), eq(stages.isLost, false), eq(stages.isWon, false)))
+    .orderBy(asc(stages.position))
+    .limit(1);
+  if (!target) return;
+  await db.batch([
+    db.update(deals).set({
+      stageId: target.id,
+      lostReason: null,
+      stageEnteredAt: new Date(),
+      updatedAt: new Date(),
+    }).where(and(eq(deals.id, current.id), eq(deals.tenantId, user.tenantId))),
+    db.insert(activities).values({
+      tenantId: user.tenantId,
+      clientId: current.clientId,
+      dealId: current.id,
+      userId: user.id,
+      type: "deal_reopened",
+      description: `Oportunidade reaberta e movida para ${target.name}.`,
+    }),
+  ]);
+  revalidatePath("/painel", "layout");
+}
