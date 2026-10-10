@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { Pagination } from "@/components/list-tools";
@@ -50,7 +51,7 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
         <form className="entity-form" method="get">
           <label className="wide">Buscar<input name="q" defaultValue={q} placeholder="Nome, e-mail ou empresa"/></label>
           <label>Status<select name="status" defaultValue={status}><option value="">Todos</option><option value="active">Ativos</option><option value="invited">Convidados</option><option value="suspended">Suspensos</option></select></label>
-          <div className="wide filter-actions"><button className="admin-button primary">Aplicar filtros</button>{q || status ? <a className="admin-button secondary" href="/superadmin/usuarios">Limpar</a> : null}</div>
+          <div className="wide filter-actions"><button className="admin-button primary">Aplicar filtros</button>{q || status ? <Link className="admin-button secondary" href="/superadmin/usuarios">Limpar</Link> : null}</div>
         </form>
       </section>
       <section className="admin-card table-card">
@@ -58,7 +59,7 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
           <thead><tr><th>Usuário</th><th>Empresa</th><th>Papel</th><th>Status</th><th>Conta global</th></tr></thead>
           <tbody>{rows.map((row) => <tr key={row.id}>
             <td><strong>{row.name}</strong><small>{row.email}</small></td>
-            <td><a href={"/superadmin/empresas/" + row.tenantId}>{row.tenantName}</a></td>
+            <td><Link href={"/superadmin/empresas/" + row.tenantId}>{row.tenantName}</Link></td>
             <td>{membershipRoleLabels[row.role] || row.role}</td>
             <td><StatusBadge value={row.status}/></td>
             <td>{row.globalRole === "super_admin" ? "Super Admin" : "Usuário"}</td>
