@@ -1,7 +1,6 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { applyDrizzleMigrations } from "@/test/apply-drizzle-migrations";
 import { drizzle } from "drizzle-orm/pglite";
 
 const fixture = vi.hoisted(() => ({
@@ -67,11 +66,7 @@ let pg: PGlite;
 
 beforeAll(async () => {
   pg = new PGlite();
-  for (const file of readdirSync(resolve("drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-    for (const statement of readFileSync(resolve("drizzle", file), "utf8").split("--> statement-breakpoint")) {
-      if (statement.trim()) await pg.exec(statement);
-    }
-  }
+  await applyDrizzleMigrations(pg);
   const db = drizzle(pg);
   fixture.db = Object.assign(db, {
     batch: async (queries: { toSQL: () => { sql: string; params: unknown[] } }[]) => pg.transaction(async (transaction) => {
