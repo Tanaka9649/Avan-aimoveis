@@ -214,7 +214,8 @@ export async function saveTenantLogos(_: State, form: FormData): Promise<State> 
     return { ok: false, message: "Não foi possível ler as logos configuradas." };
   }
 
-  const urlField = z.union([z.literal(""), z.url().max(2000)]).optional();
+  const brandingAsset = z.string().regex(/^\/api\/branding\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(?:png|jpg|webp|svg|ico)$/i);
+  const urlField = z.union([z.literal(""), z.url().max(2000), brandingAsset]).optional();
   const logoSchema = z.array(z.object({
     id: z.string().trim().min(1).max(120),
     name: z.string().trim().max(80).optional().default(""),
@@ -223,7 +224,7 @@ export async function saveTenantLogos(_: State, form: FormData): Promise<State> 
   })).max(8);
 
   const parsedLogos = logoSchema.safeParse(rawLogos);
-  const favicon = z.union([z.literal(""), z.url().max(2000)]).safeParse(String(form.get("favicon") || ""));
+  const favicon = z.union([z.literal(""), z.url().max(2000), brandingAsset]).safeParse(String(form.get("favicon") || ""));
   if (!parsedLogos.success || !favicon.success) {
     return { ok: false, message: "Revise as URLs das logos e do favicon." };
   }
