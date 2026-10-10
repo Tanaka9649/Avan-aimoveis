@@ -13,13 +13,13 @@ describe("owner identity", () => {
   it("normalizes owner contact data", () => {
     expect(normalizePhone("(34) 99977-7123")).toBe("34999777123");
     expect(normalizeEmail("  TESTE@EXEMPLO.COM ")).toBe("teste@exemplo.com");
-    expect(normalizePersonName("  João   da Silva ")).toBe("joão da silva");
+    expect(normalizePersonName("  João   da Silva ")).toBe("joao da silva");
   });
 
   it("prioritizes phone, then email, then name", () => {
     expect(ownerIdentityKey({ name: "A", phone: "(34) 99977-7123", email: "a@x.com" })).toBe("phone:34999777123");
     expect(ownerIdentityKey({ name: "A", phone: "", email: "A@X.COM" })).toBe("email:a@x.com");
-    expect(ownerIdentityKey({ name: "João  Silva", phone: "", email: "" })).toBe("name:joão silva");
+    expect(ownerIdentityKey({ name: "João  Silva", phone: "", email: "" })).toBe("name:joao silva");
   });
 
   it("matches equivalent owners without confusing different contacts", () => {
