@@ -7,9 +7,10 @@ import { EmptyState, PageHeader, SectionCard, StatusBadge } from "@/components/a
 import { getDb } from "@/db";
 import { activities, clients, deals, stages, dealProperties, opportunityAttachments } from "@/db/schema";
 import { DealEditor } from "@/components/deal-editor";
-import { dealChoices } from "../actions";
+import { dealChoices, reopenOpportunity } from "../actions";
 import { clientScope, requireModule } from "@/lib/access";
 import { formatMoney } from "@/lib/format";
+import { formatDateTime } from "@/lib/date-time";
 import { formatBrazilianPhone } from "@/lib/owner-identity";
 import { OpportunityAttachments } from "@/components/opportunity-attachments";
 
@@ -20,7 +21,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
 
   const db = getDb();
   const [deal] = await db
-    .select({ title: deals.title, name: clients.name, email: clients.email, phone: clients.phone, value: deals.estimatedValueCents, stage: stages.name })
+    .select({ title: deals.title, name: clients.name, email: clients.email, phone: clients.phone, value: deals.estimatedValueCents, stage: stages.name, isLost: stages.isLost })
     .from(deals)
     .innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,user.tenantId)))
     .innerJoin(stages, and(eq(stages.id, deals.stageId),eq(stages.tenantId,user.tenantId)))
@@ -56,7 +57,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
         eyebrow="Negócio"
         title={deal.title}
         description={`Atendimento de ${deal.name}`}
-        action={<StatusBadge value={deal.stage} />}
+        action={<span className="page-header-action-group"><StatusBadge value={deal.stage} />{deal.isLost ? <form action={reopenOpportunity}><input type="hidden" name="id" value={id}/><button className="admin-button secondary">Reabrir oportunidade</button></form> : null}</span>}
       />
 
       <SectionCard title="Gerenciar oportunidade" description="Etapa, responsável pelo cliente, próxima ação, imóveis e notas."><DealEditor choices={choices} initial={{id,clientId:record.clientId,title:record.title,stageId:record.stageId,amount:record.estimatedValueCents===null?"":String(record.estimatedValueCents/100),nextActionAt:record.nextActionAt?.toISOString()||"",nextActionType:record.nextActionType||"",nextActionNote:record.nextActionNote||"",lostReason:record.lostReason||""}} selected={linked.map(p=>p.id)}/></SectionCard>
@@ -78,7 +79,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
                 <article key={item.id}>
                   <span><Clock3 /></span>
                   <div>
-                    <time dateTime={item.occurredAt.toISOString()}>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(item.occurredAt)}</time>
+                    <time dateTime={item.occurredAt.toISOString()}>{formatDateTime(item.occurredAt)}</time>
                     <p>{item.description}</p>
                   </div>
                 </article>
