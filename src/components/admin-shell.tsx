@@ -1,5 +1,6 @@
 "use client";
 
+import { TenantPublicContext } from "@/components/tenant-public-context";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -119,6 +120,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
           {user.role === "admin" ? <><small>ADMINISTRAÇÃO</small>{item("/painel/configuracoes", "Configurações", Settings)}{user.globalRole === "super_admin" ? <Link href="/superadmin" title={collapsed ? "Voltar ao Super Admin" : undefined}><ShieldCheck /><span>Voltar ao Super Admin</span></Link> : null}</> : null}
         </nav>
         <div className="sidebar-footer">
+          <Link href={scoped("/painel/notificacoes")} className="text-action">Notificações</Link>
           <Link className="sidebar-profile sidebar-profile-link" href={scoped("/painel/perfil")} title={collapsed ? "Meu perfil" : undefined}><span>{user.name.slice(0, 2).toUpperCase()}</span><div><strong>{user.name}</strong><small>{user.role === "admin" ? "Administrador" : "Equipe"}</small></div><UserRound/></Link>
           <button className="sidebar-utility" onClick={toggleTheme} title={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"}>{theme === "dark" ? <Sun /> : <Moon />}<span>{theme === "dark" ? "Tema claro" : "Tema escuro"}</span></button>
           <form action="/api/auth/logout" method="post"><button className="sidebar-logout"><LogOut /><span>Sair</span></button></form>
@@ -133,7 +135,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
           <Link className="admin-view-site" href={publicBase} target="_blank">Ver site <ChevronRight /></Link>
         </header>
         {user.globalRole === "super_admin" ? <div className="impersonation-banner"><span>Você está acessando {user.tenant.name} como Super Admin.</span><Link href="/superadmin">Voltar ao Super Admin</Link></div> : null}
-        {children}
+        <TenantPublicContext.Provider value={publicBase === "/" ? "" : publicBase}>{children}</TenantPublicContext.Provider>
       </div>
     </div>
   );

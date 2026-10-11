@@ -4,7 +4,7 @@ import { brandingExtension, MAX_BRANDING_BYTES, validBrandingAsset } from "./bra
 describe("branding uploads", () => {
   it("accepts only supported image MIME types", () => {
     expect(brandingExtension("image/png")).toBe(".png");
-    expect(brandingExtension("image/svg+xml")).toBe(".svg");
+    expect(brandingExtension("image/svg+xml")).toBeNull();
     expect(brandingExtension("application/pdf")).toBeNull();
   });
 

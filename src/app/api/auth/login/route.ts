@@ -17,7 +17,7 @@ export async function POST(request:Request){
     const parsed=input.safeParse(await request.json()); if(!parsed.success)return invalid();
     const requestHeaders=await headers();
     const ip=requestHeaders.get("x-forwarded-for")?.split(",")[0]||"unknown";
-    if(!await checkRateLimit(`login:${ip}`,8,15*60*1000))return NextResponse.json({error:"Aguarde alguns minutos antes de tentar novamente."},{status:429});
+    if(!await checkRateLimit(`login:${ip}`,8,15*60*1000) || !await checkRateLimit(`login-account:${parsed.data.email.toLowerCase()}`,12,15*60*1000))return NextResponse.json({error:"Aguarde alguns minutos antes de tentar novamente."},{status:429});
     const slug=normalizeTenantSlug(parsed.data.tenantSlug||ROOT_TENANT_SLUG);
     const db=getDb();
     const [row]=await db.select({user:users,membership:tenantMemberships,tenant:tenants})

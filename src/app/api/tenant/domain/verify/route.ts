@@ -1,3 +1,4 @@
+import { withApiErrors } from "@/lib/api-errors";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
@@ -29,7 +30,7 @@ async function vercelRequest(path: string, init: RequestInit) {
   });
 }
 
-export async function POST() {
+async function handlePOST() {
   const admin = await requireAdmin();
   const db = getDb();
   const [tenant] = await db.select({ domain: tenants.customDomain }).from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1);
@@ -66,7 +67,7 @@ export async function POST() {
   }
 }
 
-export async function DELETE() {
+async function handleDELETE() {
   const admin = await requireAdmin();
   const db = getDb();
   const [tenant] = await db.select({ domain: tenants.customDomain }).from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1);
@@ -95,3 +96,6 @@ export async function DELETE() {
     return NextResponse.json({ error: "Não foi possível remover o domínio agora." }, { status: 502 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);
+export const DELETE = withApiErrors(handleDELETE);

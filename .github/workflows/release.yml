@@ -1,4 +1,4 @@
-name: Release validated preview
+name: Stage and release validated production build
 on:
   workflow_dispatch:
 permissions:
@@ -7,48 +7,59 @@ concurrency:
   group: production-release
   cancel-in-progress: false
 jobs:
-  preview-and-promote:
+  stage-and-promote:
+    if: github.ref == 'refs/heads/feat/saas-multitenant' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - name: Production safety gate
-        run: |
-          echo "Release disabled: configure isolated environments and a production-target staged artifact before enabling promotion."
-          exit 1
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run typecheck && npm run lint && npm test
       - run: npm install --global vercel@59.20.0
-      - run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Pull production build configuration
+        run: vercel pull --yes --environment=production
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      - run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      - id: deploy
-        shell: bash
-        run: echo "url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})" >> "$GITHUB_OUTPUT"
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      - name: Apply versioned migrations
-        run: npm run db:migrate
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Verify migrations already applied
+        run: node --env-file=.vercel/.env.production.local --import tsx scripts/check-release-schema.ts
         env:
           DIRECT_URL: ${{ secrets.PRODUCTION_DIRECT_URL }}
-      - name: Smoke test preview
+      - name: Build production artifact
+        run: vercel build --prod
+      - name: Stage without changing public domains
+        id: deploy
         shell: bash
-        run: curl --fail --retry 4 --retry-delay 5 "${{ steps.deploy.outputs.url }}/api/health"
-      - name: Promote validated artifact
-        run: vercel promote "${{ steps.deploy.outputs.url }}" --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          deployment_url="$(vercel deploy --prebuilt --prod --skip-domain)"
+          DEPLOYMENT_URL="$deployment_url" node --input-type=module -e '
+            const value=process.env.DEPLOYMENT_URL;
+            const url=new URL(value);
+            if(url.protocol!=="https:" || url.origin!==value || !url.hostname.endsWith(".vercel.app")) process.exit(1);
+          '
+          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      - name: Post-deploy smoke test
-        shell: bash
-        run: curl --fail --retry 4 --retry-delay 5 "${{ secrets.PRODUCTION_URL }}/api/health"
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Verify staged application and database
+        run: curl --fail --retry 4 --retry-delay 5 -H "x-vercel-protection-bypass:$BYPASS_SECRET" "$DEPLOYMENT_URL/api/health"
+        env:
+          BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+      - name: Promote the tested production artifact
+        run: vercel promote "$DEPLOYMENT_URL"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+      - name: Verify public application
+        run: curl --fail --retry 4 --retry-delay 5 "$PRODUCTION_URL/api/health"
+        env:
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}

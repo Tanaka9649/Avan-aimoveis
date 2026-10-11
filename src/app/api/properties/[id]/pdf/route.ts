@@ -6,6 +6,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { properties, propertyPhotos, tenants } from "@/db/schema";
+import { tenantOperational } from "@/lib/tenant";
+import { canAccess } from "@/lib/permissions";
+import { canUseModule } from "@/lib/entitlements";
 import { currentUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
@@ -20,7 +23,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const user = await currentUser();
   const db = getDb();
-  const visibility = user
+  const privateAccess = user && canAccess(user, "imoveis") && await canUseModule(user.tenantId, "imoveis");
+  const visibility = privateAccess
     ? and(eq(properties.id, id), eq(properties.tenantId, user.tenantId))
     : and(eq(properties.id, id), eq(properties.status, PUBLIC_STATUS), isNotNull(properties.publishedAt));
   const [row] = await db
@@ -29,7 +33,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     .innerJoin(tenants, eq(tenants.id, properties.tenantId))
     .where(visibility)
     .limit(1);
-  if (!row) return new NextResponse(null, { status: 404 });
+  if (!row || !tenantOperational(row.tenant.status)) return new NextResponse(null, { status: 404 });
 
   const p = row.property;
   const [photo] = await db
@@ -69,7 +73,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   page.drawText(p.title, { x: 30, y: 510, size: 22, font: bold, color: rgb(0.08, 0.1, 0.14), maxWidth: 535 });
   page.drawText(`${p.code}  |  ${p.type}  |  ${p.neighborhood}, ${p.city}/${p.state}`, { x: 30, y: 482, size: 10, font: regular, color: rgb(0.35, 0.4, 0.48) });
   page.drawText(formatMoney(p.priceCents), { x: 30, y: 440, size: 24, font: bold, color: rgb(0.08, 0.1, 0.14) });
-  page.drawText(`${p.bedrooms} quartos   |   ${p.bathrooms} banheiros   |   ${p.parkingSpaces} vagas   |   ${Number(p.privateArea || 0).toLocaleString("pt-BR")} m2`, { x: 30, y: 410, size: 11, font: regular, color: rgb(0.2, 0.24, 0.3) });
+  page.drawText(`${p.bedrooms} quartos   |   ${p.bathrooms} banheiros   |   ${p.parkingSpaces} vagas`, { x: 30, y: 410, size: 11, font: regular, color: rgb(0.2, 0.24, 0.3) });
+
+  const areas = [p.privateArea ? `Construída/privativa: ${Number(p.privateArea).toLocaleString("pt-BR")} m2` : "", p.lotArea ? `Terreno: ${Number(p.lotArea).toLocaleString("pt-BR")} m2` : ""].filter(Boolean).join("   |   ");
+  if (areas) page.drawText(areas, { x: 30, y: 388, size: 10, font: regular });
 
   const words = p.description.replace(/\s+/g, " ").slice(0, 700).split(" ");
   const lines: string[] = [];

@@ -64,7 +64,7 @@ export default async function EditPropertyPage({
         size: propertyDocuments.size,
       })
       .from(propertyDocuments)
-      .where(and(eq(propertyDocuments.tenantId,user.tenantId),eq(propertyDocuments.propertyId, id))),
+      .where(and(eq(propertyDocuments.tenantId,user.tenantId),eq(propertyDocuments.propertyId, id),eq(propertyDocuments.uploadStatus,"ready"))),
     canAccess(user, "clientes")
       ? db.select().from(clients).where(clientScope(user))
       : Promise.resolve([]),

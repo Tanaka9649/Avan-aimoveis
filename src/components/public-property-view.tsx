@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { serializeJsonLd } from "@/lib/json-ld";
 import { Bath, BedDouble, Car, DoorOpen, MapPin, Ruler } from "lucide-react";
 import type { PublicPropertyCard, PublicPropertyDetail } from "@/data/properties";
 import { formatArea, formatMoney } from "@/lib/format";
@@ -10,7 +12,8 @@ import { PropertyCard } from "./property-card";
 import { PropertyEvents } from "./property-events";
 import { PropertyGallery } from "./property-gallery";
 
-export function PublicPropertyView({ property, similar, tenant }: { property: PublicPropertyDetail; similar: PublicPropertyCard[]; tenant: { name: string; slug: string; whatsapp: string; baseUrl: string; basePath: string } }) {
+export async function PublicPropertyView({ property, similar, tenant }: { property: PublicPropertyDetail; similar: PublicPropertyCard[]; tenant: { name: string; slug: string; whatsapp: string; baseUrl: string; basePath: string } }) {
+  const nonce = (await headers()).get("x-nonce") || undefined;
   const message = sharePropertyMessage(property, tenant.baseUrl);
   const region = `${property.neighborhood}, ${property.city} — ${property.state}`;
   const specs = [
@@ -33,12 +36,12 @@ export function PublicPropertyView({ property, similar, tenant }: { property: Pu
     offers: { "@type": "Offer", price: (property.priceCents / 100).toFixed(2), priceCurrency: "BRL", availability: "https://schema.org/InStock", url: publicPropertyUrl(property.slug, tenant.baseUrl) },
     numberOfBedrooms: property.bedrooms,
     numberOfBathroomsTotal: property.bathrooms,
-    ...(property.area > 0 ? { floorSize: { "@type": "QuantitativeValue", value: property.area, unitCode: "MTK" } } : {}),
+    ...((property.privateArea || 0) > 0 ? { floorSize: { "@type": "QuantitativeValue", value: property.privateArea, unitCode: "MTK" } } : {}),
     address: { "@type": "PostalAddress", addressLocality: property.city, addressRegion: property.state, addressCountry: "BR", ...(property.neighborhood ? { addressNeighborhood: property.neighborhood } : {}) },
   };
 
   return <>
-    <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+    <script nonce={nonce} type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }} />
     <section className="detail-top shell">
       <Link href={`${tenant.basePath}/imoveis`}>← Todos os imóveis</Link>
       <div className="detail-title">
@@ -62,7 +65,8 @@ export function PublicPropertyView({ property, similar, tenant }: { property: Pu
           {specs.map((spec) => (
             <div key={spec.label}><spec.icon aria-hidden="true" /><strong>{spec.value}</strong><span>{spec.label}</span></div>
           ))}
-          {property.area > 0 ? <div><Ruler aria-hidden="true" /><strong>{formatArea(property.area)}</strong><span>área privativa</span></div> : null}
+          {(property.privateArea || 0) > 0 ? <div><Ruler aria-hidden="true" /><strong>{formatArea(property.privateArea!)}</strong><span>área construída / privativa</span></div> : null}
+          {(property.lotArea || 0) > 0 ? <div><Ruler aria-hidden="true" /><strong>{formatArea(property.lotArea!)}</strong><span>área do terreno</span></div> : null}
         </div>
         <div className="prose">
           <h2>Sobre este imóvel</h2>

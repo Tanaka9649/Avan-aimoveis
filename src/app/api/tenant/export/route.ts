@@ -1,3 +1,4 @@
+import { withApiErrors } from "@/lib/api-errors";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
@@ -40,7 +41,7 @@ import { requireAdmin } from "@/lib/access";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function handleGET() {
   const user = await requireAdmin();
   const db = getDb();
   const tenantId = user.tenantId;
@@ -197,3 +198,5 @@ export async function GET() {
     },
   });
 }
+
+export const GET = withApiErrors(handleGET);

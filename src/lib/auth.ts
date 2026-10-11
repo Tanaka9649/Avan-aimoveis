@@ -1,3 +1,4 @@
+import { ApiAccessError } from "@/lib/api-errors";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, gt, inArray, or } from "drizzle-orm";
@@ -40,6 +41,7 @@ export async function currentUser(): Promise<AuthenticatedUser | null> {
 export async function requireUser() {
   const user = await currentUser();
   if (!user) {
+    if ((await headers()).get("x-platform-api") === "1") throw new ApiAccessError(401);
     const slug = (await headers()).get("x-tenant-slug");
     redirect(slug ? `/empresa/${slug}/painel/login` : "/login");
   }

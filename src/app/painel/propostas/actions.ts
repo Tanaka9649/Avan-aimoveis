@@ -1,17 +1,17 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { activities, clients, deals, properties, proposals, sales, stages } from "@/db/schema";
-import { clientScope, requireModule } from "@/lib/access";
+import { clientScope, requireWriteModule } from "@/lib/access";
 import { parseOperationDateTime } from "@/lib/datetime";
 
 const money = z.coerce.number().positive().max(21474836.47).transform((value) => Math.round(value * 100));
 const proposalStatuses = ["enviada", "em_negociacao", "contraproposta", "aceita", "recusada", "expirada"] as const;
 
 export async function saveProposal(_: { ok: boolean; message: string }, formData: FormData) {
-  const user = await requireModule("propostas");
+  const user = await requireWriteModule("propostas");
   const parsed = z.object({ dealId: z.uuid(), propertyId: z.uuid(), advertised: money, amount: money, counter: z.union([money, z.literal("")]), validUntil: z.string(), status: z.enum(proposalStatuses), notes: z.string().trim().max(5000) }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: "Revise os dados e os valores da proposta." };
   const valid = parsed.data.validUntil ? parseOperationDateTime(parsed.data.validUntil, { endOfDay: true }) : null;
@@ -33,15 +33,15 @@ export async function saveProposal(_: { ok: boolean; message: string }, formData
 }
 
 export async function updateProposal(formData: FormData) {
-  const user = await requireModule("propostas");
+  const user = await requireWriteModule("propostas");
   const parsed = z.object({ id: z.uuid(), status: z.enum(proposalStatuses) }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
-  await getDb().update(proposals).set({ status: parsed.data.status, updatedAt: new Date() }).where(and(eq(proposals.id, parsed.data.id), eq(proposals.tenantId, user.tenantId)));
+  await getDb().update(proposals).set({ status: parsed.data.status, updatedAt: new Date() }).where(and(eq(proposals.id, parsed.data.id), eq(proposals.tenantId, user.tenantId), inArray(proposals.dealId, getDb().select({ id: deals.id }).from(deals).innerJoin(clients, and(eq(clients.id, deals.clientId), eq(clients.tenantId, deals.tenantId))).where(and(eq(deals.tenantId, user.tenantId), clientScope(user))))));
   revalidatePath("/painel/propostas");
 }
 
 export async function saveSale(_: { ok: boolean; message: string }, formData: FormData) {
-  const user = await requireModule("propostas");
+  const user = await requireWriteModule("propostas");
   const parsed = z.object({ dealId: z.uuid(), propertyId: z.uuid(), proposalId: z.union([z.uuid(), z.literal("")]), advertised: money, amount: money, commissionPercent: z.coerce.number().min(0).max(100), soldAt: z.string().min(1), notes: z.string().trim().max(5000) }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: "Revise os dados da venda." };
   const soldAt = parseOperationDateTime(parsed.data.soldAt);

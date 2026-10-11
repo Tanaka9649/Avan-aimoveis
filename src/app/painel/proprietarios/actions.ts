@@ -6,7 +6,7 @@ import { and, eq, ilike, ne, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { activityLogs, owners } from "@/db/schema";
-import { requireModule } from "@/lib/access";
+import { requireWriteModule } from "@/lib/access";
 import { isValidBrazilianPhone, normalizeEmail, normalizePhone } from "@/lib/owner-identity";
 
 const input = z.object({
@@ -49,7 +49,7 @@ async function findDuplicateOwner(tenantId: string, values: { name: string; phon
 }
 
 export async function saveOwner(_: { ok: boolean; message: string }, formData: FormData) {
-  const user = await requireModule("proprietarios");
+  const user = await requireWriteModule("proprietarios");
   const parsed = input.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { ok: false, message: "Informe nome, telefone com DDD válido e, se preenchido, um e-mail válido." };
@@ -126,7 +126,7 @@ export async function saveOwner(_: { ok: boolean; message: string }, formData: F
 }
 
 export async function openOwner(formData: FormData) {
-  await requireModule("proprietarios");
+  await requireWriteModule("proprietarios");
   const id = z.uuid().safeParse(formData.get("id"));
   if (id.success) redirect(`/painel/proprietarios/${id.data}`);
 }

@@ -14,8 +14,9 @@ const metadataSummary = (metadata: Record<string, unknown>) => {
   const entries = Object.entries(metadata).filter(([, value]) => value !== undefined && value !== null);
   if (!entries.length) return "Sem detalhes adicionais";
   return entries.slice(0, 4).map(([key, value]) => {
-    const cleanKey = key.replaceAll("_", " ");
-    const cleanValue = Array.isArray(value) ? value.join(", ") : typeof value === "object" ? "dados registrados" : String(value);
+    const labels: Record<string, string> = { expiresAt: "Expira em", previousSlug: "Endereço anterior", slug: "Endereço", plan: "Plano", modules: "Módulos", email: "E-mail", role: "Papel", status: "Status", impersonation: "Acesso como empresa" };
+    const cleanKey = labels[key] || key.replaceAll("_", " ");
+    const cleanValue = Array.isArray(value) ? value.join(", ") : typeof value === "object" ? "dados registrados" : typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) ? formatDateTime(value) : String(value);
     return `${cleanKey}: ${cleanValue}`;
   }).join(" · ");
 };

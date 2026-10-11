@@ -1,3 +1,4 @@
+import { whatsappContactUrl } from "@/lib/contact";
 import Link from "next/link";
 import { MessageCircle, Phone } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -23,7 +24,7 @@ export default async function ContactPage() {
         <h2>Atendimento próximo,<br/>desde o primeiro contato.</h2>
         <p>Nossa equipe ajuda com os detalhes e com o agendamento de uma visita.</p>
         {phone ? <a href={`tel:+55${phone.replace(/\D/g, "")}`}><Phone size={18}/>{phone}</a> : null}
-        {tenant.whatsapp ? <a href={`https://wa.me/${tenant.whatsapp.replace(/\D/g, "")}`} className="button" target="_blank" rel="noreferrer"><MessageCircle size={18}/>Conversar pelo WhatsApp</a> : null}
+        {whatsappContactUrl(tenant.whatsapp || "") ? <a href={whatsappContactUrl(tenant.whatsapp || "")!} className="button" target="_blank" rel="noreferrer"><MessageCircle size={18}/>Conversar pelo WhatsApp</a> : null}
       </aside>
     </section>
   );

@@ -3,7 +3,7 @@ import {PGlite} from "@electric-sql/pglite";
 import {applyDrizzleMigrations} from "@/test/apply-drizzle-migrations";
 import {drizzle} from "drizzle-orm/pglite";
 const mock=vi.hoisted(()=>({db:null as unknown,user:{id:"30000000-0000-4000-8000-000000000001",tenantId:"00000000-0000-4000-8000-000000000001",role:"admin",access:{clients:"all"}}}));
-vi.mock("@/db",()=>({getDb:()=>mock.db}));vi.mock("@/lib/access",()=>({requireModule:async()=>mock.user,clientScope:()=>undefined}));vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));vi.mock("next/navigation",()=>({redirect:vi.fn()}));
+vi.mock("@/db",()=>({getDb:()=>mock.db}));vi.mock("@/lib/access",()=>({requireModule: async () => mock.user, requireWriteModule: async () => mock.user,clientScope:()=>undefined}));vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));vi.mock("next/navigation",()=>({redirect:vi.fn()}));
 import {reopenOpportunity,saveCrmClient,saveDeal} from "./actions";
 import {saveProposal,saveSale} from "../propostas/actions";
 const id=(n:number)=>`30000000-0000-4000-8000-${String(n).padStart(12,"0")}`;

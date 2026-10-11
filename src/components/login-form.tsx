@@ -93,6 +93,7 @@ export function LoginForm({ tenantSlug, tenantName }: { tenantSlug: string; tena
         </p>
       ) : null}
 
+      <a href={`/recuperar-senha?empresa=${encodeURIComponent(tenantSlug)}`}>Esqueci minha senha</a>
       <button className="login-submit" type="submit" disabled={loading}>
         {loading ? (
           <>

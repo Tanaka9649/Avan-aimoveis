@@ -7,14 +7,14 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { properties, activityLogs, owners, propertyOwners, propertyPhotos } from "@/db/schema";
 import { listInput } from "@/lib/client-input";
-import { requireModule } from "@/lib/access";
+import { requireWriteModule } from "@/lib/access";
 import { propertyInput } from "@/lib/property-input";
 import { canCreateResource } from "@/lib/entitlements";
 import { canPublish, publicationBlockers, publicPropertyUrl } from "@/lib/property-publication";
 import { isValidBrazilianPhone, normalizeEmail, normalizePhone } from "@/lib/owner-identity";
 
 export async function saveProperty(_previous: { error: string; id?: string; saved?: boolean }, formData: FormData): Promise<{ error: string; id?: string; saved?: boolean }> {
-  const user = await requireModule("imoveis");
+  const user = await requireWriteModule("imoveis");
   const parsed = propertyInput.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Revise os campos: " + [...new Set(parsed.error.issues.map((issue) => issue.path.join(".")))].join(", ") };
   const rawId = formData.get("id");
@@ -166,9 +166,10 @@ export async function saveProperty(_previous: { error: string; id?: string; save
 }
 
 export async function duplicateProperty(formData: FormData) {
-  const user = await requireModule("imoveis");
+  const user = await requireWriteModule("imoveis");
   const parsed = z.uuid().safeParse(formData.get("id")); if (!parsed.success) return;
   const db = getDb(); const [source] = await db.select().from(properties).where(and(eq(properties.id, parsed.data),eq(properties.tenantId,user.tenantId))).limit(1); if (!source) return;
+  if (!await canCreateResource(user.tenantId, "max_properties")) throw new Error("O limite de imóveis do plano foi atingido.");
   const id = randomUUID(); const suffix = id.slice(0, 6).toUpperCase();
   await db.batch([
     db.insert(properties).values({ ...source, id, code: `${source.code.slice(0, 20)}-${suffix}`, slug: `${source.slug.slice(0, 190)}-${id.slice(0, 6)}`, title: `${source.title} — cópia`, status: "rascunho", publishedAt: null, createdAt: new Date(), updatedAt: new Date() }),
@@ -184,7 +185,7 @@ export type PublicationResult = { ok: boolean; message: string; url?: string; mi
  * so the requirements and the resulting URL are decided in exactly one place.
  */
 export async function publishProperty(id: string): Promise<PublicationResult> {
-  const user = await requireModule("imoveis");
+  const user = await requireWriteModule("imoveis");
   if (!z.uuid().safeParse(id).success) return { ok: false, message: "Imóvel inválido." };
   const db = getDb();
   const [property] = await db
@@ -210,7 +211,7 @@ export async function publishProperty(id: string): Promise<PublicationResult> {
 
 /** Removes the listing from the public catalogue without touching the record or its photos. */
 export async function unpublishProperty(id: string): Promise<PublicationResult> {
-  const user = await requireModule("imoveis");
+  const user = await requireWriteModule("imoveis");
   if (!z.uuid().safeParse(id).success) return { ok: false, message: "Imóvel inválido." };
   const db = getDb();
   const [property] = await db.select({ id: properties.id }).from(properties).where(and(eq(properties.id, id),eq(properties.tenantId,user.tenantId))).limit(1);

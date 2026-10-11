@@ -1,6 +1,7 @@
 "use client";
 import { MessageCircle } from "lucide-react";
 import { useEffect } from "react";
+import { whatsappContactUrl } from "@/lib/contact";
 
 export function PropertyEvents({ propertyId, tenantSlug, whatsapp, message }: { propertyId: string; tenantSlug: string; whatsapp: string; message: string }) {
   useEffect(() => {
@@ -13,7 +14,8 @@ export function PropertyEvents({ propertyId, tenantSlug, whatsapp, message }: { 
       body: JSON.stringify({ propertyId, tenantSlug, type: "view" }),
     });
   }, [propertyId, tenantSlug]);
-  const href = `https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`;
+  const href = whatsappContactUrl(whatsapp, message);
+  if (!href) return null;
   return <a className="button button-accent property-whatsapp" href={href} target="_blank" rel="noreferrer" onClick={() => {
     void fetch("/api/property-events", {
       method: "POST",

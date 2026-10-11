@@ -1,10 +1,11 @@
+import { withApiErrors } from "@/lib/api-errors";
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { propertyDocuments } from "@/db/schema";
-import { requireModule } from "@/lib/access";
+import { requireModule, requireWriteModule } from "@/lib/access";
 import { DOCUMENT_BUCKET, storageClient } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -13,12 +14,12 @@ async function find(id: string, tenantId: string) {
   return (await getDb().select().from(propertyDocuments).where(and(eq(propertyDocuments.id, id), eq(propertyDocuments.tenantId, tenantId))).limit(1))[0];
 }
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireModule("imoveis");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) return new NextResponse(null, { status: 404 });
   const document = await find(id, user.tenantId);
-  if (!document) return new NextResponse(null, { status: 404 });
+  if (!document || document.uploadStatus !== "ready") return new NextResponse(null, { status: 404 });
   try {
     const object = await storageClient().send(new GetObjectCommand({ Bucket: DOCUMENT_BUCKET, Key: document.storagePath }));
     if (!object.Body) return new NextResponse(null, { status: 404 });
@@ -28,8 +29,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireModule("imoveis");
+async function handleDELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await requireWriteModule("imoveis");
   const { id } = await params;
   const document = await find(id, user.tenantId);
   if (!document) return NextResponse.json({ error: "Documento não encontrado." }, { status: 404 });
@@ -37,3 +38,6 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   await getDb().delete(propertyDocuments).where(and(eq(propertyDocuments.id, id), eq(propertyDocuments.tenantId, user.tenantId)));
   return NextResponse.json({ ok: true });
 }
+
+export const GET = withApiErrors(handleGET);
+export const DELETE = withApiErrors(handleDELETE);

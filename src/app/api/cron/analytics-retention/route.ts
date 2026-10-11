@@ -1,3 +1,4 @@
+import { recordOperation } from "@/lib/operation-status";
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
@@ -15,39 +16,12 @@ export async function GET(request: Request) {
   const db = getDb();
 
   try {
-    await db.execute(sql`
-      INSERT INTO analytics_daily
-        (tenant_id, day, event_type, property_id, total, unique_visitors, updated_at)
-      SELECT
-        tenant_id,
-        created_at::date,
-        event_type,
-        property_id,
-        count(*)::int,
-        count(DISTINCT anonymous_session_id)::int,
-        now()
-      FROM analytics_events
-      WHERE created_at < date_trunc('day', now())
-      GROUP BY tenant_id, created_at::date, event_type, property_id
-      ON CONFLICT (tenant_id, day, event_type, property_id)
-      DO UPDATE SET
-        total = EXCLUDED.total,
-        unique_visitors = EXCLUDED.unique_visitors,
-        updated_at = now()
-    `);
-
-    const removed = await db.execute(sql`
-      DELETE FROM analytics_events
-      WHERE created_at < now() - (${retentionDays}::text || ' days')::interval
-      RETURNING id
-    `);
-    return NextResponse.json({
-      ok: true,
-      retentionDays,
-      removed: Array.isArray(removed.rows) ? removed.rows.length : 0,
-    });
-  } catch (error) {
-    console.error("analytics_retention_failed", { reason: error instanceof Error ? error.message : "unknown" });
+    const result = await db.execute(sql`SELECT retain_analytics(${retentionDays}::int) AS removed`);
+    await recordOperation("analytics-retention", true);
+    return NextResponse.json({ ok: true, retentionDays, removed: Number(result.rows[0]?.removed || 0) });
+  } catch {
+    await recordOperation("analytics-retention", false).catch(() => undefined);
+    console.error("analytics_retention_failed");
     return NextResponse.json({ error: "Não foi possível consolidar os analytics." }, { status: 503 });
   }
 }

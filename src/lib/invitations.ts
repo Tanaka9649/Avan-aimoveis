@@ -1,4 +1,5 @@
 import "server-only";
+import { sendEmail } from "@/lib/email";
 import { randomUUID } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { getDb } from "@/db";
@@ -61,7 +62,9 @@ export async function createTenantInvitation(input: {
   ]);
 
   const base = (process.env.PLATFORM_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
-  return { inviteId, inviteUrl: `${base}/convite/${token}`, expiresAt };
+  const inviteUrl = `${base}/convite/${token}`;
+  const emailSent = await sendEmail({ to: email, subject: "Convite para sua plataforma imobiliária", text: `Você foi convidado para acessar a plataforma. Abra ${inviteUrl} para ativar seu acesso. O convite expira em 7 dias.`, key: `invite/${inviteId}/${hashToken(token).slice(0,16)}` });
+  return { inviteId, inviteUrl, expiresAt, emailSent };
 }
 
 export async function acceptInvitation(token: string, password: string) {

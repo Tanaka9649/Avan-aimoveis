@@ -135,6 +135,7 @@ export default async function AdminPropertiesPage({
   for (const photo of photos) photosByProperty.set(photo.propertyId, [...(photosByProperty.get(photo.propertyId) || []), photo]);
   for (const document of documents) documentCountByProperty.set(document.propertyId, (documentCountByProperty.get(document.propertyId) || 0) + 1);
   for (const owner of ownerLinks) ownerCountByProperty.set(owner.propertyId, (ownerCountByProperty.get(owner.propertyId) || 0) + 1);
+  const [pendingPhotos] = await getDb().select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.tenantId,user.tenantId),sql`${propertyPhotos.variants} = '{}'::jsonb`,eq(propertyPhotos.processingStatus,"ready")));
   return (
     <div className="admin-content">
       <PageHeader
@@ -147,7 +148,7 @@ export default async function AdminPropertiesPage({
           </Link>
         }
       />
-      <PhotoOptimizer />
+      <PhotoOptimizer initialPending={Number(pendingPhotos.value)} />
       <ListFilters scope="imoveis" userId={user.id} query={query}>
         <label className="filter-control filter-control-status">
           <span className="crm-visually-hidden">Status</span>

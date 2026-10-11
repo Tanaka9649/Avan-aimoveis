@@ -1,4 +1,5 @@
-export const PLATFORM_TIME_ZONE = "America/Sao_Paulo";
+import { OPERATION_TIMEZONE } from "./datetime";
+export const PLATFORM_TIME_ZONE = OPERATION_TIMEZONE;
 
 type DateLike = Date | string | number;
 

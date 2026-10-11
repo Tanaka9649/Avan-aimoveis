@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Building2, Palette, Globe2, Boxes, UserRound, ClipboardCheck } from "lucide-react";
 import { modules, moduleLabels, type Module } from "@/lib/permissions";
 import { BrandLogosEditor } from "@/components/brand-logos-editor";
+import { normalizeWhatsApp } from "@/lib/contact";
 import type { BrandLogoEntry } from "@/lib/branding";
 
 const steps = [
@@ -62,6 +63,7 @@ const emailOk = (value: string) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v
 
 export function TenantWizard() {
   const [step, setStep] = useState(0);
+  const [attempted, setAttempted] = useState(false);
   const [draft, setDraft] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [slugTouched, setSlugTouched] = useState(false);
@@ -72,6 +74,7 @@ export function TenantWizard() {
   const toggle = (module: Module) => set("modules", draft.modules.includes(module) ? draft.modules.filter((item) => item !== module) : [...draft.modules, module]);
 
   const fieldErrors = useMemo(() => {
+    if (!attempted) return {};
     const errors: Partial<Record<keyof Draft, string>> = {};
     if (step === 0) {
       if (draft.name.trim().length < 2) errors.name = "Informe o nome da empresa.";
@@ -79,11 +82,12 @@ export function TenantWizard() {
       if (!emailOk(draft.email)) errors.email = "Informe um e-mail comercial válido.";
     }
     if (step === 4) {
+      if (!normalizeWhatsApp(draft.whatsapp)) errors.whatsapp = "Informe um WhatsApp válido com DDD e código do país.";
       if (draft.adminName.trim().length < 2) errors.adminName = "Informe o nome do administrador.";
       if (!emailOk(draft.adminEmail) || !draft.adminEmail) errors.adminEmail = "Informe um e-mail válido para o administrador.";
     }
     return errors;
-  }, [draft, step]);
+  }, [draft, step, attempted]);
 
   const validation = useMemo(() => {
     if (step === 0) {
@@ -93,6 +97,7 @@ export function TenantWizard() {
     }
     if (step === 3 && draft.modules.length === 0) return "Selecione pelo menos um módulo.";
     if (step === 4) {
+      if (!normalizeWhatsApp(draft.whatsapp)) return "Informe um WhatsApp válido para contato.";
       if (draft.adminName.trim().length < 2) return "Informe o nome do administrador.";
       if (!emailOk(draft.adminEmail) || !draft.adminEmail) return "Informe um e-mail válido para o administrador.";
     }
@@ -104,6 +109,7 @@ export function TenantWizard() {
   }, [step]);
 
   function next() {
+    setAttempted(true);
     if (validation) {
       setMessage(validation);
       requestAnimationFrame(() => {
@@ -113,6 +119,7 @@ export function TenantWizard() {
       return;
     }
     setMessage("");
+    setAttempted(false);
     setStep((value) => Math.min(5, value + 1));
   }
 
@@ -134,7 +141,7 @@ export function TenantWizard() {
           name: draft.name,
           slug: draft.slug,
           phone: draft.phone,
-          whatsapp: draft.whatsapp,
+          whatsapp: normalizeWhatsApp(draft.whatsapp),
           email: draft.email,
           plan: draft.plan,
           modules: draft.modules,
@@ -183,7 +190,6 @@ export function TenantWizard() {
             }} placeholder="Ex.: XP Imóveis"/>{fieldErrors.name ? <small className="admin-field-error">{fieldErrors.name}</small> : null}</label>
             <label>Endereço da empresa<input aria-invalid={Boolean(fieldErrors.slug)} value={draft.slug} onChange={(event) => { setSlugTouched(true); set("slug", slugify(event.target.value)); }} placeholder="xp-imoveis"/>{fieldErrors.slug ? <small className="admin-field-error">{fieldErrors.slug}</small> : null}<small className="field-hint">Será usado em /empresa/{draft.slug || "nome-da-empresa"}.</small></label>
             <label>Telefone<input value={draft.phone} onChange={(event) => set("phone", event.target.value)} placeholder="(00) 0000-0000"/></label>
-            <label>WhatsApp<input value={draft.whatsapp} onChange={(event) => set("whatsapp", event.target.value)} placeholder="(00) 00000-0000"/></label>
             <label className="wide">E-mail comercial<input aria-invalid={Boolean(fieldErrors.email)} type="email" value={draft.email} onChange={(event) => set("email", event.target.value)} placeholder="contato@empresa.com.br"/>{fieldErrors.email ? <small className="admin-field-error">{fieldErrors.email}</small> : null}</label>
           </div>
         ) : null}
@@ -217,6 +223,7 @@ export function TenantWizard() {
           <div className="entity-form">
             <label>Nome do administrador<input aria-invalid={Boolean(fieldErrors.adminName)} value={draft.adminName} onChange={(event) => set("adminName", event.target.value)} placeholder="Nome completo"/>{fieldErrors.adminName ? <small className="admin-field-error">{fieldErrors.adminName}</small> : null}</label>
             <label>E-mail do administrador<input aria-invalid={Boolean(fieldErrors.adminEmail)} type="email" value={draft.adminEmail} onChange={(event) => set("adminEmail", event.target.value)} placeholder="admin@empresa.com.br"/>{fieldErrors.adminEmail ? <small className="admin-field-error">{fieldErrors.adminEmail}</small> : null}</label>
+            <label className="wide">Qual o número de WhatsApp será usado para contato?<input type="tel" autoComplete="tel" required aria-invalid={Boolean(fieldErrors.whatsapp)} aria-describedby="whatsapp-help" value={draft.whatsapp} onChange={(event) => set("whatsapp", event.target.value)} placeholder="+55 (34) 99999-9999"/><small id="whatsapp-help" className={fieldErrors.whatsapp ? "admin-field-error" : "field-hint"}>{fieldErrors.whatsapp || "Os interessados nos imóveis entrarão em contato com este número. Você poderá alterá-lo em Configurações."}</small></label>
             <p className="wide muted-copy">O administrador receberá um convite temporário para definir a própria senha. Nenhuma senha é criada pelo Super Admin.</p>
           </div>
         ) : null}
@@ -226,7 +233,7 @@ export function TenantWizard() {
             <button type="button" className="tenant-review-card" onClick={() => setStep(0)}><small>Empresa</small><strong>{draft.name}</strong><span>/empresa/{draft.slug}</span></button>
             <button type="button" className="tenant-review-card" onClick={() => setStep(1)}><small>Identidade</small><strong>{draft.logos.filter((logo) => logo.logoLight || logo.logoDark).length || 0} logo(s)</strong><span>{draft.favicon ? "Favicon configurado" : "Sem favicon"}</span></button>
             <button type="button" className="tenant-review-card" onClick={() => setStep(3)}><small>Plano e recursos</small><strong>{draft.plan === "custom" ? "Personalizado" : draft.plan[0].toUpperCase() + draft.plan.slice(1)}</strong><span>{draft.modules.map((item) => moduleLabels[item]).join(", ")}</span></button>
-            <button type="button" className="tenant-review-card" onClick={() => setStep(4)}><small>Administrador</small><strong>{draft.adminName}</strong><span>{draft.adminEmail}</span></button>
+            <button type="button" className="tenant-review-card" onClick={() => setStep(4)}><small>Administrador</small><strong>{draft.adminName}</strong><span>{draft.adminEmail}</span><span>WhatsApp: +{normalizeWhatsApp(draft.whatsapp)}</span></button>
           </div>
         ) : null}
 

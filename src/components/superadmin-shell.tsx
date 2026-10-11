@@ -33,6 +33,7 @@ export function SuperAdminShell({
           <Link className={active("/superadmin/empresas") && !pathname.endsWith("/nova") ? "active" : ""} href="/superadmin/empresas" onClick={() => setOpen(false)}><Building2/><span>Empresas</span></Link>
           <Link className={pathname.endsWith("/nova") ? "active" : ""} href="/superadmin/empresas/nova" onClick={() => setOpen(false)}><PlusCircle/><span>Nova empresa</span></Link>
           <small>GESTÃO</small>
+          <Link className={active("/superadmin/operacao") ? "active" : ""} href="/superadmin/operacao" onClick={() => setOpen(false)}><ClipboardList/><span>Operação</span></Link>
           <Link className={active("/superadmin/planos") ? "active" : ""} href="/superadmin/planos" onClick={() => setOpen(false)}><PackageCheck/><span>Planos</span></Link>
           <Link className={active("/superadmin/usuarios") ? "active" : ""} href="/superadmin/usuarios" onClick={() => setOpen(false)}><UsersRound/><span>Usuários</span></Link>
           <Link className={active("/superadmin/auditoria") ? "active" : ""} href="/superadmin/auditoria" onClick={() => setOpen(false)}><ClipboardList/><span>Auditoria</span></Link>

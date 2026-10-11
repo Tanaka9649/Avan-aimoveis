@@ -137,7 +137,7 @@ export default async function TenantDetailPage({ params, searchParams }: { param
       <p>Nome, contatos e endereço público. Mudanças no endereço da empresa preservam o histórico para redirecionamento.</p>
       <SettingsForm action={updateTenantIdentity.bind(null, tenant.id)} label="Salvar identidade">
         <label>Nome<input name="name" defaultValue={tenant.name} required /></label>
-        <label>Endereço da empresa<input name="slug" defaultValue={tenant.slug} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" /></label>
+        <label>Endereço da empresa<input name="slug" readOnly={tenant.slug === "avanca-imoveis"} defaultValue={tenant.slug} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" /></label>
         <label>E-mail<input name="email" type="email" defaultValue={tenant.email ?? ""} /></label>
         <label>Telefone<input name="phone" defaultValue={tenant.phone ?? ""} /></label>
         <label className="wide">WhatsApp<input name="whatsapp" defaultValue={tenant.whatsapp ?? ""} /></label>

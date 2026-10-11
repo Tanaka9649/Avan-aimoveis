@@ -32,7 +32,7 @@ export function LeadForm({ propertyId, propertyTitle, tenantSlug }: { propertyId
     <label>WhatsApp<input required name="phone" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999"/></label>
     <label>E-mail<input required name="email" type="email" autoComplete="email"/></label>
     <label>Mensagem<textarea name="message" defaultValue={`Olá, tenho interesse em ${propertyTitle}.`}/></label>
-    <label className="check"><input required name="consent" type="checkbox" value="true"/><span>Concordo com o uso dos meus dados para este atendimento, conforme a Política de Privacidade.</span></label>
+    <label className="check"><input required name="consent" type="checkbox" value="true"/><span>Concordo com o uso dos meus dados para este atendimento, conforme a <a href={`/empresa/${encodeURIComponent(tenantSlug)}/privacidade`} target="_blank" rel="noreferrer">Política de Privacidade</a>.</span></label>
     {state === "error" ? <p className="form-error" role="alert">{message}</p> : null}
     <button disabled={state === "loading"} className="button button-accent">{state === "loading" ? <><Loader2 className="spin"/> Enviando...</> : "Solicitar atendimento"}</button>
   </form>;

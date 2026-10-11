@@ -390,3 +390,11 @@
 
 .client-assignment-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:12px;padding-top:12px;border-top:1px solid var(--admin-border-soft)}.client-assignment-form label{display:grid;gap:6px;color:var(--admin-muted);font-size:11px;font-weight:700}.client-assignment-form select{height:38px;border:1px solid var(--admin-border);border-radius:7px;background:var(--admin-surface-2);color:var(--admin-text);padding:0 10px}.client-assignment-form .form-success-inline,.client-assignment-form .admin-form-error{grid-column:1/-1;margin:0;font-size:10px}
 @media(max-width:560px){.client-assignment-form{grid-template-columns:1fr}.client-assignment-form .admin-button{width:100%}}
+
+/* Keep active labels readable on light surfaces and filters usable on small screens. */
+.admin-app.theme-light [role="tab"][aria-selected="true"],
+.admin-app.theme-light .admin-tabs button.active,
+.admin-app.theme-light .admin-section-tabs button.active { color: #174a9d; background: #eaf2ff; }
+@media (max-width: 640px) {
+  .list-search-field { flex: 1 0 100%; width: 100%; min-width: 0; }
+}

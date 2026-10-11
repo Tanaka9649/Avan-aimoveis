@@ -1,15 +1,16 @@
+import { withApiErrors } from "@/lib/api-errors";
 import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { propertyPhotos } from "@/db/schema";
-import { requireModule } from "@/lib/access";
+import { requireModule, requireWriteModule } from "@/lib/access";
 import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
 
 const input = z.object({ action: z.enum(["cover", "position"]), position: z.number().int().min(0).max(9).optional() });
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
+async function handleGET(_: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
   const user = await requireModule("imoveis");
   const { id, photoId } = await params;
   const [photo] = await getDb().select({ processingStatus: propertyPhotos.processingStatus, blurData: propertyPhotos.blurData }).from(propertyPhotos).where(and(eq(propertyPhotos.tenantId, user.tenantId), eq(propertyPhotos.id, photoId), eq(propertyPhotos.propertyId, id))).limit(1);
@@ -17,8 +18,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   return NextResponse.json(photo, { headers: { "cache-control": "no-store" } });
 }
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
-  const user = await requireModule("imoveis");
+async function handlePATCH(request: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
+  const user = await requireWriteModule("imoveis");
   const { id, photoId } = await params;
   if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(photoId).success) return NextResponse.json({ error: "Foto inválida." }, { status: 400 });
   const parsed = input.safeParse(await request.json().catch(() => null));
@@ -33,8 +34,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
-  const user = await requireModule("imoveis");
+async function handleDELETE(_: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
+  const user = await requireWriteModule("imoveis");
   const { id, photoId } = await params;
   const db = getDb();
   const scope = and(eq(propertyPhotos.tenantId, user.tenantId), eq(propertyPhotos.id, photoId), eq(propertyPhotos.propertyId, id));
@@ -53,3 +54,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   }
   return NextResponse.json({ ok: true });
 }
+
+export const GET = withApiErrors(handleGET);
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

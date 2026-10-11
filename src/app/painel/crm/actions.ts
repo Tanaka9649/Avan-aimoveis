@@ -6,7 +6,7 @@ import {revalidatePath} from "next/cache";
 import {z} from "zod";
 import {getDb} from "@/db";
 import {clients,deals,stages,activities,dealProperties,properties,proposals,users,tenantMemberships} from "@/db/schema";
-import {requireModule,clientScope} from "@/lib/access";
+import {requireModule,requireWriteModule,clientScope} from "@/lib/access";
 import {clientInput,optionalMoney} from "@/lib/client-input";
 import {dealPosition} from "@/lib/crm-input";
 import { parseOperationDateTime } from "@/lib/datetime";
@@ -14,7 +14,7 @@ import { canCreateResource } from "@/lib/entitlements";
 type State={ok:boolean;message:string};
 export type CrmClientState={ok:boolean;message:string;clientId?:string;duplicate?:{id:string;name:string}};
 export async function saveDeal(_:State,form:FormData):Promise<State>{
- const user=await requireModule("crm");const db=getDb();
+ const user=await requireWriteModule("crm");const db=getDb();
  const p=z.object({id:z.union([z.uuid(),z.literal("")]),clientId:z.uuid(),title:z.string().trim().min(3).max(180),stageId:z.uuid(),amount:optionalMoney,nextActionAt:z.string().max(40),nextActionType:z.string().trim().max(80),nextActionNote:z.string().trim().max(500),lostReason:z.string().trim().max(2000),note:z.string().trim().max(10000),assignedTo:z.union([z.uuid(),z.literal("")])}).safeParse(Object.fromEntries(form));
  if(!p.success)return {ok:false,message:"Revise título, cliente, etapa e valor."};
  const v=p.data;const [client]=await db.select().from(clients).where(and(eq(clients.id,v.clientId),clientScope(user)));if(!client)return {ok:false,message:"Cliente indisponível."};
@@ -41,7 +41,7 @@ export async function saveDeal(_:State,form:FormData):Promise<State>{
 }
 
 export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmClientState>{
- const user=await requireModule("crm");
+ const user=await requireWriteModule("clientes");
  const parsed=clientInput.safeParse(Object.fromEntries(form));
  if(!parsed.success){
   const field=String(parsed.error.issues[0]?.path[0]||"");
@@ -55,6 +55,7 @@ export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmC
  const [duplicate]=await db.select({id:clients.id,name:clients.name}).from(clients).where(and(clientScope(user),duplicateIdentity,raw?ne(clients.id,raw):undefined)).limit(1);
  if(duplicate)return{ok:false,message:"Já existe um cliente com este telefone ou e-mail.",duplicate};
  if(raw){const [allowed]=await db.select({id:clients.id}).from(clients).where(and(eq(clients.id,raw),clientScope(user))).limit(1);if(!allowed)return{ok:false,message:"Cliente indisponível."};}
+ if(!raw&&!await canCreateResource(user.tenantId,"max_clients"))return{ok:false,message:"O limite de clientes do plano foi atingido."};
  const id=raw||randomUUID();
  const{budgetMin,budgetMax,...rest}=parsed.data;
  const values={...rest,budgetMinCents:budgetMin,budgetMaxCents:budgetMax,updatedAt:new Date()};
@@ -69,7 +70,7 @@ export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmC
  return{ok:true,message:raw?"Alterações salvas com sucesso.":"Cliente cadastrado com sucesso.",clientId:id};
 }
 export async function assignCrmClient(_:State,form:FormData):Promise<State>{
- const user=await requireModule("crm");
+ const user=await requireWriteModule("crm");
  if(user.role!=="admin")return{ok:false,message:"Apenas administradores podem alterar o responsável."};
  const parsed=z.object({clientId:z.uuid(),userId:z.union([z.uuid(),z.literal("")])}).safeParse(Object.fromEntries(form));
  if(!parsed.success)return{ok:false,message:"Selecione um responsável válido."};
@@ -111,7 +112,7 @@ export async function salePropertyChoices() {
 
 
 export async function reopenOpportunity(formData: FormData) {
-  const user = await requireModule("crm");
+  const user = await requireWriteModule("crm");
   const parsed = z.object({ id: z.uuid() }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const db = getDb();
@@ -153,7 +154,7 @@ export async function reopenOpportunity(formData: FormData) {
 
 
 export async function saleClosingChoices(dealId: string) {
-  const user = await requireModule("crm");
+  const user = await requireWriteModule("crm");
   if (!z.uuid().safeParse(dealId).success) return { properties: [], proposals: [] };
   const db = getDb();
   const [propertyRows, proposalRows] = await Promise.all([

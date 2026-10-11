@@ -13,6 +13,9 @@ const moduleRoutes: Record<Module, string> = {
 export function canAccess(user: { role: string; access: Access }, module: Module) {
   return user.role === "admin" || user.access.modules.includes(module);
 }
+export function canWrite(user: { membershipRole: string; globalRole?: string }) {
+  return user.globalRole === "super_admin" || ["owner", "admin", "manager", "agent"].includes(user.membershipRole);
+}
 export function firstAllowedRoute(user: { role: string; access: Access }) {
   if (user.role === "admin") return "/painel";
   const selected = modules.find((candidate) => canAccess(user, candidate));

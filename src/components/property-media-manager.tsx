@@ -104,12 +104,17 @@ export function PropertyMediaManager({ propertyId, initialPhotos = [], initialDo
   async function uploadDocument(file?: File) {
     if (!file) return;
     setBusy(true); setMessage("Enviando documento privado…");
-    const body = new FormData(); body.set("file", file);
-    const response = await fetch(`/api/properties/${propertyId}/documents`, { method: "POST", body });
-    const data = await response.json();
-    if (response.ok) { setDocuments((current) => [...current, data.document]); setMessage("Documento enviado com segurança."); }
-    else setMessage(data.error || "Não foi possível enviar o documento.");
-    setBusy(false);
+    try {
+      const response = await fetch(`/api/properties/${propertyId}/documents`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, size: file.size, type: file.type }) });
+      const reservation = await response.json();
+      if (!response.ok) throw new Error(reservation.error || "Não foi possível preparar o envio.");
+      await putFile(reservation.uploadUrl, file, reservation.contentType, percent => setMessage(`Enviando documento · ${percent}%`));
+      const complete = await fetch(`/api/properties/${propertyId}/documents/${reservation.documentId}/complete`, { method: "POST" });
+      const data = await complete.json();
+      if (!complete.ok) throw new Error(data.error || "Não foi possível confirmar o documento.");
+      setDocuments(current => [...current, data.document]); setMessage("Documento enviado com segurança.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha no envio."); }
+    finally { setBusy(false); }
   }
 
   async function deleteDocument(id: string) {

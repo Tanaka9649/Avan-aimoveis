@@ -92,6 +92,41 @@
       "when": 1791667200000,
       "tag": "0012_property_lot_area",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791748800000,
+      "tag": "0013_audit_security_and_uploads",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791748900000,
+      "tag": "0014_atomic_quotas_and_owner_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791749000000,
+      "tag": "0015_lead_intake_and_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791749100000,
+      "tag": "0016_analytics_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791749200000,
+      "tag": "0017_visit_reminder_delivery",
+      "breakpoints": true
     }
   ]
 }

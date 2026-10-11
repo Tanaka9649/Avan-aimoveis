@@ -1,3 +1,4 @@
+import { PasswordForm } from "@/components/password-form";
 import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { requireUser } from "@/lib/auth";
 import { moduleLabels } from "@/lib/permissions";
@@ -31,7 +32,7 @@ export default async function ProfilePage() {
       </div>
       <section className="admin-card profile-security">
         <h2>Segurança</h2>
-        <p>Para alterar senha ou recuperar acesso, utilize o fluxo seguro de autenticação da plataforma. Senhas nunca são exibidas no painel.</p>
+        <PasswordForm mode="change" tenantSlug={user.tenant.slug}/>
       </section>
     </div>
   );

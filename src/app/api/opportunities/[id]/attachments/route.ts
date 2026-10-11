@@ -39,7 +39,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) return NextResponse.json({ error: "Oportunidade inválida." }, { status: 400 });
-  const { user, opportunity } = await requireOpportunity(id);
+  const { user, opportunity } = await requireOpportunity(id, true);
   if (!opportunity || !user) return NextResponse.json({ error: "Oportunidade não encontrada." }, { status: 404 });
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revise os arquivos selecionados." }, { status: 400 });

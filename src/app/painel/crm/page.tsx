@@ -12,9 +12,9 @@ const amount=(value:number|null)=>value===null?"Valor não informado":formatMone
 const statMap=(rows:{clientId:string|null;value:number}[])=>new Map(rows.flatMap(row=>row.clientId?[[row.clientId,row.value] as const]:[]));
 
 export default async function CrmPage({searchParams}:{searchParams:Promise<Query>}){
- const user=await requireModule("crm");
- const db=getDb();
  const query=await searchParams;
+ const user=await requireModule(value(query,"view")==="clientes" ? "clientes" : "crm");
+ const db=getDb();
  const page=pageNumber(query);
  const search=value(query,"q");
  const view=value(query,"view")==="clientes"?"clientes":"funil";

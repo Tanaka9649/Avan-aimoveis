@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { sql } from "drizzle-orm";
+import { sendEmail } from "@/lib/email";
+import { properties, tenants } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { leadInput } from "@/lib/lead-input";
@@ -19,49 +21,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Muitas solicitações. Tente novamente mais tarde." }, { status: 429 });
     }
     const payload = parsed.data;
-    const result = await getDb().execute(sql`
-      with eligible as (
-        select p.id, p.tenant_id, p.title, p.price_cents, s.id as stage_id
-        from properties p
-        cross join lateral (
-          select id
-          from stages
-          where tenant_id = p.tenant_id and not is_won and not is_lost
-          order by position
-          limit 1
-        ) s
-        where p.id = ${payload.propertyId}::uuid
-          and p.tenant_id is not null
-          and p.status = 'disponivel'
-          and p.published_at is not null
-      ), new_client as (
-        insert into clients (tenant_id, name, phone, email, origin, lgpd_consent_at)
-        select tenant_id, ${payload.name}, ${payload.phone}, ${payload.email}, 'site', now()
-        from eligible
-        returning id, tenant_id
-      ), new_deal as (
-        insert into deals (tenant_id, client_id, stage_id, title, estimated_value_cents, position, tags)
-        select e.tenant_id, c.id, e.stage_id, left('Interesse — ' || e.title, 180), e.price_cents, 1000, '["site","novo-lead"]'::jsonb
-        from new_client c
-        join eligible e on e.tenant_id = c.tenant_id
-        returning id, client_id, tenant_id
-      ), linked as (
-        insert into deal_properties (tenant_id, deal_id, property_id)
-        select d.tenant_id, d.id, e.id
-        from new_deal d
-        join eligible e on e.tenant_id = d.tenant_id
-        returning deal_id
-      ), recorded as (
-        insert into activities (tenant_id, deal_id, client_id, type, description)
-        select tenant_id, id, client_id, 'lead_recebido', ${payload.message || "Interesse enviado pelo site"}
-        from new_deal
-        returning id
-      )
-      select id from new_deal
-    `);
-    if (!result.rows.length) return NextResponse.json({ error: "Este imóvel não está disponível para atendimento no momento." }, { status: 409 });
+    const result = await getDb().execute(sql`SELECT intake_property_lead(${payload.propertyId}::uuid, ${payload.name}, ${payload.phone}, ${payload.email}, ${payload.message || ""}) AS id`);
+    if (!result.rows[0]?.id) return NextResponse.json({ error: "Este imóvel não está disponível para atendimento no momento." }, { status: 409 });
+    // Send a minimal notification; details remain in the authenticated CRM.
+    const [tenant] = await getDb().select({ email: tenants.email, id: tenants.id }).from(properties).innerJoin(tenants, eq(tenants.id, properties.tenantId)).where(eq(properties.id, payload.propertyId)).limit(1);
+    if (tenant?.email) await sendEmail({ to: tenant.email, subject: "Novo interesse em imóvel", text: "Um interessado enviou uma solicitação pelo site. Acesse o CRM da sua empresa para acompanhar o atendimento.", key: `lead/${result.rows[0].id}/${Date.now()}` });
     return NextResponse.json({ message: "Recebemos seus dados. Nossa equipe entrará em contato." }, { status: 201 });
-  } catch {
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "";
+    if (reason.includes("tenant_quota_exceeded")) return NextResponse.json({ error: "Atendimento pelo formulário temporariamente indisponível. Utilize o contato da empresa." }, { status: 409 });
     console.error("lead_create_failed");
     return NextResponse.json({ error: "Serviço temporariamente indisponível." }, { status: 503 });
   }

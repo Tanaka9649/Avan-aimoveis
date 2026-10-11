@@ -1,3 +1,4 @@
+import { isPlanConfigured } from "@/lib/plan-configuration";
 import { asc } from "drizzle-orm";
 import { PageHeader, StatusBadge } from "@/components/admin-ui";
 import { SettingsForm } from "@/components/settings-form";
@@ -20,7 +21,8 @@ const limitLabel: Record<string, string> = {
 
 function limitValue(key: string, value: number | null | undefined) {
   if (key === "custom_domain") return value === 1 ? "Incluído" : "Não incluído";
-  if (value == null) return "Ilimitado";
+  if (value === undefined) return "Não configurado";
+  if (value === null) return "Ilimitado";
   if (key === "max_storage_bytes") return formatBytes(value);
   return Number(value).toLocaleString("pt-BR");
 }
@@ -46,6 +48,7 @@ export default async function PlansPage() {
               <div><span className="page-eyebrow">{plan.code === "custom" ? "Personalizado" : plan.code}</span><h2>{plan.name}</h2></div>
               <StatusBadge value={plan.active ? "active" : "suspended"}/>
             </header>
+            {!isPlanConfigured(plan.limits) ? <p role="status">Configure e salve este plano para utilizá-lo em novas empresas. As empresas existentes continuam operando.</p> : null}
             <div className="sa-plan-limits" aria-label={"Limites atuais de " + plan.name}>
               {Object.entries(limitLabel).map(([key, label]) => (
                 <div key={key}><span>{label}</span><strong>{limitValue(key, plan.limits[key])}</strong></div>

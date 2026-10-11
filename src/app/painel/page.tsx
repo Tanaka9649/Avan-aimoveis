@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { and, asc, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
+import { parseOperationDateTime, toDateInput } from "@/lib/datetime";
+import { and, asc, count, desc, eq, gte, inArray, lte, sql, sum } from "drizzle-orm";
 import { Building2, CalendarCheck, CircleDollarSign, Gauge, HandCoins, Handshake, MessageCircle, Users } from "lucide-react";
 import { clientScope, requireModule } from "@/lib/access";
 import { getDb } from "@/db";
@@ -9,14 +10,14 @@ import { actionTiming, formatDateTime } from "@/lib/date-time";
 import { MetricCard, PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 
 const number = (value: unknown) => Number(value || 0);
-const activityAction:Record<string,string>={created:"cadastrado",create:"cadastrado",updated:"atualizado",duplicated:"duplicado",deleted:"excluído"};
+const activityAction:Record<string,string>={created:"cadastrado",create:"cadastrado",updated:"atualizado",duplicated:"duplicado",deleted:"excluído",published:"publicado",unpublished:"despublicado"};
 const activityEntity:Record<string,string>={property:"Imóvel",client:"Cliente",deal:"Oportunidade",owner:"Proprietário",visit:"Visita",proposal:"Proposta",sale:"Venda"};
 const activityText=(entity:string,action:string)=>`${activityEntity[entity]||"Registro"} ${activityAction[action]||"alterado"}`;
 export default async function DashboardPage({searchParams}:{searchParams:Promise<{period?:string}>}) {
   const user = await requireModule("dashboard");
   const db = getDb();
   const scope = clientScope(user);
-  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+  const monthStart = parseOperationDateTime(`${toDateInput(new Date()).slice(0, 7)}-01T00:00`)!;
   const now = new Date();
   const {period}=await searchParams;const days=period==="30"?30:7;const rangeStart=new Date(now.getTime()-days*86400000);const actionWindowEnd=new Date(now.getTime()+7*86400000);
   const [[clientTotal], [newClients], [activeProperties], [dealTotal], [futureVisits], [openProposals], [salesMonth], [whatsappMonth], funnel, propertyStatus, recentActivity] = await Promise.all([
@@ -25,7 +26,7 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
     db.select({ value: count() }).from(properties).where(and(eq(properties.tenantId,user.tenantId),eq(properties.status, "disponivel"))),
     db.select({ value: count() }).from(deals).innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(deals.tenantId,user.tenantId),scope)),
     db.select({ value: count() }).from(visits).innerJoin(clients, and(eq(clients.id, visits.clientId),eq(clients.tenantId,visits.tenantId))).where(and(eq(visits.tenantId,user.tenantId),scope, gte(visits.scheduledAt, now), eq(visits.status, "agendada"))),
-    db.select({ value: count() }).from(proposals).innerJoin(deals, and(eq(deals.id, proposals.dealId),eq(deals.tenantId,proposals.tenantId))).innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(proposals.tenantId,user.tenantId),scope, eq(proposals.status, "aberta"))),
+    db.select({ value: count() }).from(proposals).innerJoin(deals, and(eq(deals.id, proposals.dealId),eq(deals.tenantId,proposals.tenantId))).innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(proposals.tenantId,user.tenantId),scope, inArray(proposals.status, ["aberta", "enviada", "em_negociacao", "contraproposta"]))),
     db.select({ count: count(), amount: sum(sales.amountCents), commission: sum(sales.commissionCents) }).from(sales).innerJoin(deals, and(eq(deals.id, sales.dealId),eq(deals.tenantId,sales.tenantId))).innerJoin(clients, and(eq(clients.id, deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(sales.tenantId,user.tenantId),scope, gte(sales.soldAt, monthStart))),
     db.select({ value: count() }).from(analyticsEvents).where(and(eq(analyticsEvents.tenantId,user.tenantId),eq(analyticsEvents.eventType,"whatsapp_click"),gte(analyticsEvents.createdAt, monthStart))),
     db.select({ id: stages.id, name: stages.name, color: stages.color, value: scope ? sql<number>`count(${deals.id}) filter (where ${scope})` : count(deals.id) }).from(stages).leftJoin(deals,and(eq(deals.stageId,stages.id),eq(deals.tenantId,user.tenantId))).leftJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,user.tenantId))).where(eq(stages.tenantId,user.tenantId)).groupBy(stages.id).orderBy(asc(stages.position)),
@@ -50,7 +51,8 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
       .where(and(eq(activityLogs.tenantId,user.tenantId),user.role === "admin" ? undefined : eq(activityLogs.userId, user.id)))
       .orderBy(desc(activityLogs.createdAt)).limit(6),
   ]);
-  const conversion = number(dealTotal.value) ? Math.round(number(salesMonth.count) / number(dealTotal.value) * 100) : 0;
+  const [wonTotal] = await db.select({ value: count() }).from(deals).innerJoin(clients, eq(clients.id, deals.clientId)).innerJoin(stages, eq(stages.id, deals.stageId)).where(and(eq(deals.tenantId, user.tenantId), scope, eq(stages.isWon, true)));
+  const conversion = number(dealTotal.value) ? Math.round(number(wonTotal.value) / number(dealTotal.value) * 100) : 0;
   const primaryMetrics = [
     { label: "Novos clientes", value: String(newClients.value), helper: `${clientTotal.value} clientes na base`, icon: Users, tone: "blue" as const, featured: true },
     { label: "Visitas agendadas", value: String(futureVisits.value), helper: "a partir de hoje", icon: CalendarCheck, tone: "amber" as const },
@@ -61,10 +63,10 @@ export default async function DashboardPage({searchParams}:{searchParams:Promise
     { label: "Imóveis ativos", value: String(activeProperties.value), helper: "disponíveis no catálogo", icon: Building2, tone: "blue" as const },
     { label: "Negócios fechados", value: String(salesMonth.count), helper: "vendas no mês", icon: Handshake, tone: "green" as const },
     { label: "Comissão no mês", value: formatMoney(number(salesMonth.commission)), helper: "comissão registrada", icon: CircleDollarSign, tone: "green" as const },
-    { label: "Taxa de conversão", value: conversion + "%", helper: "vendas ÷ oportunidades", icon: Gauge, tone: "slate" as const },
+    { label: "Taxa de conversão", value: conversion + "%", helper: "ganhas ÷ oportunidades · todo o período", icon: Gauge, tone: "slate" as const },
   ];
   const [actionRows,topViews,topInterest,topWhatsapp]=await Promise.all([
-    db.select({id:deals.id,client:clients.name,type:deals.nextActionType,note:deals.nextActionNote,at:deals.nextActionAt}).from(deals).innerJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(deals.tenantId,user.tenantId),scope,lte(deals.nextActionAt,actionWindowEnd))).orderBy(asc(deals.nextActionAt)).limit(20),
+    db.select({id:deals.id,client:clients.name,type:deals.nextActionType,note:deals.nextActionNote,at:deals.nextActionAt}).from(deals).innerJoin(clients,and(eq(clients.id,deals.clientId),eq(clients.tenantId,deals.tenantId))).where(and(eq(deals.tenantId,user.tenantId),scope,lte(deals.nextActionAt,actionWindowEnd),sql`exists (select 1 from stages s where s.id = ${deals.stageId} and s.tenant_id = ${user.tenantId}::uuid and not s.is_won and not s.is_lost)`)).orderBy(asc(deals.nextActionAt)).limit(20),
     db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(analyticsEvents.id)}).from(analyticsEvents).innerJoin(properties,and(eq(properties.id,analyticsEvents.propertyId),eq(properties.tenantId,user.tenantId))).where(and(eq(analyticsEvents.tenantId,user.tenantId),eq(analyticsEvents.eventType,"property_view"),gte(analyticsEvents.createdAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(analyticsEvents.id))).limit(5),
     db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(clientPropertyPresentations.id)}).from(clientPropertyPresentations).innerJoin(clients,and(eq(clients.id,clientPropertyPresentations.clientId),eq(clients.tenantId,clientPropertyPresentations.tenantId))).innerJoin(properties,and(eq(properties.id,clientPropertyPresentations.propertyId),eq(properties.tenantId,clientPropertyPresentations.tenantId))).where(and(eq(clientPropertyPresentations.tenantId,user.tenantId),scope,gte(clientPropertyPresentations.presentedAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(clientPropertyPresentations.id))).limit(5),
     db.select({id:properties.id,title:properties.title,region:properties.neighborhood,value:count(analyticsEvents.id)}).from(analyticsEvents).innerJoin(properties,and(eq(properties.id,analyticsEvents.propertyId),eq(properties.tenantId,user.tenantId))).where(and(eq(analyticsEvents.tenantId,user.tenantId),eq(analyticsEvents.eventType,"whatsapp_click"),gte(analyticsEvents.createdAt,rangeStart))).groupBy(properties.id).orderBy(desc(count(analyticsEvents.id))).limit(5),

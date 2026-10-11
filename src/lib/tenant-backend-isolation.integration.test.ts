@@ -23,7 +23,7 @@ vi.mock("@/lib/access", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/access")>();
   return {
     ...original,
-    requireModule: async () => fixture.user,
+    requireModule: async () => fixture.user, requireWriteModule: async () => fixture.user,
     requireAdmin: async () => fixture.user,
   };
 });
@@ -67,6 +67,7 @@ let pg: PGlite;
 beforeAll(async () => {
   pg = new PGlite();
   await applyDrizzleMigrations(pg);
+  await pg.exec(`UPDATE plans SET limits = '{"max_users":null,"max_properties":null,"max_clients":null,"max_opportunities":null,"max_documents":null,"max_storage_bytes":null,"custom_domain":0}'::jsonb;`);
   const db = drizzle(pg);
   fixture.db = Object.assign(db, {
     batch: async (queries: { toSQL: () => { sql: string; params: unknown[] } }[]) => pg.transaction(async (transaction) => {

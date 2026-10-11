@@ -3,11 +3,13 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { properties, propertyPhotos } from "@/db/schema";
+import { properties, propertyPhotos, tenants } from "@/db/schema";
 import { isPhotoVariant, variantKey, type PhotoVariant } from "@/lib/photos";
 import { isPubliclyVisible } from "@/lib/property-publication";
 import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
+import { tenantOperational } from "@/lib/tenant";
 import { currentUser } from "@/lib/auth";
+import { canUseModule } from "@/lib/entitlements";
 import { canAccess } from "@/lib/permissions";
 
 export const runtime = "nodejs";
@@ -29,6 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const [photo] = await getDb()
     .select({
       tenantId: propertyPhotos.tenantId,
+      tenantStatus: tenants.status,
       storagePath: propertyPhotos.storagePath,
       variants: propertyPhotos.variants,
       processingStatus: propertyPhotos.processingStatus,
@@ -43,14 +46,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         eq(properties.tenantId, propertyPhotos.tenantId),
       ),
     )
+    .innerJoin(tenants, eq(tenants.id, propertyPhotos.tenantId))
     .where(eq(propertyPhotos.id, id))
     .limit(1);
-  if (!photo?.tenantId) return new NextResponse(null, { status: 404 });
+  if (!photo?.tenantId || !tenantOperational(photo.tenantStatus)) return new NextResponse(null, { status: 404 });
 
   const isPublic = isPubliclyVisible(photo);
   if (!isPublic) {
     const user = await currentUser();
-    if (!user || user.tenantId !== photo.tenantId || !canAccess(user, "imoveis")) {
+    if (!user || user.tenantId !== photo.tenantId || !canAccess(user, "imoveis") || !await canUseModule(user.tenantId, "imoveis")) {
       return new NextResponse(null, { status: 404 });
     }
   }
@@ -59,7 +63,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const key = variantKey(photo, variant);
   const etag = `"${id}-${variant}"`;
-  const cacheControl = isPublic ? "public, max-age=31536000, immutable" : "private, max-age=86400, immutable";
+  const cacheControl = isPublic ? "public, max-age=60, s-maxage=60" : "private, no-store";
   if (request.headers.get("if-none-match") === etag) {
     return new NextResponse(null, { status: 304, headers: { ETag: etag, "Cache-Control": cacheControl } });
   }

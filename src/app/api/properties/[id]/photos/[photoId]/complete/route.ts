@@ -1,10 +1,11 @@
+import { withApiErrors } from "@/lib/api-errors";
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { and, eq } from "drizzle-orm";
 import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { propertyPhotos } from "@/db/schema";
-import { requireModule } from "@/lib/access";
+import { requireWriteModule } from "@/lib/access";
 import { generatePhotoVariants } from "@/lib/photo-processing";
 import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
 import { validateUploadBytes } from "@/lib/upload";
@@ -12,8 +13,8 @@ import { validateUploadBytes } from "@/lib/upload";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
-  const user = await requireModule("imoveis");
+async function handlePOST(_: Request, { params }: { params: Promise<{ id: string; photoId: string }> }) {
+  const user = await requireWriteModule("imoveis");
   const { id, photoId } = await params;
   if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(photoId).success) return NextResponse.json({ error: "Foto inválida." }, { status: 400 });
   const db = getDb();
@@ -46,3 +47,5 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
 function publicPhoto(photo: typeof propertyPhotos.$inferSelect) {
   return { id: photo.id, alt: photo.alt, position: photo.position, isCover: photo.isCover, blurData: photo.blurData, processingStatus: photo.processingStatus };
 }
+
+export const POST = withApiErrors(handlePOST);

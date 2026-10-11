@@ -1,9 +1,10 @@
+import { withApiErrors } from "@/lib/api-errors";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { and, count, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { propertyPhotos } from "@/db/schema";
-import { requireModule } from "@/lib/access";
+import { requireModule, requireWriteModule } from "@/lib/access";
 import { processPropertyPhoto } from "@/lib/photo-pipeline";
 import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
 
@@ -12,14 +13,14 @@ export const maxDuration = 60;
 const BATCH = 4;
 const pendingFilter = (tenantId: string) => and(eq(propertyPhotos.tenantId, tenantId), sql`${propertyPhotos.variants} = '{}'::jsonb`, eq(propertyPhotos.processingStatus, "ready"));
 
-export async function GET() {
+async function handleGET() {
   const user = await requireModule("imoveis");
   const [pending] = await getDb().select({ value: count() }).from(propertyPhotos).where(pendingFilter(user.tenantId));
   return NextResponse.json({ pending: Number(pending.value) }, { headers: { "cache-control": "no-store" } });
 }
 
-export async function POST() {
-  const user = await requireModule("imoveis");
+async function handlePOST() {
+  const user = await requireWriteModule("imoveis");
   const db = getDb();
   const photos = await db.select({ id: propertyPhotos.id, storagePath: propertyPhotos.storagePath, originalMime: propertyPhotos.originalMime }).from(propertyPhotos).where(pendingFilter(user.tenantId)).limit(BATCH);
   let processed = 0;
@@ -47,3 +48,6 @@ export async function POST() {
   const [pending] = await db.select({ value: count() }).from(propertyPhotos).where(pendingFilter(user.tenantId));
   return NextResponse.json({ processed, failed, pending: Number(pending.value) }, { headers: { "cache-control": "no-store" } });
 }
+
+export const GET = withApiErrors(handleGET);
+export const POST = withApiErrors(handlePOST);

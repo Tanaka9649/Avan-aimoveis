@@ -24,10 +24,12 @@ const cardColumns = {
   suites: properties.suites,
   bathrooms: properties.bathrooms,
   parkingSpaces: properties.parkingSpaces,
+  privateArea: properties.privateArea,
+  lotArea: properties.lotArea,
   area: sql<string | null>`coalesce(${properties.privateArea}, ${properties.lotArea})`,
 };
 
-type CardRow = { [K in keyof typeof cardColumns]: K extends "area" ? string | null : K extends "priceCents" | "bedrooms" | "suites" | "bathrooms" | "parkingSpaces" ? number : string };
+type CardRow = { [K in keyof typeof cardColumns]: K extends "area" | "privateArea" | "lotArea" ? string | null : K extends "priceCents" | "bedrooms" | "suites" | "bathrooms" | "parkingSpaces" ? number : string };
 
 const toPhoto = (photo: { id: string; alt: string; blurData: string | null }, size: "thumb" | "medium"): PublicPhoto => ({
   id: photo.id,
@@ -36,7 +38,7 @@ const toPhoto = (photo: { id: string; alt: string; blurData: string | null }, si
   alt: photo.alt,
 });
 
-const toCard = (row: CardRow, cover: PublicPhoto | null): PublicPropertyCard => ({ ...row, area: Number(row.area || 0), cover });
+const toCard = (row: CardRow, cover: PublicPhoto | null): PublicPropertyCard => ({ ...row, privateArea: Number(row.privateArea || 0), lotArea: Number(row.lotArea || 0), area: Number(row.area || 0), cover });
 
 export async function publicPropertyCards(tenantId: string, limit = 200): Promise<PublicPropertyCard[]> {
   const rows = await getDb().select(cardColumns).from(properties).where(publiclyVisible(tenantId)).orderBy(desc(properties.publishedAt)).limit(limit);

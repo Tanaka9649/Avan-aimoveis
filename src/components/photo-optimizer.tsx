@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImageDown, Loader2 } from "lucide-react";
 
@@ -11,18 +11,9 @@ type Status = { pending: number; processed: number; running: boolean; message: s
  * It appears only while something is pending and walks the queue in small batches, so the whole
  * portfolio can be optimised from the panel — no terminal, no deploy, no database access needed.
  */
-export function PhotoOptimizer() {
+export function PhotoOptimizer({ initialPending }: { initialPending: number }) {
   const router = useRouter();
-  const [status, setStatus] = useState<Status>({ pending: 0, processed: 0, running: false, message: "" });
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/properties/photos/variants")
-      .then((response) => (response.ok ? response.json() : { pending: 0 }))
-      .then((data) => { if (active) setStatus((old) => ({ ...old, pending: Number(data.pending) || 0 })); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, []);
+  const [status, setStatus] = useState<Status>({ pending: initialPending, processed: 0, running: false, message: "" });
 
   async function run() {
     setStatus((old) => ({ ...old, running: true, message: "" }));

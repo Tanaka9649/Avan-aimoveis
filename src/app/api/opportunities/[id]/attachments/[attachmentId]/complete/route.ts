@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export async function POST(_: Request, { params }: { params: Promise<{ id: string; attachmentId: string }> }) {
   const { id, attachmentId } = await params;
   if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(attachmentId).success) return NextResponse.json({ error: "Arquivo inválido." }, { status: 400 });
-  const { user, opportunity } = await requireOpportunity(id);
+  const { user, opportunity } = await requireOpportunity(id, true);
   if (!opportunity || !user) return NextResponse.json({ error: "Oportunidade não encontrada." }, { status: 404 });
   const db = getDb();
   const scope = and(eq(opportunityAttachments.tenantId, user.tenantId), eq(opportunityAttachments.id, attachmentId), eq(opportunityAttachments.opportunityId, id));

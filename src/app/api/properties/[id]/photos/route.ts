@@ -1,10 +1,11 @@
+import { withApiErrors } from "@/lib/api-errors";
 import { randomUUID } from "node:crypto";
 import { and, count, eq, inArray, max } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { properties, propertyPhotos } from "@/db/schema";
-import { requireModule } from "@/lib/access";
+import { requireWriteModule } from "@/lib/access";
 import { canConsumeResource } from "@/lib/entitlements";
 import { PHOTO_BUCKET, signedUploadUrl, tenantStorageKey } from "@/lib/storage";
 import { MAX_PROPERTY_PHOTOS, normalizeUploadMetadata, safeFileName, validateUploadMetadata } from "@/lib/upload";
@@ -13,8 +14,8 @@ export const runtime = "nodejs";
 
 const input = z.object({ files: z.array(z.object({ name: z.string().min(1).max(240), type: z.string().max(100), size: z.number().int().positive() })).min(1).max(MAX_PROPERTY_PHOTOS) });
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireModule("imoveis");
+async function handlePOST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await requireWriteModule("imoveis");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) return NextResponse.json({ error: "Imóvel inválido." }, { status: 400 });
   const parsed = input.safeParse(await request.json().catch(() => null));
@@ -77,3 +78,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Não foi possível autorizar o envio das fotos." }, { status: 502 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

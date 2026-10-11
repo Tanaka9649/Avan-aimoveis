@@ -8,13 +8,15 @@ function platformRequest(request: NextRequest) {
   return !host || host === configured || host === preview || host === "localhost";
 }
 
-export function proxy(request: NextRequest) {
+function routeRequest(request: NextRequest, headers: Headers) {
   const pathname = request.nextUrl.pathname;
+  headers.delete("x-tenant-slug");
+  headers.delete("x-platform-api");
+  if (pathname.startsWith("/api/")) headers.set("x-platform-api", "1");
   const scoped = pathname.match(/^\/empresa\/([^/]+)(?:\/(.*))?$/);
   if (scoped) {
     const slug = normalizeTenantSlug(scoped[1]);
-    if (!slug) return NextResponse.next();
-    const headers = new Headers(request.headers);
+    if (!slug) return NextResponse.next({ request: { headers } });
     headers.set("x-tenant-slug", slug);
     const tail = scoped[2] || "";
     if (tail === "painel/login") return NextResponse.next({ request: { headers } });
@@ -28,7 +30,6 @@ export function proxy(request: NextRequest) {
 
   if (pathname.startsWith("/painel")) {
     if (!request.cookies.has("avan_session")) return NextResponse.redirect(new URL("/login", request.url));
-    const headers = new Headers(request.headers);
     if (platformRequest(request)) {
       const contextualSlug = normalizeTenantSlug(request.cookies.get("avan_tenant")?.value || ROOT_TENANT_SLUG);
       if (contextualSlug !== ROOT_TENANT_SLUG) {
@@ -38,7 +39,19 @@ export function proxy(request: NextRequest) {
     }
     return NextResponse.next({ request: { headers } });
   }
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers } });
 }
 
-export const config = { matcher: ["/painel/:path*", "/empresa/:tenantSlug/:path*"] };
+export function proxy(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDev = process.env.NODE_ENV === "development";
+  const policy = `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:${isDev ? " ws: http:" : ""}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'`;
+  headers.set("x-nonce", nonce);
+  headers.set("Content-Security-Policy", policy);
+  const response = routeRequest(request, headers);
+  if (!request.nextUrl.pathname.startsWith("/api/")) response.headers.set("Content-Security-Policy", policy);
+  return response;
+}
+
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };

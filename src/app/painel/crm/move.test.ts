@@ -3,7 +3,7 @@ import {PGlite} from "@electric-sql/pglite";
 import {PgDialect} from "drizzle-orm/pg-core";
 import type {SQL} from "drizzle-orm";
 const mock=vi.hoisted(()=>({db:null as unknown,user:{id:"10000000-0000-4000-8000-000000000001",tenantId:"00000000-0000-4000-8000-000000000001",role:"admin",access:{clients:"all"}}}));
-vi.mock("@/db",()=>({getDb:()=>mock.db}));vi.mock("@/lib/access",()=>({requireModule:async()=>mock.user}));vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));
+vi.mock("@/db",()=>({getDb:()=>mock.db}));vi.mock("@/lib/access",()=>({requireModule: async () => mock.user, requireWriteModule: async () => mock.user}));vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));
 import {moveOpportunity} from "./move";
 const id=(n:number)=>`20000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const lead=id(1),contact=id(2),won=id(3),lost=id(4),client=id(5),a=id(6),hidden=id(7),b=id(8);

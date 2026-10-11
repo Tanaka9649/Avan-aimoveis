@@ -82,6 +82,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     `),
   ]);
 
+  const archived = await db.execute(sql`SELECT day::text,event_type,sum(total)::int AS total
+    FROM analytics_daily WHERE tenant_id=${user.tenantId}::uuid
+      AND day < ((now() AT TIME ZONE 'America/Sao_Paulo')::date - least(730,greatest(30,${Number(process.env.ANALYTICS_RETENTION_DAYS || 90) || 90}::int)))
+      AND (${!custom} OR day BETWEEN ${fromDate}::date AND ${toDate}::date)
+    GROUP BY day,event_type ORDER BY day DESC LIMIT 100`);
   const rows = summaryResult.rows as unknown as Summary[];
   const values = Object.fromEntries(rows.map((row) => [row.event_type, Number(row.total)]));
   const uniqueVisitors = Number((uniqueResult.rows[0] as { visitors?: number } | undefined)?.visitors || 0);
@@ -126,6 +131,10 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         </form>
       </section>
 
+      {archived.rows.length > 0 ? <section className="admin-card">
+        <h2>Histórico consolidado</h2><p>Eventos anteriores à retenção detalhada. Os indicadores abaixo usam eventos detalhados; o histórico antigo fica preservado nesta tabela.</p>
+        <div className="table-scroll"><table><thead><tr><th>Dia</th><th>Evento</th><th>Total</th></tr></thead><tbody>{archived.rows.map((row, index) => <tr key={index}><td>{String(row.day)}</td><td>{String(row.event_type)}</td><td>{Number(row.total)}</td></tr>)}</tbody></table></div>
+      </section> : null}
       <section className="metric-grid analytics-metrics" aria-label="Indicadores do período">
         {metrics.slice(0,4).map((metric) => <MetricCard key={metric.label} {...metric}/>)}
       </section>

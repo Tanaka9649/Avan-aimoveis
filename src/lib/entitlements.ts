@@ -1,7 +1,7 @@
 import "server-only";
 import { and, count, eq, gt, isNull, sum } from "drizzle-orm";
 import { getDb } from "@/db";
-import { clients, deals, opportunityAttachments, plans, properties, propertyDocuments, propertyPhotos, tenantInvites, tenantMemberships, tenantModules, tenants } from "@/db/schema";
+import { brandingAssets, clients, deals, opportunityAttachments, plans, properties, propertyDocuments, propertyPhotos, tenantInvites, tenantMemberships, tenantModules, tenants } from "@/db/schema";
 import type { Module } from "@/lib/permissions";
 
 export type LimitKey = "max_users" | "max_properties" | "max_clients" | "max_opportunities" | "max_documents" | "max_storage_bytes" | "custom_domain";
@@ -20,6 +20,7 @@ export async function tenantEntitlements(tenantId: string) {
 
 export async function getLimit(tenantId: string, key: LimitKey) {
   const entitlements = await tenantEntitlements(tenantId);
+  if (key === "custom_domain") return entitlements?.limits.custom_domain === 1 ? 1 : 0;
   return entitlements ? unlimited(entitlements.limits[key]) : 0;
 }
 
@@ -50,12 +51,13 @@ export async function getUsage(tenantId: string, key: LimitKey) {
     return Number(propertyRows[0].value) + Number(opportunityRows[0].value);
   }
   if (key === "max_storage_bytes") {
-    const [photos, documents, attachments] = await Promise.all([
+    const [photos, documents, attachments, brands] = await Promise.all([
       db.select({ value: sum(propertyPhotos.sizeBytes) }).from(propertyPhotos).where(eq(propertyPhotos.tenantId, tenantId)),
       db.select({ value: sum(propertyDocuments.size) }).from(propertyDocuments).where(eq(propertyDocuments.tenantId, tenantId)),
       db.select({ value: sum(opportunityAttachments.sizeBytes) }).from(opportunityAttachments).where(eq(opportunityAttachments.tenantId, tenantId)),
+      db.select({ value: sum(brandingAssets.sizeBytes) }).from(brandingAssets).where(eq(brandingAssets.tenantId, tenantId)),
     ]);
-    return Number(photos[0].value || 0) + Number(documents[0].value || 0) + Number(attachments[0].value || 0);
+    return Number(photos[0].value || 0) + Number(documents[0].value || 0) + Number(attachments[0].value || 0) + Number(brands[0].value || 0);
   }
   return 0;
 }

@@ -13,7 +13,8 @@ import { moduleRegistry, validModuleCombination } from "@/lib/module-registry";
 import { modules } from "@/lib/permissions";
 import { hashToken, issueToken } from "@/lib/security";
 import { auditTenantAction } from "@/lib/tenant-audit";
-import { ROOT_TENANT_SLUG } from "@/lib/tenant";
+import { normalizeWhatsApp } from "@/lib/contact";
+import { ROOT_TENANT_ID, ROOT_TENANT_SLUG } from "@/lib/tenant";
 
 type ActionState = { message: string; ok: boolean };
 
@@ -60,6 +61,8 @@ export async function updateTenantIdentity(
   const db = getDb();
   const [current] = await db.select({ id: tenants.id, slug: tenants.slug }).from(tenants).where(eq(tenants.id, tenantId.data)).limit(1);
   if (!current) return failure("Empresa não encontrada.");
+  if (current.id === ROOT_TENANT_ID && parsed.data.slug !== ROOT_TENANT_SLUG) return failure("O endereço da empresa principal não pode ser alterado.");
+  if (parsed.data.whatsapp && !normalizeWhatsApp(parsed.data.whatsapp)) return failure("Informe um WhatsApp válido.");
 
   if (current.slug !== parsed.data.slug) {
     const [[duplicate], [historic]] = await Promise.all([
@@ -75,7 +78,7 @@ export async function updateTenantIdentity(
     slug: parsed.data.slug,
     email: parsed.data.email || null,
     phone: parsed.data.phone || null,
-    whatsapp: parsed.data.whatsapp || null,
+    whatsapp: normalizeWhatsApp(parsed.data.whatsapp),
     updatedAt: new Date(),
   }).where(eq(tenants.id, tenantId.data));
   await auditTenantAction({

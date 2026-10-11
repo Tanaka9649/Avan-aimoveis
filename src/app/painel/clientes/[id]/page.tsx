@@ -23,6 +23,7 @@ import { ClientEditor } from "@/components/client-editor";
 import { AdminTabs } from "@/components/admin-tabs";
 import { SettingsForm } from "@/components/settings-form";
 import {
+  eraseClientContact,
   addClientNote,
   registerPresentation,
   toggleFavorite,
@@ -434,6 +435,10 @@ export default async function Page({
         eyebrow="Ficha do cliente"
         description="Contatos, preferências e relacionamento em um só lugar."
       />
+      {user.role === "admin" ? <details className="admin-card"><summary>Privacidade do contato</summary>
+        <p>Remove nome, telefone, e-mail e preferências deste cadastro. Históricos, notas livres, anexos e registros financeiros permanecem e precisam de revisão separada. Esta ação não representa anonimização integral.</p>
+        <SettingsForm action={eraseClientContact} label="Remover dados do cadastro"><input type="hidden" name="clientId" value={client.id}/><label className="check"><input type="checkbox" name="confirm" required/>Confirmo a remoção definitiva destes dados de contato.</label></SettingsForm>
+      </details> : null}
       <AdminTabs
         tabs={[
           { id: "resumo", label: "Visão geral", content: summary },

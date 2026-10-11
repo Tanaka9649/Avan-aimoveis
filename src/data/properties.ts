@@ -16,6 +16,8 @@ export type PublicPropertyCard = {
   bathrooms: number;
   parkingSpaces: number;
   area: number;
+  privateArea?: number;
+  lotArea?: number;
   cover: PublicPhoto | null;
 };
 

@@ -1,4 +1,6 @@
 "use client";
+import { useTenantPublicPath } from "@/components/tenant-public-context";
+import { siteUrl } from "@/lib/brand";
 import Link from "next/link";
 import { Check, Copy, ExternalLink, FileText, Globe, Link2Off, MessageCircle, MoreHorizontal, Share2, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
@@ -43,6 +45,8 @@ function useToast() {
  * so and offers to publish right there, then switches to the full set of actions without a reload.
  */
 export function PropertyShareDialog({ property, client, onClose }: { property: SharableProperty; client?: ShareClientContext; onClose: () => void }) {
+  const publicBase = useTenantPublicPath();
+  const publicUrlBase = `${siteUrl().replace(/\/$/, "")}${publicBase}`;
   const [current, setCurrent] = useState(property);
   const [toast, setToast] = useToast();
   const [missing, setMissing] = useState<string[]>([]);
@@ -50,8 +54,8 @@ export function PropertyShareDialog({ property, client, onClose }: { property: S
   const [presented, setPresented] = useState(false);
   const [pending, startTransition] = useTransition();
   const live = isPubliclyVisible(current);
-  const link = publicPropertyUrl(current.slug);
-  const message = sharePropertyMessage(current);
+  const link = publicPropertyUrl(current.slug, publicUrlBase);
+  const message = sharePropertyMessage(current, publicUrlBase);
 
   async function copy(value: string, confirmation: string) {
     try {
@@ -103,14 +107,14 @@ export function PropertyShareDialog({ property, client, onClose }: { property: S
 
         {live ? (
           <>
-            <code className="share-link">{publicPropertyPath(current.slug)}</code>
+            <code className="share-link">{publicPropertyPath(current.slug, publicBase)}</code>
             <button onClick={() => { copy(link, "Link copiado."); markPresented("link"); }}><Copy /> Copiar link</button>
             <button onClick={() => { copy(message, "Mensagem copiada."); markPresented("link"); }}><Copy /> Copiar mensagem</button>
             <a href={whatsappShareUrl(message, client?.phone)} target="_blank" rel="noreferrer" onClick={() => markPresented("whatsapp")}>
               <MessageCircle /> Abrir WhatsApp{client?.phone ? ` com ${client.name.split(" ")[0]}` : ""}
             </a>
             <a href={`/api/properties/${current.id}/pdf`}><FileText /> Gerar PDF</a>
-            <a href={publicPropertyPath(current.slug)} target="_blank" rel="noreferrer"><ExternalLink /> Ver no site</a>
+            <a href={publicPropertyPath(current.slug, publicBase)} target="_blank" rel="noreferrer"><ExternalLink /> Ver no site</a>
           </>
         ) : (
           <>
@@ -156,6 +160,7 @@ export function PropertyShareButton({ property, client, label = "Compartilhar" }
 
 /** The card's "…" menu: publish, open on the site, unpublish — without crowding the card. */
 export function PropertyPublicationMenu({ property, full = false }: { property: SharableProperty; full?: boolean }) {
+  const publicBase = useTenantPublicPath();
   const [open, setOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -228,7 +233,7 @@ export function PropertyPublicationMenu({ property, full = false }: { property: 
         ) : null}
         {live ? (
           <>
-            <Link role="menuitem" href={publicPropertyPath(property.slug)} target="_blank" rel="noreferrer" onClick={close}><ExternalLink /> Ver no site</Link>
+            <Link role="menuitem" href={publicPropertyPath(property.slug, publicBase)} target="_blank" rel="noreferrer" onClick={close}><ExternalLink /> Ver no site</Link>
             <button type="button" role="menuitem" disabled={pending} onClick={() => run(() => unpublishProperty(property.id))}><Link2Off /> Despublicar</button>
           </>
         ) : (
@@ -240,7 +245,7 @@ export function PropertyPublicationMenu({ property, full = false }: { property: 
         {feedback ? <p role="status">{feedback}</p> : null}
       </div>
     </>,
-    document.body,
+    document.querySelector(".admin-app") || document.body,
   ) : null;
 
   return (

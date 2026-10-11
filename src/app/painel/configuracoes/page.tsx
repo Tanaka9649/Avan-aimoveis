@@ -55,13 +55,14 @@ export default async function SettingsPage() {
           <SettingsForm action={saveTenantBranding} label="Salvar dados e site">
             <label>Nome da empresa<input name="name" required minLength={2} defaultValue={tenant.name}/></label>
             <label>Telefone<input name="phone" defaultValue={tenant.phone || ""}/></label>
-            <label>WhatsApp<input name="whatsapp" defaultValue={tenant.whatsapp || ""}/></label>
+            <label>Qual o número de WhatsApp será usado para contato<input type="tel" name="whatsapp" defaultValue={tenant.whatsapp || ""}/></label>
             <label>E-mail<input name="email" type="email" defaultValue={tenant.email || ""}/></label>
             <label>Cor principal<input name="primaryColor" type="color" defaultValue={site.primaryColor || "#111827"}/></label>
             <label>Cor secundária<input name="secondaryColor" type="color" defaultValue={site.secondaryColor || "#334155"}/></label>
             <label>Cor de destaque<input name="accentColor" type="color" defaultValue={site.accentColor || "#3b82f6"}/></label>
             <label className="wide">Título do site<input name="siteTitle" maxLength={180} defaultValue={site.title || ""}/></label>
             <label className="wide">Descrição para SEO<textarea name="siteDescription" maxLength={320} defaultValue={site.description || ""}/></label>
+            <label className="wide">Aviso de privacidade do site<textarea name="privacyNotice" maxLength={15000} rows={6} defaultValue={typeof tenant.settings.privacyNotice === "string" ? tenant.settings.privacyNotice : ""}/><small>Descreva o uso dos dados, retenção e canal para solicitações dos clientes.</small></label>
           </SettingsForm>
         }
         logos={

@@ -198,6 +198,7 @@ export const propertyOwners = pgTable("property_owners", {
 export const documentCategories = pgTable("document_categories", {
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(), id: uuid("id").defaultRandom().primaryKey(), name: varchar("name", { length: 100 }).notNull(), entityType: varchar("entity_type", { length: 30 }).notNull(), active: boolean("active").default(true).notNull(), ...audit });
 export const propertyDocuments = pgTable("property_documents", {
+  uploadStatus: varchar("upload_status", { length: 20 }).default("ready").notNull(),
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(), id: uuid("id").defaultRandom().primaryKey(), propertyId: uuid("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(), categoryId: uuid("category_id").references(() => documentCategories.id).notNull(), storagePath: text("storage_path").notNull(), originalName: varchar("original_name", { length: 240 }).notNull(), mime: varchar("mime", { length: 100 }).notNull(), size: integer("size").notNull(), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull() });
 
 export const clients = pgTable("clients", {
@@ -277,7 +278,7 @@ export const analyticsDaily = pgTable("analytics_daily", {
   total: integer("total").default(0).notNull(),
   uniqueVisitors: integer("unique_visitors").default(0).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [uniqueIndex("analytics_daily_uq").on(t.tenantId, t.day, t.eventType, t.propertyId)]);
+}, (t) => [uniqueIndex("analytics_daily_uq").on(t.tenantId, t.day, t.eventType, sql`coalesce(${t.propertyId}, '00000000-0000-0000-0000-000000000000'::uuid)`)]);
 
 export const tenantAuditLogs = pgTable("tenant_audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -289,3 +290,39 @@ export const tenantAuditLogs = pgTable("tenant_audit_logs", {
   metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index("tenant_audit_logs_tenant_created_idx").on(t.tenantId, t.createdAt)]);
+
+export const passwordResets = pgTable("password_resets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  tokenHash: text("token_hash").notNull(),
+  passwordVersion: text("password_version").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [uniqueIndex("password_resets_token_uq").on(t.tokenHash), index("password_resets_user_idx").on(t.userId)]);
+
+export const brandingAssets = pgTable("branding_assets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
+  asset: text("asset").notNull(),
+  mime: text("mime").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [uniqueIndex("branding_assets_tenant_asset_uq").on(t.tenantId, t.asset)]);
+
+export const operationRuns = pgTable("operation_runs", {
+  name: text("name").primaryKey(),
+  succeededAt: timestamp("succeeded_at", { withTimezone: true }),
+  failedAt: timestamp("failed_at", { withTimezone: true }),
+  status: text("status").default("pending").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const visitReminderDeliveries = pgTable("visit_reminder_deliveries", {
+  id: uuid("id").defaultRandom().primaryKey(), tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
+  visitId: uuid("visit_id").references(() => visits.id, { onDelete: "cascade" }).notNull(),
+  recipient: text("recipient").notNull(), sentAt: timestamp("sent_at", { withTimezone: true }),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }), attempts: integer("attempts").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [uniqueIndex("visit_reminder_deliveries_visit_id_recipient_key").on(t.visitId,t.recipient)]);

@@ -1,5 +1,6 @@
 "use server";
-import { and, eq } from "drizzle-orm";
+import { normalizeWhatsApp } from "@/lib/contact";
+import { sql, and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -36,7 +37,7 @@ export async function createAccount(_: State, form: FormData): Promise<State> {
     revalidatePath("/painel/configuracoes");
     return {
       ok: true,
-      message: "Convite criado. Copie o link e envie à pessoa; nenhuma senha foi definida pelo administrador.",
+      message: invitation.emailSent ? "Convite enviado por e-mail." : "Convite criado. E-mail indisponível; compartilhe o link por um canal seguro.",
       inviteUrl: invitation.inviteUrl,
     };
   } catch (error) {
@@ -173,13 +174,14 @@ export async function saveTenantBranding(_: State, form: FormData): Promise<Stat
   const parsed = z.object({
     name: z.string().trim().min(2).max(180),
     phone: z.string().trim().max(30),
-    whatsapp: z.string().trim().max(30),
+    whatsapp: z.string().trim().max(30).refine(value => !value || Boolean(normalizeWhatsApp(value)), "WhatsApp inválido").transform(value => value ? normalizeWhatsApp(value)! : ""),
     email: z.union([z.literal(""), z.email().max(254)]),
     primaryColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     secondaryColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     accentColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     siteTitle: z.string().trim().max(180),
     siteDescription: z.string().trim().max(320),
+    privacyNotice: z.string().trim().max(15000).optional(),
   }).safeParse(Object.fromEntries(form));
   if (!parsed.success) return { ok: false, message: "Revise a identidade visual e os dados de contato." };
   const data = parsed.data;
@@ -188,6 +190,7 @@ export async function saveTenantBranding(_: State, form: FormData): Promise<Stat
     await db.batch([
       db.update(tenants).set({
         name: data.name,
+        settings: sql`jsonb_set(coalesce(${tenants.settings}, '{}'::jsonb), '{privacyNotice}', ${JSON.stringify(data.privacyNotice || "")}::jsonb)`,
         phone: data.phone || null,
         whatsapp: data.whatsapp || null,
         email: data.email || null,

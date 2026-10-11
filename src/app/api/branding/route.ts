@@ -1,3 +1,7 @@
+import { withApiErrors } from "@/lib/api-errors";
+import { getDb } from "@/db";
+import { brandingAssets } from "@/db/schema";
+import { canConsumeResource } from "@/lib/entitlements";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -13,17 +17,19 @@ const input = z.object({
   size: z.number().int().positive().max(MAX_BRANDING_BYTES),
 });
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const admin = await requireAdmin();
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revise o arquivo selecionado." }, { status: 400 });
   const extension = brandingExtension(parsed.data.type);
-  if (!extension) return NextResponse.json({ error: "Use PNG, JPG, WEBP, SVG ou ICO." }, { status: 400 });
+  if (!extension) return NextResponse.json({ error: "Use PNG, JPG, WEBP ou ICO." }, { status: 400 });
 
   const asset = randomUUID() + extension;
-  const key = tenantStorageKey(admin.tenantId, `branding/${asset}`);
+  const key = tenantStorageKey(admin.tenantId, `branding/pending/${asset}`);
   try {
     const uploadUrl = await signedUploadUrl(PHOTO_BUCKET, key, parsed.data.type, parsed.data.size);
+    if (!await canConsumeResource(admin.tenantId, "max_storage_bytes", parsed.data.size)) return NextResponse.json({ error: "Limite de armazenamento atingido." }, { status: 409 });
+    await getDb().insert(brandingAssets).values({ tenantId: admin.tenantId, asset, mime: parsed.data.type, sizeBytes: parsed.data.size });
     return NextResponse.json({
       uploadUrl,
       publicUrl: `/api/branding/${admin.tenantId}/${asset}`,
@@ -33,3 +39,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não foi possível preparar o envio da imagem." }, { status: 502 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

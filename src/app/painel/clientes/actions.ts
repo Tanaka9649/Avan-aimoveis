@@ -5,20 +5,20 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { clients, activities, clientFavorites, clientPropertyPresentations, properties } from "@/db/schema";
-import { requireModule, clientScope } from "@/lib/access";
+import { clients, activities, clientFavorites, clientPropertyPresentations, properties, activityLogs } from "@/db/schema";
+import { requireAdmin, requireWriteModule, clientScope } from "@/lib/access";
 import { clientInput } from "@/lib/client-input";
 import { canCreateResource } from "@/lib/entitlements";
 type State = {ok:boolean;message:string};
 export async function saveClient(_:State, form:FormData):Promise<State> {
-  const user=await requireModule("clientes");
+  const user=await requireWriteModule("clientes");
   const parsed=clientInput.safeParse(Object.fromEntries(form));
   if(!parsed.success) { const field=parsed.error.issues[0]?.path[0]; const messages:Record<string,string>={name:"Informe o nome completo do cliente.",phone:"Informe um telefone válido com DDD.",email:"Informe um e-mail válido.",origin:"Informe a origem do contato.",budgetMax:"O orçamento máximo deve ser maior que o mínimo.",minBedrooms:"Informe uma quantidade válida de quartos.",minBathrooms:"Informe uma quantidade válida de banheiros.",minParkingSpaces:"Informe uma quantidade válida de vagas."}; return {ok:false,message:messages[String(field)]||"Revise os campos destacados e tente novamente."}; }
   const raw=String(form.get("id")||"");
   if(raw && !z.uuid().safeParse(raw).success) return {ok:false,message:"Cliente inválido."};
   const db=getDb(); const id=raw||randomUUID();
   if(!raw&&!await canCreateResource(user.tenantId,"max_clients"))return {ok:false,message:"O limite de clientes do plano foi atingido."};
-  if(raw){const [allowed]=await db.select({id:clients.id}).from(clients).where(and(eq(clients.id,id),clientScope(user)));if(!allowed)return {ok:false,message:"Cliente indisponível."};}
+  if(raw){const [allowed]=await db.select({id:clients.id,anonymizedAt:clients.anonymizedAt}).from(clients).where(and(eq(clients.id,id),clientScope(user)));if(!allowed || allowed.anonymizedAt)return {ok:false,message:"Cliente indisponível ou contato removido."};}
   const {budgetMin,budgetMax,...rest}=parsed.data;
   const values={...rest,budgetMinCents:budgetMin,budgetMaxCents:budgetMax,updatedAt:new Date()};
   try {await db.batch([
@@ -28,13 +28,28 @@ export async function saveClient(_:State, form:FormData):Promise<State> {
   revalidatePath("/painel","layout");redirect(`/painel/clientes/${id}`);
 }
 export async function addClientNote(_:State,form:FormData):Promise<State>{
-  const user=await requireModule("clientes");const p=z.object({clientId:z.uuid(),type:z.enum(["ligacao","whatsapp","visita","proposta","observacao","desistencia","retorno"]),description:z.string().trim().min(2).max(10000)}).safeParse(Object.fromEntries(form));
+  const user=await requireWriteModule("clientes");const p=z.object({clientId:z.uuid(),type:z.enum(["ligacao","whatsapp","visita","proposta","observacao","desistencia","retorno"]),description:z.string().trim().min(2).max(10000)}).safeParse(Object.fromEntries(form));
   if(!p.success)return {ok:false,message:"Informe uma nota de 2 a 10.000 caracteres."};
   const db=getDb();const [client]=await db.select({id:clients.id}).from(clients).where(and(eq(clients.id,p.data.clientId),clientScope(user)));
   if(!client)return {ok:false,message:"Cliente indisponível."};
   await db.insert(activities).values({tenantId:user.tenantId,...p.data,userId:user.id});revalidatePath(`/painel/clientes/${client.id}`);return {ok:true,message:"Interação registrada."};
 }
 
-async function allowedClient(id:string,user:Awaited<ReturnType<typeof requireModule>>){return (await getDb().select({id:clients.id}).from(clients).where(and(eq(clients.id,id),clientScope(user))).limit(1))[0];}
-export async function toggleFavorite(form:FormData){const user=await requireModule("clientes");const p=z.object({clientId:z.uuid(),propertyId:z.uuid(),remove:z.enum(["0","1"])}).safeParse(Object.fromEntries(form));if(!p.success||!await allowedClient(p.data.clientId,user))return;const db=getDb();if(p.data.remove==="1")await db.delete(clientFavorites).where(and(eq(clientFavorites.tenantId,user.tenantId),eq(clientFavorites.clientId,p.data.clientId),eq(clientFavorites.propertyId,p.data.propertyId)));else{const [property]=await db.select({id:properties.id}).from(properties).where(and(eq(properties.id,p.data.propertyId),eq(properties.tenantId,user.tenantId)));if(property)await db.insert(clientFavorites).values({tenantId:user.tenantId,clientId:p.data.clientId,propertyId:p.data.propertyId,createdBy:user.id}).onConflictDoNothing();}revalidatePath(`/painel/clientes/${p.data.clientId}`);}
-export async function registerPresentation(form:FormData){const user=await requireModule("clientes");const p=z.object({clientId:z.uuid(),propertyId:z.uuid(),channel:z.enum(["whatsapp","link","email","presencial","outro"])}).safeParse(Object.fromEntries(form));if(!p.success||!await allowedClient(p.data.clientId,user))return;const db=getDb();const [property]=await db.select({id:properties.id}).from(properties).where(and(eq(properties.id,p.data.propertyId),eq(properties.tenantId,user.tenantId))).limit(1);if(!property)return;await db.batch([db.insert(clientPropertyPresentations).values({tenantId:user.tenantId,...p.data,userId:user.id}),db.insert(activities).values({tenantId:user.tenantId,clientId:p.data.clientId,userId:user.id,type:"imovel_apresentado",description:`Imóvel apresentado ao cliente via ${p.data.channel}.`})]);revalidatePath(`/painel/clientes/${p.data.clientId}`);}
+async function allowedClient(id:string,user:Awaited<ReturnType<typeof requireWriteModule>>){return (await getDb().select({id:clients.id,anonymizedAt:clients.anonymizedAt}).from(clients).where(and(eq(clients.id,id),clientScope(user))).limit(1))[0];}
+export async function toggleFavorite(form:FormData){const user=await requireWriteModule("clientes");const p=z.object({clientId:z.uuid(),propertyId:z.uuid(),remove:z.enum(["0","1"])}).safeParse(Object.fromEntries(form));if(!p.success||!await allowedClient(p.data.clientId,user))return;const db=getDb();if(p.data.remove==="1")await db.delete(clientFavorites).where(and(eq(clientFavorites.tenantId,user.tenantId),eq(clientFavorites.clientId,p.data.clientId),eq(clientFavorites.propertyId,p.data.propertyId)));else{const [property]=await db.select({id:properties.id}).from(properties).where(and(eq(properties.id,p.data.propertyId),eq(properties.tenantId,user.tenantId)));if(property)await db.insert(clientFavorites).values({tenantId:user.tenantId,clientId:p.data.clientId,propertyId:p.data.propertyId,createdBy:user.id}).onConflictDoNothing();}revalidatePath(`/painel/clientes/${p.data.clientId}`);}
+export async function registerPresentation(form:FormData){const user=await requireWriteModule("clientes");const p=z.object({clientId:z.uuid(),propertyId:z.uuid(),channel:z.enum(["whatsapp","link","email","presencial","outro"])}).safeParse(Object.fromEntries(form));if(!p.success||!await allowedClient(p.data.clientId,user))return;const db=getDb();const [property]=await db.select({id:properties.id}).from(properties).where(and(eq(properties.id,p.data.propertyId),eq(properties.tenantId,user.tenantId))).limit(1);if(!property)return;await db.batch([db.insert(clientPropertyPresentations).values({tenantId:user.tenantId,...p.data,userId:user.id}),db.insert(activities).values({tenantId:user.tenantId,clientId:p.data.clientId,userId:user.id,type:"imovel_apresentado",description:`Imóvel apresentado ao cliente via ${p.data.channel}.`})]);revalidatePath(`/painel/clientes/${p.data.clientId}`);}
+
+export async function eraseClientContact(_: State, form: FormData): Promise<State> {
+  const user = await requireAdmin();
+  const id = z.uuid().safeParse(form.get("clientId"));
+  if (!id.success || form.get("confirm") !== "on") return { ok: false, message: "Confirme a remoção dos dados de contato." };
+  const db=getDb();
+  const [client]=await db.select({id:clients.id}).from(clients).where(and(eq(clients.tenantId,user.tenantId),eq(clients.id,id.data))).limit(1);
+  if(!client) return {ok:false,message:"Cliente indisponível."};
+  await db.batch([
+    db.update(clients).set({name:"Contato removido",phone:"",email:null,origin:"Removido",budgetMinCents:null,budgetMaxCents:null,desiredTypes:[],desiredRegions:[],desiredFeatures:[],minBedrooms:null,minBathrooms:null,minParkingSpaces:null,minArea:null,lgpdConsentAt:null,anonymizedAt:new Date(),updatedAt:new Date()}).where(and(eq(clients.tenantId,user.tenantId),eq(clients.id,id.data))),
+    db.insert(activityLogs).values({tenantId:user.tenantId,userId:user.id,entityType:"client",entityId:id.data,action:"contact_erased",details:{scope:"structured_contact_and_preferences"}}),
+  ]);
+  revalidatePath("/painel","layout");
+  return {ok:true,message:"Nome, telefone, e-mail e preferências removidos. Revise separadamente notas, anexos e documentos que devam ser retidos ou excluídos."};
+}
