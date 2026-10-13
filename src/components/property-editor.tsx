@@ -31,7 +31,7 @@ import {
   propertySteps,
 } from "@/lib/property-wizard";
 import "./property-wizard.css";
-import { PropertyMediaManager } from "./property-media-manager";
+import { PropertyMediaManager, type PropertyPhoto, type PropertyDocument } from "./property-media-manager";
 import { MoneyInput } from "./money-input";
 
 type Values = Record<string, string>;
@@ -118,14 +118,16 @@ function SummaryBlock({
 export function PropertyEditor({
   initial = {},
   owners = [],
-  photos = [],
-  documents = [],
+  photos: initialPhotos = [],
+  documents: initialDocuments = [],
 }: {
   initial?: Record<string, string | number>;
   owners?: { id: string; name: string }[];
   photos?: { id: string; alt: string; position: number; isCover: boolean; blurData?: string | null; processingStatus?: string }[];
   documents?: { id: string; originalName: string; mime: string; size: number }[];
 }) {
+  const [photos, setPhotos] = useState<PropertyPhoto[]>(() => [...initialPhotos].sort((a, b) => a.position - b.position));
+  const [documents, setDocuments] = useState<PropertyDocument[]>(initialDocuments);
   const [state, action, pending] = useActionState(saveProperty, { error: "", id: String(initial.id || "") });
   const [values, setValues] = useState<Values>(() => ({
     title: "",
@@ -261,7 +263,7 @@ export function PropertyEditor({
     city: values.city,
     state: values.state,
     area: Number(values.area || values.lotArea || 0),
-    photoCount: photos.length,
+    photoCount: photos.filter((photo) => !photo.processingStatus || photo.processingStatus === "ready").length,
   }).filter((check) => !check.done).map((check) => check.label);
   const ownerName =
     owners.find((o) => o.id === values.ownerId)?.name ||
@@ -612,9 +614,9 @@ export function PropertyEditor({
                 </label>
               </>
             ) : null}
-            {step === 4 ? (
-              <PropertyMediaManager propertyId={propertyId || undefined} initialPhotos={photos} initialDocuments={documents}/>
-            ) : null}
+            <div hidden={step !== 4}>
+              <PropertyMediaManager propertyId={propertyId || undefined} photos={photos} documents={documents} setPhotos={setPhotos} setDocuments={setDocuments}/>
+            </div>
             {step === 5 ? (
               <>
                 <div className="wizard-preview">

@@ -2,16 +2,20 @@
 
 import Image from "next/image";
 import { FileText, GripVertical, ImagePlus, Loader2, LockKeyhole, RotateCcw, Star, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { photoUrl } from "@/lib/photos";
 
-type Photo = { id: string; alt: string; position: number; isCover: boolean; blurData?: string | null; processingStatus?: string };
-type Document = { id: string; originalName: string; mime: string; size: number };
+export type PropertyPhoto = { id: string; alt: string; position: number; isCover: boolean; blurData?: string | null; processingStatus?: string };
+export type PropertyDocument = { id: string; originalName: string; mime: string; size: number };
 type Reservation = { photoId: string; uploadUrl: string; contentType: string; position: number; isCover: boolean };
 
-export function PropertyMediaManager({ propertyId, initialPhotos = [], initialDocuments = [] }: { propertyId?: string; initialPhotos?: Photo[]; initialDocuments?: Document[] }) {
-  const [photos, setPhotos] = useState(() => [...initialPhotos].sort((a, b) => a.position - b.position));
-  const [documents, setDocuments] = useState(initialDocuments);
+export function PropertyMediaManager({ propertyId, photos, documents, setPhotos, setDocuments }: {
+  propertyId?: string;
+  photos: PropertyPhoto[];
+  documents: PropertyDocument[];
+  setPhotos: Dispatch<SetStateAction<PropertyPhoto[]>>;
+  setDocuments: Dispatch<SetStateAction<PropertyDocument[]>>;
+}) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const drag = useRef<string | null>(null);
@@ -30,7 +34,7 @@ export function PropertyMediaManager({ propertyId, initialPhotos = [], initialDo
       }));
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [photos, propertyId]);
+  }, [photos, propertyId, setPhotos]);
 
   if (!propertyId) return <div className="wizard-upload"><ImagePlus size={34}/><h3>Fotos e documentos</h3><p>Salve o rascunho para liberar o envio de arquivos sem perder os dados preenchidos.</p><small>O original será preservado e a visualização será preparada sem bloquear seu trabalho.</small></div>;
 
@@ -48,7 +52,7 @@ export function PropertyMediaManager({ propertyId, initialPhotos = [], initialDo
       });
       const reservationData = await reservationResponse.json();
       if (!reservationResponse.ok) throw new Error(reservationData.error || "Não foi possível preparar o envio.");
-      const uploaded: Photo[] = [];
+      const uploaded: PropertyPhoto[] = [];
       for (const [index, reservation] of (reservationData.uploads as Reservation[]).entries()) {
         try {
           await putFile(reservation.uploadUrl, files[index], reservation.contentType, (percent) => setMessage(`Enviando foto ${index + 1} de ${files.length} · ${percent}%`));
