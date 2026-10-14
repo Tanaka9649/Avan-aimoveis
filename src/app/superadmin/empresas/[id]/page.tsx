@@ -37,6 +37,7 @@ import {
 } from "@/lib/ui-labels";
 import {
   accessTenant,
+  restoreMissingDefaults,
   updateTenantIdentity,
   updateTenantLifecycle,
   updateTenantLimits,
@@ -190,6 +191,7 @@ export default async function TenantDetailPage({ params, searchParams }: { param
 
   const operationContent = (
     <section className="admin-card table-card">
+      <SettingsForm action={restoreMissingDefaults.bind(null,tenant.id)} label="Conferir configurações iniciais ausentes"><p>Cria funil e categorias somente quando a empresa não possui nenhum. Não sobrescreve personalizações.</p></SettingsForm>
       <div className="table-toolbar"><div><strong>Etapas de configuração</strong><span>Acompanhamento técnico do provisionamento da empresa</span></div></div>
       {provisioning.length ? <div className="table-scroll"><table><thead><tr><th>Etapa</th><th>Status</th><th>Tentativas</th><th>Último erro</th></tr></thead><tbody>{provisioning.map((step) => <tr key={step.step}><td><strong>{provisionStepLabel(step.step)}</strong></td><td>{provisionStatusLabels[step.status] || step.status}</td><td>{step.attempts}</td><td>{step.lastError ?? "—"}</td></tr>)}</tbody></table></div> : <p className="table-empty">Empresa migrada sem histórico de provisionamento.</p>}
     </section>

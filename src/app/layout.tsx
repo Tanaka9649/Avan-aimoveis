@@ -1,3 +1,4 @@
+import { ROOT_TENANT_ID } from "@/lib/tenant-routing";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -25,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(baseUrl),
     title: { default: site.title || `${tenant.name} — imóveis selecionados`, template: `%s | ${tenant.name}` },
     description: site.description || "Imóveis escolhidos com critério. Negócios conduzidos com clareza.",
-    icons: { icon: tenant.branding?.favicon || "/icon.png", apple: tenant.branding?.favicon || "/apple-icon.png" },
+    icons: { icon: tenant.branding?.favicon || (tenant.id === ROOT_TENANT_ID ? "/icon.png" : "/platform-icon.svg"), apple: tenant.branding?.favicon || (tenant.id === ROOT_TENANT_ID ? "/apple-icon.png" : "/platform-icon.svg") },
     alternates: { canonical: baseUrl },
   };
 }
@@ -43,7 +44,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang="pt-BR">
       <body className={sans.variable} style={palette}>
         <AnalyticsTracker tenantSlug={tenant.slug}/>
-        <SiteHeader tenant={tenant} basePath={basePath}/>
+        <SiteHeader tenant={{name:tenant.name,slug:tenant.slug,branding:tenant.branding}} basePath={basePath}/>
         <main>{children}</main>
         <SiteFooter tenant={tenant} basePath={basePath}/>
       </body>

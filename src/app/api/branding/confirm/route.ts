@@ -1,3 +1,5 @@
+import { claimUpload, releaseUpload } from "@/lib/upload-lifecycle";
+import { reportOperationFailure } from "@/lib/observability";
 import { withApiErrors } from "@/lib/api-errors";
 import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
@@ -51,6 +53,7 @@ async function handlePOST(request: Request) {
     return NextResponse.json({ error: "O arquivo não corresponde ao formato permitido." }, { status: 400 });
   }
 
+  if (!await claimUpload("branding_assets", admin.tenantId, reservation.id)) return NextResponse.json({ error: "Envio expirado ou em processamento." }, { status: 409 });
   const key = tenantStorageKey(admin.tenantId, `branding/pending/${file.asset}`);
   try {
     const client = storageClient();
@@ -78,8 +81,9 @@ async function handlePOST(request: Request) {
       publicUrl: `/api/branding/${admin.tenantId}/${file.asset}`,
     }, { headers: { "cache-control": "no-store" } });
   } catch {
+    reportOperationFailure("upload", "branding_confirmation_failed");
     return NextResponse.json({ error: "Não foi possível confirmar a imagem enviada." }, { status: 502 });
-  }
+  } finally { await releaseUpload("branding_assets", admin.tenantId, reservation.id); }
 }
 
 export const POST = withApiErrors(handlePOST);

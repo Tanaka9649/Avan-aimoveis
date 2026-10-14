@@ -1,3 +1,4 @@
+import { databaseErrorIs } from "@/lib/database-error";
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email";
 import { properties, tenants } from "@/db/schema";
@@ -28,8 +29,8 @@ export async function POST(request: Request) {
     if (tenant?.email) await sendEmail({ to: tenant.email, subject: "Novo interesse em imóvel", text: "Um interessado enviou uma solicitação pelo site. Acesse o CRM da sua empresa para acompanhar o atendimento.", key: `lead/${result.rows[0].id}/${Date.now()}` });
     return NextResponse.json({ message: "Recebemos seus dados. Nossa equipe entrará em contato." }, { status: 201 });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "";
-    if (reason.includes("tenant_quota_exceeded")) return NextResponse.json({ error: "Atendimento pelo formulário temporariamente indisponível. Utilize o contato da empresa." }, { status: 409 });
+    if (databaseErrorIs(error,"lead_contact_conflict") || databaseErrorIs(error,"client_contact_duplicate")) return NextResponse.json({error:"Não foi possível confirmar esses dados de contato. Confira-os ou fale diretamente com a empresa."},{status:409});
+    if (databaseErrorIs(error,"tenant_quota_exceeded")) return NextResponse.json({ error: "Atendimento pelo formulário temporariamente indisponível. Utilize o contato da empresa." }, { status: 409 });
     console.error("lead_create_failed");
     return NextResponse.json({ error: "Serviço temporariamente indisponível." }, { status: 503 });
   }

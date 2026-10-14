@@ -53,7 +53,7 @@ const routeLabels: Record<string, string> = {
   "/painel/perfil": "Meu perfil",
 };
 
-export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; globalRole: "user" | "super_admin"; access: Access; tenant: { slug: string; name: string } } }) {
+export function AdminShell({ children, user }: { children: React.ReactNode; user: { name: string; role: string; globalRole: "user" | "super_admin"; access: Access; tenant: { slug: string; name: string; branding?: import("@/lib/branding").TenantBranding } } }) {
   const pathname = usePathname();
   const panelBase = user.tenant.slug === "avanca-imoveis" ? "/painel" : `/empresa/${user.tenant.slug}/painel`;
   const publicBase = user.tenant.slug === "avanca-imoveis" ? "/" : `/empresa/${user.tenant.slug}`;
@@ -106,7 +106,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
       <button className={`sidebar-backdrop${open ? " open" : ""}`} aria-label="Fechar menu" onClick={() => setOpen(false)} />
       <aside className={`admin-sidebar${open ? " open" : ""}`}>
         <div className="sidebar-brand">
-          <Link href={homeHref} aria-label={`${user.tenant.name} — início do painel`}><BrandLogo light={theme === "dark"} compact={collapsed && !open} /></Link>
+          <Link href={homeHref} aria-label={`${user.tenant.name} — início do painel`}><BrandLogo name={user.tenant.name} branding={user.tenant.branding} light={theme === "dark"} compact={collapsed && !open} /></Link>
           <button className="sidebar-close" aria-label="Fechar menu" onClick={() => setOpen(false)}><X /></button>
           <button className="sidebar-collapse" aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"} title={collapsed ? "Expandir" : "Recolher"} onClick={toggleCollapsed}>{collapsed ? <ChevronRight /> : <ChevronLeft />}</button>
         </div>

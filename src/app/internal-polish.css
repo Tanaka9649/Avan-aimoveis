@@ -383,7 +383,10 @@
 .admin-app .dashboard-action-group>header strong{font-size:11px;text-transform:uppercase;letter-spacing:.07em}
 .admin-app .dashboard-action-group>header span{display:grid;min-width:23px;height:23px;place-items:center;border-radius:999px;background:var(--admin-surface);font-size:10px}
 .admin-app .dashboard-action-group.overdue>header strong{color:#fca5a5}
-.admin-app .dashboard-action-time{display:grid;min-width:118px;gap:2px}
+.admin-app .dashboard-action-time{display:grid;min-width:0;gap:2px}
+.admin-app .dashboard-action-group .today-list>a{grid-template-columns:minmax(0,1fr);gap:6px}
+.admin-app .dashboard-action-group .today-list>a>*{min-width:0;overflow-wrap:anywhere}
+.admin-app .dashboard-action-group .dashboard-action-time{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .admin-app .dashboard-action-time b{font-size:10px;color:var(--admin-text)}
 .admin-app .dashboard-action-time time{font-size:9px;color:var(--admin-muted)}
 .admin-app .crm-action-overdue{color:#fca5a5;font-weight:700}

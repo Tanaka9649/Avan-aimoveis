@@ -17,6 +17,11 @@ export const propertyStatus = pgEnum("property_status", ["rascunho", "disponivel
 export const visitStatus = pgEnum("visit_status", ["agendada", "realizada", "cancelada", "nao_compareceu"]);
 export const proposalStatus = pgEnum("proposal_status", ["aberta", "enviada", "em_negociacao", "contraproposta", "aceita", "recusada", "expirada"]);
 
+const uploadLease = {
+  uploadLeaseUntil: timestamp("upload_lease_until", { withTimezone: true }),
+  uploadExpiredAt: timestamp("upload_expired_at", { withTimezone: true }),
+};
+
 const audit = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -122,6 +127,7 @@ export const tenantProvisioning = pgTable("tenant_provisioning", {
 }, (t) => [primaryKey({ columns: [t.tenantId, t.step] })]);
 
 export const sessions = pgTable("sessions", {
+  mfaVerifiedAt: timestamp("mfa_verified_at", { withTimezone: true }),
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
@@ -129,6 +135,17 @@ export const sessions = pgTable("sessions", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [uniqueIndex("sessions_token_uq").on(t.tokenHash), index("sessions_user_idx").on(t.userId)]);
+
+export const userMfa = pgTable("user_mfa", {
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).primaryKey(),
+  encryptedSecret: text("encrypted_secret"),
+  pendingSecret: text("pending_secret"),
+  pendingExpiresAt: timestamp("pending_expires_at", { withTimezone: true }),
+  enabledAt: timestamp("enabled_at", { withTimezone: true }),
+  lastTimeStep: integer("last_time_step"),
+  recoveryHashes: jsonb("recovery_hashes").$type<string[]>().default([]).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
 export const properties = pgTable("properties", {
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
@@ -170,6 +187,7 @@ export const propertyPhotos = pgTable("property_photos", {
   originalMime: varchar("original_mime", { length: 100 }),
   sizeBytes: integer("size_bytes"),
   processingStatus: varchar("processing_status", { length: 20 }).default("ready").notNull(),
+  ...uploadLease,
   // Responsive variants generated asynchronously after the direct upload: { thumb, medium, full } → Neon Object Storage keys.
   // Empty for photos uploaded before the variant pipeline; those fall back to storagePath.
   variants: jsonb("variants").$type<Record<string, string>>().default({}).notNull(),
@@ -184,8 +202,8 @@ export const owners = pgTable("owners", {
   id: uuid("id").defaultRandom().primaryKey(), name: varchar("name", { length: 160 }).notNull(), phone: varchar("phone", { length: 30 }).notNull(), email: varchar("email", { length: 254 }), taxIdEncrypted: text("tax_id_encrypted"), notes: text("notes"), ...audit,
 }, (t) => [
   uniqueIndex("owners_tenant_phone_identity_uq")
-    .on(t.tenantId, sql`regexp_replace(coalesce(${t.phone}, ''), '\\D', '', 'g')`)
-    .where(sql`regexp_replace(coalesce(${t.phone}, ''), '\\D', '', 'g') <> ''`),
+    .on(t.tenantId, sql`regexp_replace(coalesce(${t.phone}, ''), '[^0-9]', '', 'g')`)
+    .where(sql`regexp_replace(coalesce(${t.phone}, ''), '[^0-9]', '', 'g') <> ''`),
   uniqueIndex("owners_tenant_email_identity_uq")
     .on(t.tenantId, sql`lower(trim(coalesce(${t.email}, '')))`)
     .where(sql`lower(trim(coalesce(${t.email}, ''))) <> ''`),
@@ -199,6 +217,7 @@ export const documentCategories = pgTable("document_categories", {
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(), id: uuid("id").defaultRandom().primaryKey(), name: varchar("name", { length: 100 }).notNull(), entityType: varchar("entity_type", { length: 30 }).notNull(), active: boolean("active").default(true).notNull(), ...audit });
 export const propertyDocuments = pgTable("property_documents", {
   uploadStatus: varchar("upload_status", { length: 20 }).default("ready").notNull(),
+  ...uploadLease,
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(), id: uuid("id").defaultRandom().primaryKey(), propertyId: uuid("property_id").references(() => properties.id, { onDelete: "cascade" }).notNull(), categoryId: uuid("category_id").references(() => documentCategories.id).notNull(), storagePath: text("storage_path").notNull(), originalName: varchar("original_name", { length: 240 }).notNull(), mime: varchar("mime", { length: 100 }).notNull(), size: integer("size").notNull(), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull() });
 
 export const clients = pgTable("clients", {
@@ -224,6 +243,7 @@ export const opportunityAttachments = pgTable("opportunity_attachments", {
   category: varchar("category", { length: 60 }),
   uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
   uploadStatus: varchar("upload_status", { length: 20 }).default("uploading").notNull(),
+  ...uploadLease,
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index("opportunity_attachments_deal_idx").on(t.opportunityId, t.createdAt)]);
 export const dealProperties = pgTable("deal_properties", {
@@ -302,6 +322,7 @@ export const passwordResets = pgTable("password_resets", {
 }, t => [uniqueIndex("password_resets_token_uq").on(t.tokenHash), index("password_resets_user_idx").on(t.userId)]);
 
 export const brandingAssets = pgTable("branding_assets", {
+  ...uploadLease,
   id: uuid("id").defaultRandom().primaryKey(),
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
   asset: text("asset").notNull(),
@@ -318,6 +339,14 @@ export const operationRuns = pgTable("operation_runs", {
   status: text("status").default("pending").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const operationRunEvents = pgTable("operation_run_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  status: text("status").notNull(),
+  code: text("code"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [index("operation_run_events_created_idx").on(t.createdAt)]);
 
 export const visitReminderDeliveries = pgTable("visit_reminder_deliveries", {
   id: uuid("id").defaultRandom().primaryKey(), tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),

@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron-auth";
 import { recordOperation } from "@/lib/operation-status";
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -7,7 +8,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  if (!process.env.CRON_SECRET || request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAuthorized(request)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await db.execute(sql`SELECT retain_analytics(${retentionDays}::int) AS removed`);
+    await db.execute(sql`DELETE FROM operation_run_events WHERE created_at<now()-interval '90 days'`);
     await recordOperation("analytics-retention", true);
     return NextResponse.json({ ok: true, retentionDays, removed: Number(result.rows[0]?.removed || 0) });
   } catch {

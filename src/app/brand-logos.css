@@ -8,3 +8,5 @@
 .site-header .brand-logo-image{height:54px;max-width:150px}.site-footer .brand-logo-image{height:58px;max-width:165px}.login-brand .brand-logo-image{height:82px;max-width:220px}.login-mobile-brand .brand-logo-image{height:56px;max-width:130px}
 @media(max-width:900px){.brand-logo-fields,.brand-logo-preview-grid{grid-template-columns:1fr}.brand-logo-editor-heading{flex-direction:column}.site-header .brand-logo-group{gap:8px}.site-header .brand-logo-image{height:44px;max-width:105px}.brand-logo-separator{height:30px}.login-mobile-brand .brand-logo-group{gap:8px}.login-mobile-brand .brand-logo-image{max-width:110px}}
 @media(max-width:520px){.brand-logo-actions button.danger{margin-left:0}.brand-logo-panel{padding:15px}.brand-logo-editor-heading{padding:15px}}
+.brand-wordmark { display: inline-block; max-width: 22rem; color: inherit; font-size: clamp(.95rem, 2vw, 1.3rem); font-weight: 750; letter-spacing: -.03em; line-height: 1.3; overflow-wrap: anywhere; }
+.brand-monogram { display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid currentColor; border-radius: .75rem; color: inherit; font-weight: 750; }

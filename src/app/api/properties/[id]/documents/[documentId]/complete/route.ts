@@ -1,3 +1,5 @@
+import { claimUpload, releaseUpload } from "@/lib/upload-lifecycle";
+import { reportOperationFailure } from "@/lib/observability";
 import { withApiErrors } from "@/lib/api-errors";
 import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { and, eq } from "drizzle-orm";
@@ -18,6 +20,7 @@ async function handlePOST(_: Request, { params }: { params: Promise<{ id: string
   const [document] = await db.select().from(propertyDocuments).where(scope).limit(1);
   if (!document) return new NextResponse(null, { status: 404 });
   if (document.uploadStatus !== "ready") {
+    if (!await claimUpload("property_documents", user.tenantId, document.id)) return NextResponse.json({ error: "Envio expirado ou em processamento." }, { status: 409 });
     const client = storageClient();
     const key = document.storagePath + ".pending";
     try {
@@ -34,7 +37,8 @@ async function handlePOST(_: Request, { params }: { params: Promise<{ id: string
       await client.send(new CopyObjectCommand({ Bucket: DOCUMENT_BUCKET, Key: document.storagePath, CopySource: `${DOCUMENT_BUCKET}/${key}`, CopySourceIfMatch: head.ETag }));
       await db.update(propertyDocuments).set({ uploadStatus: "ready" }).where(scope);
       await client.send(new DeleteObjectCommand({ Bucket: DOCUMENT_BUCKET, Key: key }));
-    } catch { return NextResponse.json({ error: "Não foi possível confirmar o documento." }, { status: 502 }); }
+    } catch { reportOperationFailure("upload", "document_confirmation_failed"); return NextResponse.json({ error: "Não foi possível confirmar o documento." }, { status: 502 }); }
+    finally { await releaseUpload("property_documents", user.tenantId, document.id); }
   }
   return NextResponse.json({ document: { id: document.id, originalName: document.originalName, mime: document.mime, size: document.size } });
 }

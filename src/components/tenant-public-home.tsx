@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { whatsappContactUrl } from "@/lib/contact";
 import Link from "next/link";
 import { ArrowRight, Building2, CheckCircle2, Home, MapPin, MessageCircle, Search, ShieldCheck, Trees } from "lucide-react";
 import type { PublicPropertyCard } from "@/data/properties";
@@ -56,7 +57,7 @@ export function TenantPublicHome({ tenant, properties, basePath = "" }: Props) {
         <div><span>Por que escolher nossa equipe</span><h2>Uma jornada imobiliária mais clara.</h2><p>Da primeira conversa até a decisão, você sabe o que está acontecendo e qual é o próximo passo.</p><Link className="button" href={`${basePath}/sobre`}>Conheça nossa história</Link></div>
         <div><article><ShieldCheck/><h3>Informação clara</h3><p>Dados organizados e comunicação sem complicação.</p></article><article><CheckCircle2/><h3>Atendimento próximo</h3><p>Entendemos suas prioridades antes de apresentar opções.</p></article><article><Building2/><h3>Curadoria de imóveis</h3><p>Opções selecionadas para aproximar sua busca do que faz sentido para você.</p></article></div>
       </section>
-      <section className="final-cta"><div className="shell"><div><span>Vamos conversar?</span><h2>Encontrou algo interessante?</h2><p>Nossa equipe ajuda você a entender os detalhes e organizar a próxima visita.</p></div><div><Link className="button button-accent" href={portfolio}>Ver imóveis</Link>{tenant.whatsapp ? <a className="button button-outline-light" href={`https://wa.me/${tenant.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"><MessageCircle/> Falar pelo WhatsApp</a> : null}</div></div></section>
+      <section className="final-cta"><div className="shell"><div><span>Vamos conversar?</span><h2>Encontrou algo interessante?</h2><p>Nossa equipe ajuda você a entender os detalhes e organizar a próxima visita.</p></div><div><Link className="button button-accent" href={portfolio}>Ver imóveis</Link>{tenant.whatsapp ? <a className="button button-outline-light" href={whatsappContactUrl(tenant.whatsapp) || `${basePath}/contato`} target="_blank" rel="noreferrer"><MessageCircle/> Falar pelo WhatsApp</a> : null}</div></div></section>
     </>
   );
 }

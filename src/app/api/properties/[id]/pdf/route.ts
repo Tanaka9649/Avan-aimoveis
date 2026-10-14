@@ -1,6 +1,6 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { createHash } from "node:crypto";
 import { and, eq, isNotNull } from "drizzle-orm";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -10,95 +10,73 @@ import { tenantOperational } from "@/lib/tenant";
 import { canAccess } from "@/lib/permissions";
 import { canUseModule } from "@/lib/entitlements";
 import { currentUser } from "@/lib/auth";
-import { formatMoney } from "@/lib/format";
 import { PHOTO_BUCKET, storageClient } from "@/lib/storage";
 import { variantKey } from "@/lib/photos";
 import { PUBLIC_STATUS } from "@/lib/property-publication";
+import { generatePropertyPdf } from "@/lib/property-pdf";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { reportOperationFailure } from "@/lib/observability";
 
 export const runtime = "nodejs";
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+// Small, short-lived process cache coalesces repeated work. Authorization and
+// publication are checked on EVERY request; no browser/CDN cache of private PDFs.
+const rendered = new Map<string, { expires: number; bytes: Promise<Uint8Array> }>();
+const MAX_CACHE = 16;
+
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) return new NextResponse(null, { status: 404 });
+  try {
+    const user = await currentUser();
+    const db = getDb();
+    const privateAccess = user && canAccess(user, "imoveis") && await canUseModule(user.tenantId, "imoveis");
+    const visibility = privateAccess
+      ? and(eq(properties.id, id), eq(properties.tenantId, user.tenantId))
+      : and(eq(properties.id, id), eq(properties.status, PUBLIC_STATUS), isNotNull(properties.publishedAt));
+    const [row] = await db.select({ property: properties, tenant: tenants })
+      .from(properties).innerJoin(tenants, eq(tenants.id, properties.tenantId)).where(visibility).limit(1);
+    if (!row || !tenantOperational(row.tenant.status)) return new NextResponse(null, { status: 404 });
 
-  const user = await currentUser();
-  const db = getDb();
-  const privateAccess = user && canAccess(user, "imoveis") && await canUseModule(user.tenantId, "imoveis");
-  const visibility = privateAccess
-    ? and(eq(properties.id, id), eq(properties.tenantId, user.tenantId))
-    : and(eq(properties.id, id), eq(properties.status, PUBLIC_STATUS), isNotNull(properties.publishedAt));
-  const [row] = await db
-    .select({ property: properties, tenant: tenants })
-    .from(properties)
-    .innerJoin(tenants, eq(tenants.id, properties.tenantId))
-    .where(visibility)
-    .limit(1);
-  if (!row || !tenantOperational(row.tenant.status)) return new NextResponse(null, { status: 404 });
-
-  const p = row.property;
-  const [photo] = await db
-    .select({ storagePath: propertyPhotos.storagePath, variants: propertyPhotos.variants })
-    .from(propertyPhotos)
-    .where(
-      and(
-        eq(propertyPhotos.tenantId, row.tenant.id),
-        eq(propertyPhotos.propertyId, id),
-        eq(propertyPhotos.isCover, true),
-      ),
-    )
-    .limit(1);
-
-  const pdf = await PDFDocument.create();
-  const page = pdf.addPage([595, 842]);
-  const regular = await pdf.embedFont(StandardFonts.Helvetica);
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  page.drawRectangle({ x: 0, y: 0, width: 595, height: 842, color: rgb(0.98, 0.98, 0.99) });
-
-  if (photo) {
-    try {
-      const object = await storageClient().send(new GetObjectCommand({ Bucket: PHOTO_BUCKET, Key: variantKey(photo, "medium") }));
-      if (object.Body) {
-        const jpg = await sharp(Buffer.from(await object.Body.transformToByteArray())).jpeg({ quality: 86 }).toBuffer();
-        const image = await pdf.embedJpg(jpg);
-        const height = 230;
-        const width = Math.min(535, (height * image.width) / image.height);
-        page.drawImage(image, { x: 30, y: 575, width, height });
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!await checkRateLimit("pdf:" + (user?.id || ip), 30, 60_000)) {
+      return NextResponse.json({ error: "Aguarde um minuto antes de gerar outra ficha." }, { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
+    }
+    const [photo] = await db.select({ storagePath: propertyPhotos.storagePath, variants: propertyPhotos.variants })
+      .from(propertyPhotos).where(and(eq(propertyPhotos.tenantId, row.tenant.id), eq(propertyPhotos.propertyId, id), eq(propertyPhotos.isCover, true))).limit(1);
+    const input = { ...row.property, tenantName: row.tenant.name, contact: row.tenant.phone || row.tenant.whatsapp };
+    const key = createHash("sha256").update(JSON.stringify({ tenant: row.tenant.id, input, photo })).digest("hex");
+    const now = Date.now();
+    for (const [entryKey, entry] of rendered) if (entry.expires <= now) rendered.delete(entryKey);
+    let entry = rendered.get(key);
+    if (!entry) {
+      // Shared PostgreSQL limiter also bounds cold instances / distributed requests.
+      if (!await checkRateLimit("pdf-render:" + row.tenant.id + ":" + id, 20, 60_000)) {
+        return NextResponse.json({ error: "Ficha temporariamente ocupada. Tente novamente em um minuto." }, { status: 429, headers: { "Retry-After": "60" } });
       }
-    } catch {
-      // The PDF remains useful without a cover if object storage is temporarily unavailable.
+      if (rendered.size >= MAX_CACHE) rendered.delete(rendered.keys().next().value!);
+      const bytes = (async () => {
+        let cover: Buffer | undefined;
+        if (photo) {
+          try {
+            const object = await storageClient().send(new GetObjectCommand({ Bucket: PHOTO_BUCKET, Key: variantKey(photo, "medium") }), { abortSignal: AbortSignal.timeout(10_000) });
+            if (object.Body) cover = await sharp(Buffer.from(await object.Body.transformToByteArray()), { limitInputPixels: 40_000_000 }).rotate().resize({ width: 1280, withoutEnlargement: true }).jpeg({ quality: 86 }).toBuffer();
+          } catch { reportOperationFailure("pdf_cover", "cover_unavailable"); }
+        }
+        return generatePropertyPdf(input, cover);
+      })();
+      entry = { expires: now + 120_000, bytes };
+      rendered.set(key, entry);
+      void bytes.catch(() => rendered.delete(key));
     }
-  }
-
-  page.drawText(row.tenant.name.toUpperCase(), { x: 30, y: 545, size: 10, font: bold, color: rgb(0.09, 0.36, 0.78) });
-  page.drawText(p.title, { x: 30, y: 510, size: 22, font: bold, color: rgb(0.08, 0.1, 0.14), maxWidth: 535 });
-  page.drawText(`${p.code}  |  ${p.type}  |  ${p.neighborhood}, ${p.city}/${p.state}`, { x: 30, y: 482, size: 10, font: regular, color: rgb(0.35, 0.4, 0.48) });
-  page.drawText(formatMoney(p.priceCents), { x: 30, y: 440, size: 24, font: bold, color: rgb(0.08, 0.1, 0.14) });
-  page.drawText(`${p.bedrooms} quartos   |   ${p.bathrooms} banheiros   |   ${p.parkingSpaces} vagas`, { x: 30, y: 410, size: 11, font: regular, color: rgb(0.2, 0.24, 0.3) });
-
-  const areas = [p.privateArea ? `Construída/privativa: ${Number(p.privateArea).toLocaleString("pt-BR")} m2` : "", p.lotArea ? `Terreno: ${Number(p.lotArea).toLocaleString("pt-BR")} m2` : ""].filter(Boolean).join("   |   ");
-  if (areas) page.drawText(areas, { x: 30, y: 388, size: 10, font: regular });
-
-  const words = p.description.replace(/\s+/g, " ").slice(0, 700).split(" ");
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    if ((line + " " + word).length > 88) {
-      lines.push(line);
-      line = word;
-    } else {
-      line += (line ? " " : "") + word;
-    }
-  }
-  if (line) lines.push(line);
-  lines.slice(0, 8).forEach((text, index) => page.drawText(text, { x: 30, y: 365 - index * 18, size: 10, font: regular, color: rgb(0.25, 0.29, 0.35) }));
-
-  const contact = row.tenant.phone || row.tenant.whatsapp;
-  if (contact) page.drawText(`Fale com ${row.tenant.name}: ${contact}`, { x: 30, y: 48, size: 10, font: bold, color: rgb(0.09, 0.36, 0.78) });
-  return new NextResponse(Buffer.from(await pdf.save()), {
-    headers: {
+    const filename = row.property.slug.replace(/[^a-zA-Z0-9_-]/g, "-");
+    return new NextResponse(Buffer.from(await entry.bytes), { headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${p.slug}.pdf"`,
-      "Cache-Control": "private, no-store",
-    },
-  });
+      "Content-Disposition": 'attachment; filename="' + filename + '.pdf"',
+      "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+    } });
+  } catch {
+    reportOperationFailure("pdf", "generation_failed");
+    return NextResponse.json({ error: "Não foi possível gerar a ficha agora. Tente novamente." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 }

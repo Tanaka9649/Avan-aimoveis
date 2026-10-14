@@ -280,6 +280,8 @@ export async function saveCustomDomain(_: State, form: FormData): Promise<State>
   }
   try {
     const db = getDb();
+    const [existingDomain] = await db.select({domain:tenants.customDomain}).from(tenants).where(eq(tenants.id,admin.tenantId));
+    if(existingDomain?.domain && existingDomain.domain!==parsed.data)return {ok:false,message:"Remova o domínio atual antes de cadastrar outro; isso evita vínculos abandonados na Vercel."};
     await db.batch([
       db.update(tenants).set({ customDomain: parsed.data, domainStatus: "verifying", updatedAt: new Date() }).where(eq(tenants.id, admin.tenantId)),
       db.insert(activityLogs).values({ tenantId: admin.tenantId, userId: admin.id, entityType: "tenant_domain", entityId: admin.tenantId, action: "domain_verification_requested", details: { domain: parsed.data } }),

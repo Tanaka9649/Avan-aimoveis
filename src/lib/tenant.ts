@@ -1,4 +1,5 @@
 import "server-only";
+import { platformBaseUrl } from "@/lib/platform-url";
 import { cache } from "react";
 import { and, eq, or } from "drizzle-orm";
 import { headers } from "next/headers";
@@ -72,7 +73,7 @@ export const tenantForRequest = cache(async (): Promise<TenantRecord | null> => 
 
   // Vercel branch previews are a platform surface and intentionally show the root tenant.
   const previewHost = normalizeHostname(process.env.VERCEL_URL || null);
-  if (previewHost && host === previewHost) {
+  if ((previewHost && host === previewHost) || (process.env.VERCEL_ENV === "preview" && host === normalizeHostname(process.env.VERCEL_BRANCH_URL || null))) {
     const root = await rootTenant();
     return root && tenantOperational(root.status) ? root : null;
   }
@@ -80,13 +81,13 @@ export const tenantForRequest = cache(async (): Promise<TenantRecord | null> => 
 });
 
 export function tenantPublicPathBase(tenant: Pick<TenantRecord, "slug" | "customDomain" | "domainStatus">) {
-  return tenant.slug === ROOT_TENANT_SLUG || (tenant.customDomain && tenant.domainStatus === "active")
+  return tenant.slug === ROOT_TENANT_SLUG || (process.env.VERCEL_ENV !== "preview" && tenant.customDomain && tenant.domainStatus === "active")
     ? ""
     : `/empresa/${tenant.slug}`;
 }
 
 export function tenantPublicBase(tenant: Pick<TenantRecord, "slug" | "customDomain" | "domainStatus">) {
-  if (tenant.customDomain && tenant.domainStatus === "active") return `https://${tenant.customDomain}`;
-  const base = (process.env.PLATFORM_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+  if (process.env.VERCEL_ENV !== "preview" && tenant.customDomain && tenant.domainStatus === "active") return `https://${tenant.customDomain}`;
+  const base = platformBaseUrl();
   return tenant.slug === ROOT_TENANT_SLUG ? base : `${base}/empresa/${tenant.slug}`;
 }

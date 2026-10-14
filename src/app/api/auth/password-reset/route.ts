@@ -1,3 +1,4 @@
+import { platformBaseUrl } from "@/lib/platform-url";
 import { NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   if (row) {
     const token = issueToken();
     const [record] = await db.insert(passwordResets).values({ userId: row.id, passwordVersion: row.hash, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 1800000) }).returning({ id: passwordResets.id });
-    const base = (process.env.PLATFORM_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    const base = platformBaseUrl();
     if (base) await sendEmail({ to: email, subject: "Redefinir sua senha", text: `Para definir uma nova senha, abra ${base}/redefinir-senha?empresa=${encodeURIComponent(parsed.data.tenantSlug)}#${token} . Este link expira em 30 minutos. Se não solicitou, ignore esta mensagem.`, key: `password-reset/${record.id}` });
   }
   return NextResponse.json({ message: "Se houver uma conta ativa com este e-mail, você receberá as instruções." });

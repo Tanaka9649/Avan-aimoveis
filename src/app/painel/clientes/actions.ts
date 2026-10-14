@@ -1,4 +1,5 @@
 "use server";
+import { databaseErrorIs } from "@/lib/database-error";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -24,7 +25,7 @@ export async function saveClient(_:State, form:FormData):Promise<State> {
   try {await db.batch([
     raw ? db.update(clients).set(values).where(and(eq(clients.id,id),clientScope(user))) : db.insert(clients).values({tenantId:user.tenantId,id,...values,assignedTo:user.id}),
     db.insert(activities).values({tenantId:user.tenantId,clientId:id,userId:user.id,type:raw?"client_updated":"client_created",description:raw?"Cadastro e preferências atualizados.":"Cliente cadastrado pela equipe."}),
-  ]);}catch{return {ok:false,message:"Não foi possível salvar o cliente. Tente novamente."};}
+  ]);}catch(error){return {ok:false,message:databaseErrorIs(error,"client_contact_duplicate")?"Já existe um cadastro com este telefone ou e-mail nesta empresa. Revise o contato com um administrador; nenhum cadastro foi mesclado ou alterado.":"Não foi possível salvar o cliente. Tente novamente."};}
   revalidatePath("/painel","layout");redirect(`/painel/clientes/${id}`);
 }
 export async function addClientNote(_:State,form:FormData):Promise<State>{

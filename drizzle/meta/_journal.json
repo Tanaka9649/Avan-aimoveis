@@ -127,6 +127,34 @@
       "when": 1791749200000,
       "tag": "0017_visit_reminder_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791911274675,
+      "tag": "0018_superadmin_mfa",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791912086753,
+      "tag": "0019_upload_leases_and_operation_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791912636374,
+      "tag": "0020_contact_and_photo_concurrency",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791915223817,
+      "tag": "0021_reconcile_owner_schema_metadata",
+      "breakpoints": true
     }
   ]
 }

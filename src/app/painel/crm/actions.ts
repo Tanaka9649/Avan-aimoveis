@@ -157,6 +157,10 @@ export async function saleClosingChoices(dealId: string) {
   const user = await requireWriteModule("crm");
   if (!z.uuid().safeParse(dealId).success) return { properties: [], proposals: [] };
   const db = getDb();
+  const [allowedDeal] = await db.select({ id: deals.id }).from(deals)
+    .innerJoin(clients, and(eq(clients.id, deals.clientId), eq(clients.tenantId, deals.tenantId)))
+    .where(and(eq(deals.id, dealId), eq(deals.tenantId, user.tenantId), clientScope(user))).limit(1);
+  if (!allowedDeal) return { properties: [], proposals: [] };
   const [propertyRows, proposalRows] = await Promise.all([
     db.select({ id: properties.id, title: properties.title, code: properties.code, priceCents: properties.priceCents })
       .from(properties)

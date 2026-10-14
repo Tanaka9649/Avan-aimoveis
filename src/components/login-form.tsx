@@ -9,6 +9,7 @@ export function LoginForm({ tenantSlug, tenantName }: { tenantSlug: string; tena
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [mfaRequired,setMfaRequired]=useState(false);
 
   async function submit(formData: FormData) {
     setLoading(true);
@@ -28,6 +29,7 @@ export function LoginForm({ tenantSlug, tenantName }: { tenantSlug: string; tena
         return;
       }
 
+      if(data.mfaRequired)setMfaRequired(true);
       setError(data.error || "Não foi possível entrar agora.");
     } catch {
       setError("Não foi possível conectar. Verifique sua internet e tente novamente.");
@@ -37,7 +39,7 @@ export function LoginForm({ tenantSlug, tenantName }: { tenantSlug: string; tena
   }
 
   return (
-    <form className="login-form" action={submit} aria-busy={loading}>
+    <form className="login-form" onSubmit={(event) => { event.preventDefault(); if (!loading) void submit(new FormData(event.currentTarget)); }} aria-busy={loading}>
       <div className="login-form-heading">
         <span className="login-form-kicker">Área restrita</span>
         <h1>Bem-vindo de volta</h1>
@@ -87,6 +89,7 @@ export function LoginForm({ tenantSlug, tenantName }: { tenantSlug: string; tena
         </div>
       </div>
 
+      {mfaRequired?<label htmlFor="login-code">Código do autenticador ou de recuperação<input id="login-code" name="code" autoComplete="one-time-code" maxLength={39} required disabled={loading}/></label>:null}
       {error ? (
         <p id="login-error" className="login-error" role="alert" aria-live="polite">
           {error}

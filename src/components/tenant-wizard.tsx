@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Building2, Palette, Globe2, Boxes, UserRound, ClipboardCheck } from "lucide-react";
 import { modules, moduleLabels, type Module } from "@/lib/permissions";
 import { BrandLogosEditor } from "@/components/brand-logos-editor";
 import { normalizeWhatsApp } from "@/lib/contact";
+import { validModuleCombination } from "@/lib/module-registry";
 import type { BrandLogoEntry } from "@/lib/branding";
 
 const steps = [
@@ -61,7 +63,8 @@ const slugify = (value: string) => value
 
 const emailOk = (value: string) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-export function TenantWizard() {
+export type WizardPlan = { code: string; name: string; configured: boolean; modules: string[] };
+export function TenantWizard({ plans }: { plans: WizardPlan[] }) {
   const [step, setStep] = useState(0);
   const [attempted, setAttempted] = useState(false);
   const [draft, setDraft] = useState(initial);
@@ -95,14 +98,20 @@ export function TenantWizard() {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug)) return "Informe um endereço válido para a empresa.";
       if (!emailOk(draft.email)) return "Revise o e-mail comercial.";
     }
-    if (step === 3 && draft.modules.length === 0) return "Selecione pelo menos um módulo.";
+    if (step === 3) {
+      const plan = plans.find((entry) => entry.code === draft.plan);
+      if (!plan?.configured) return "Este plano ainda não possui limites definidos. Configure-o em Planos antes de continuar.";
+      if (!draft.modules.length) return "Selecione pelo menos um módulo.";
+      if (draft.modules.some((module) => !plan.modules.includes(module))) return "Há módulos indisponíveis neste plano. Revise a seleção.";
+      if (!validModuleCombination(draft.modules)) return "Inclua as dependências dos módulos: CRM requer Clientes; Visitas requer Clientes e Imóveis; Propostas requer CRM; Proprietários requer Imóveis.";
+    }
     if (step === 4) {
       if (!normalizeWhatsApp(draft.whatsapp)) return "Informe um WhatsApp válido para contato.";
       if (draft.adminName.trim().length < 2) return "Informe o nome do administrador.";
       if (!emailOk(draft.adminEmail) || !draft.adminEmail) return "Informe um e-mail válido para o administrador.";
     }
     return "";
-  }, [draft, step]);
+  }, [draft, step, plans]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -171,6 +180,7 @@ export function TenantWizard() {
 
   return (
     <section className="admin-card tenant-wizard">
+      {!plans.some((plan) => plan.configured) ? <p role="status" className="admin-form-error">Nenhum plano está pronto para novas empresas. Defina os limites em <Link href="/superadmin/planos">Planos</Link> antes de concluir este cadastro.</p> : null}
       <ol className="tenant-wizard-stepper" aria-label="Etapas da criação">
         {steps.map(({ label, icon: Icon }, index) => (
           <li key={label} className={index === step ? "active" : index < step ? "done" : ""} aria-current={index === step ? "step" : undefined}>
@@ -214,7 +224,7 @@ export function TenantWizard() {
 
         {step === 3 ? (
           <div className="entity-form">
-            <label>Plano<select value={draft.plan} onChange={(event) => set("plan", event.target.value as Draft["plan"])}><option value="starter">Starter</option><option value="pro">Pro</option><option value="max">Max</option><option value="custom">Personalizado</option></select></label>
+            <label>Plano<select value={draft.plan} onChange={(event) => set("plan", event.target.value as Draft["plan"])}>{["starter", "pro", "max", "custom"].map((code) => { const plan = plans.find((item) => item.code === code); return <option key={code} value={code}>{plan?.name || code}{plan?.configured ? "" : " — configuração pendente"}</option>; })}</select></label>
             <fieldset className="wide"><legend>Módulos</legend>{modules.map((module) => <label className="check" key={module}><input type="checkbox" checked={draft.modules.includes(module)} onChange={() => toggle(module)}/><span>{moduleLabels[module]}</span></label>)}</fieldset>
           </div>
         ) : null}

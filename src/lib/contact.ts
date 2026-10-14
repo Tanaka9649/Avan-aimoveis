@@ -12,3 +12,8 @@ export function whatsappContactUrl(value: string, message = "") {
   const number = normalizeWhatsApp(value);
   return number ? `https://wa.me/${number}?text=${encodeURIComponent(message)}` : null;
 }
+
+export function telephoneContactUrl(value: string) {
+  const number = normalizeWhatsApp(value);
+  return number ? `tel:+${number}` : null;
+}

@@ -6,7 +6,7 @@ export function BrandLogo({
   light = false,
   compact = false,
   branding,
-  name = "Avança Imóveis e Rogério Cortes",
+  name = "Plataforma imobiliária",
 }: {
   light?: boolean;
   compact?: boolean;
@@ -15,16 +15,15 @@ export function BrandLogo({
 }) {
   const configured = brandingLogos(branding);
   const legacy = !branding?.logos?.length;
+  if (!configured.length) return <span className={compact ? "brand-monogram" : "brand-wordmark"} aria-label={name}>{compact ? name.trim().slice(0, 1).toUpperCase() : name}</span>;
 
   if (compact) {
     const first = configured[0];
-    const src = (light ? first?.logoDark || first?.logoLight : first?.logoLight || first?.logoDark) || "/icon.png";
+    const src = (light ? first?.logoDark || first?.logoLight : first?.logoLight || first?.logoDark) !;
     return <Image src={src} alt={first?.name || name} width={128} height={128} className="brand-icon" priority unoptimized={src.startsWith("http")}/>;
   }
 
-  const logos = configured.length
-    ? configured
-    : [{ id: "default", name, logoLight: "/avanca-logo.png", logoDark: "/avanca-logo.png" }];
+  const logos = configured;
 
   return (
     <span className={`brand-logo-group${light ? " brand-logo-light" : ""}${legacy ? " legacy-branding" : ""}`} aria-label={name}>

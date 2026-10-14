@@ -11,8 +11,8 @@ import { DOCUMENT_BUCKET, signedDownloadUrl, storageClient } from "@/lib/storage
 export const runtime = "nodejs";
 const editInput = z.object({ displayName: z.string().trim().min(1).max(240), category: z.enum(attachmentCategories).nullable() });
 
-async function authorized(id: string, attachmentId: string, readyOnly = true) {
-  const context = await requireOpportunity(id);
+async function authorized(id: string, attachmentId: string, readyOnly = true, write = false) {
+  const context = await requireOpportunity(id, write);
   if (!context.opportunity || !context.user) return { ...context, attachment: undefined };
   const [attachment] = await getDb().select().from(opportunityAttachments).where(and(
     eq(opportunityAttachments.tenantId, context.user.tenantId),
@@ -38,7 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(attachmentId).success) return NextResponse.json({ error: "Arquivo inválido." }, { status: 400 });
   const parsed = editInput.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Informe um nome de exibição válido." }, { status: 400 });
-  const { user, opportunity, attachment } = await authorized(id, attachmentId);
+  const { user, opportunity, attachment } = await authorized(id, attachmentId, true, true);
   if (!user || !opportunity || !attachment) return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
   const [updated] = await getDb().update(opportunityAttachments).set(parsed.data).where(and(eq(opportunityAttachments.tenantId, user.tenantId), eq(opportunityAttachments.id, attachment.id))).returning();
   return NextResponse.json({ attachment: serialize(updated) }, { headers: { "cache-control": "no-store" } });
@@ -47,7 +47,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string; attachmentId: string }> }) {
   const { id, attachmentId } = await params;
   if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(attachmentId).success) return NextResponse.json({ error: "Arquivo inválido." }, { status: 400 });
-  const { user, opportunity, attachment } = await authorized(id, attachmentId, false);
+  const { user, opportunity, attachment } = await authorized(id, attachmentId, false, true);
   if (!user || !opportunity || !attachment) return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
   const db = getDb();
   const scope = and(eq(opportunityAttachments.tenantId, user.tenantId), eq(opportunityAttachments.id, attachment.id));

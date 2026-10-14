@@ -1,5 +1,92 @@
 # CURRENT_CHECKPOINT
 
+## Banco sintético preparado — 13/10/2026 (estado mais recente)
+
+- Após autorização do usuário para preparar a branch vazia, atualizado exclusivamente `wandering-snow-32301627` / `br-falling-firefly-b57arz1t` / `neondb` (`vercel-preview`). Endpoint: `ep-polished-brook-b5pxuxkk.c-7.us-east-2.aws.neon.tech`.
+- Journal inicial: uma entrada cujo hash corresponde exatamente à migration 0003 local; nenhuma outra conexão cliente ativa observada antes da alteração. Migrations pendentes 0004–0021 aplicadas em transações por migration, com hash e timestamp registrados. Histórico inicial preservado, sem inventar entradas 0000–0002.
+- A primeira tentativa da 0008 foi recusada pela API por múltiplos comandos em prepared statement. Confirmado rollback (tenants ausente e journal ainda na 0007); instruções SQL separadas respeitando blocos dollar-quoted e reexecutadas com sucesso. Total final: 19 entradas, última 0021 (`1791915223817`).
+- Fixture sintética criada atomicamente usando `previewFixtureQueries`, com guarda de banco vazio: `audit-synthetic-a` (5 membros) e `audit-synthetic-b` (1 membro), cada uma com seis etapas e três categorias. Seis contas `@example.invalid`, sem envio de e-mail. Custom identificado como configuração temporária de auditoria, não comercial.
+- Segredos exclusivos de testes gerados com aleatoriedade criptográfica, em `work/audit-preview/secrets.json`, modo 0600, ignorado pelo Git. Nenhum valor publicado. Ainda NÃO configurados na Vercel; não usar essa fixture com outro AUTH_PEPPER.
+- Consultas finais confirmam tabelas user_mfa e operation_run_events no banco sintético. Production reconferida: 10 imóveis, 2 usuários, 15 migrations, user_mfa ausente; nenhuma escrita direcionada a Production.
+- Nenhuma branch foi excluída/resetada. Nenhum push/deploy ou mudança de variável Vercel realizado. Overrides da branch Git ainda apontam para o Preview anterior: banco sintético pronto não significa novo Preview publicado ou interface homologada.
+- Próximo passo: configurar recursos/segredos desse banco sintético no escopo específico do Preview, garantir e-mails desativados e credenciais de storage ancoradas em br-falling-firefly-b57arz1t, então publicar Preview autorizado e executar a matriz UI. Backup/restore de Production continua pendente antes de qualquer release em Production.
+
+## Inspeção externa somente leitura — 13/10/2026, após transferência
+
+- Vercel Production reconfirmada em `48ccfa461e24896827739bad2cc5dcb2dcfee445`, deployment `dpl_8w3WsvFyMiTbsA24fpUAJJXrjtCx`, READY. Preview mais recente informado pelo projeto: `dpl_9R6f5gkf7yi7rW4JC5mFmT1omKwr` (código anterior ao patch).
+- Neon mantém 10 branches. `br-raspy-snow-b58wt9zz` agora contém **10 imóveis**, 2 usuários, 2 clientes e 2 negócios; a contagem histórica de 8 imóveis não é mais baseline atual. Nenhuma escrita executada nesta inspeção.
+- Production e `br-falling-frost-b5ce9ke1` têm 15 entradas no journal; hashes das cinco últimas conferem com 0013–0017 locais. 0018–0021 não foram executadas nesta inspeção.
+- `br-falling-frost-b5ce9ke1` contém 10 imóveis e 3 usuários, logo não serve como banco vazio para o seed sintético que exige ausência de dados.
+- Vercel tem overrides de DATABASE_URL/DIRECT_URL e credenciais S3 para `feat/saas-multitenant`. URLs de banco e chaves S3 são Secret e não retornam valores pela API; o destino efetivo do banco não foi reconfirmado apenas por esses metadados. Não considerar comentários de variáveis prova de isolamento.
+- Endpoint S3 da branch Git foi lido pelo endpoint individual de env: `br-falling-frost-b5ce9ke1.storage.c-7.us-east-2.aws.neon.tech`. Neon lista credencial `avan-feature-preview-storage` ancorada nessa branch, mas o valor oculto da Vercel não pôde ser comparado. Buckets: `property-documents` privado e `property-photos` public_read.
+- Candidata para homologação sintética sem excluir branches: `vercel-preview` / `br-falling-firefly-b57arz1t`. Consultas confirmaram zero usuários, imóveis, clientes, negócios, proprietários, fotos, documentos, sessões, visitas, propostas, vendas e atividades; os dois buckets estão vazios. Schema antigo, sem tenants, e apenas 1 migration registrada. Ainda exige conferir journal/schema completo e vínculos antes de reutilização; não foi resetada nem migrada.
+- MFA_ENCRYPTION_KEY não consta nas variáveis do projeto. CRON_SECRET e RESEND_API_KEY constam como Secret, sem confirmação de valor; não inferir configuração válida ou vazia. E-mail real permanece fora dos testes.
+- Nenhum push, deploy, migration externa, seed, exclusão, mudança de credenciais ou configuração foi realizado.
+
+## Transferência para o ambiente remoto — 13/10/2026
+
+- Patch cumulativo `ace1ea7-to-113fb9f` recebido e aplicado sem conflitos sobre checkout limpo `ace1ea73b0528fbc9f5b03f73514dd45205d1bae`.
+- SHA-256 conferido: `0945ebd484f9bbf4917ebeaaf0771959c859c97588b543103115787c2a79ac11`. Verificações `git apply --check`, reversa e `git diff --check` aprovadas.
+- 103 entradas recuperadas; `.env.example` excluído conforme manifesto. O patch não recria os 11 commits do Windows: alterações permanecem locais, sem commit/push neste ambiente.
+- Verificação repetida neste ambiente: typecheck, lint, build e `drizzle-kit check` aprovados; 204 testes aprovados e 1 teste opt-in ignorado. O ensaio dos oito PDFs reais não foi repetido nesta transferência, pois sua fixture não integra o pacote.
+- Build e verificação de metadados executados com URLs de banco locais fictícias, sem conexão ao Neon. Testes de integração padrão usam banco local em memória.
+- Navegador remoto conseguiu ler o dashboard Vercel com sessão autenticada; isso resolve o bloqueio de navegação neste ambiente, não a instalação Windows.
+- Nenhum push, deploy, seed, restore ou migration externa executado. Continuam pendentes a confirmação dos recursos isolados e a homologação do novo release em Preview; manter o gate de escrita abaixo até autorização.
+
+## Estado vigente — 13/10/2026 (substitui as conclusões históricas abaixo)
+
+- Branch `feat/saas-multitenant`, base sincronizada `ace1ea7`; código validado até `50fdaa2`, relatório salvo em `3a74944` (dez commits locais antes deste checkpoint documental). Sem push/deploy desta rodada.
+- Production não foi escrita ou migrada. Consulta Vercel somente leitura reconfirmou `imoveisplatform.vercel.app`: deployment `dpl_8w3WsvFyMiTbsA24fpUAJJXrjtCx`, target `production`, estado `READY`, SHA `48ccfa461e24896827739bad2cc5dcb2dcfee445`.
+- Neon lido: `wandering-snow-32301627` / `vercel-production` / `br-raspy-snow-b58wt9zz` / `neondb`; 8 imóveis, 76 fotos, 8 proprietários/8 vínculos, 2 clientes, 2 negócios, 2 usuários, 1 empresa, 0 documentos.
+- Journal real: 15 entradas até **0017**. As listas antigas até 0012 abaixo são históricas, não o estado atual. Não reaplicar 0012–0017.
+- 0010 possui hashes local/Production diferentes; 0014 já reconciliou o índice físico. Histórico preservado. Schema/snapshot alinhado com verificação não destrutiva na nova 0021.
+- Novas migrations **0018–0021 locais, não executadas no Neon**. Leases, MFA, guards de contatos/fotos e histórico operacional dependem dessas migrations antes do novo código.
+- Validação final: lint/typecheck/build aprovados; 204 testes / 45 arquivos aprovados, 1 opt-in ignorado no padrão; mais 9 testes opt-in dos oito PDFs reais. PDFs válidos/200 pelo handler local, descrições completas e 12 páginas revisadas visualmente.
+- `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades. `drizzle-kit check`: aprovado.
+- Acesso Vercel a deployments confirmado sem `teamId`/`slug`; o 404 das consultas anteriores com escopo explícito não é bloqueio geral de conexão. Configuração/bindings/segredos do Preview ainda não confirmados. Navegador helper continua pendente; restore externo não ensaiado (última leitura: 10 branches/limite10, retenção6h). Sem homologação UI desktop/mobile.
+- E-mails reais não enviados; testes integralmente simulados. WhatsApp oficial da Avança ainda ausente. Nenhuma senha/papel/acesso real modificado.
+- Uso interno do **novo release** e onboarding comercial ainda não liberados; aprovação de Production só depois da homologação e dos gates.
+- Jobs anteriores de recuperação foram encerrados intencionalmente sem publicar o site, conforme esclarecimento do usuário; não tratados como falha de lançamento.
+
+Detalhes, F01–F24, commits e custos: [relatório da auditoria](../audit-remediation-2026-10-13.md). Próxima execução: [runbook seguro](AUDIT_RELEASE_RUNBOOK.md). Dados sintéticos preparados, não semeados externamente.
+
+## Checkpoint antes de reiniciar — 13/10/2026
+
+Pedido mais recente: salvar alterações e pendências, **sem deploy e sem migrations**. Este checkpoint altera somente documentação e é salvo em commit local. Não fazer push (a integração Git pode disparar deploy), seed, restore, alteração de variáveis ou limpeza de branches nesta etapa. A retomada deve respeitar essa restrição até nova autorização.
+
+### Consultas que funcionaram — preservar esta combinação
+
+Omitir de verdade as chaves opcionais `teamId` e `slug`, não enviá-las vazias:
+
+```json
+get_deployment: { "idOrUrl": "imoveisplatform.vercel.app" }
+list_deployments: { "projectId": "prj_UIoKDpgp9BxiORlABsmY60LlZJvE" }
+```
+
+- Ambas retornaram sucesso, sem reconexão. Projeto confirmado: `avan-aimoveis` / `prj_UIoKDpgp9BxiORlABsmY60LlZJvE`.
+- A listagem retornou uma página de 20 deployments (não o total do histórico).
+- Mais recente listado: `dpl_9R6f5gkf7yi7rW4JC5mFmT1omKwr`, `READY`, Preview (`target: null`), SHA `ace1ea73b0528fbc9f5b03f73514dd45205d1bae`, branch Git `feat/saas-multitenant`.
+- URL do Preview: `https://avan-aimoveis-86ocm9e0m-guitanakabrasil-7316s-projects.vercel.app`. Não contém os commits locais de correção posteriores.
+- Production e Preview existentes não foram criados ou modificados por estas consultas. Sucesso de leitura não comprova permissão de escrita, saúde funcional ou isolamento do banco.
+- Não pedir reconexão nem recomendar upgrade apenas pelo 404 anterior. Causa exata da diferença de escopo ainda não diagnosticada; nenhuma evidência de limite do plano causando esse erro.
+
+### Pendências para a próxima sessão
+
+1. Conferir branch, HEAD e `git status`; ler este checkpoint e o runbook. Código já salvo: não refazer as correções nem confundir testes locais com homologação externa.
+2. Testar se o navegador voltou após reinicialização; último erro `helper_unknown_error: setup refresh had errors`. Não presumir correção pelo restart.
+3. Usar as consultas Vercel sem escopo acima como ponto de partida. Ainda confirmar em leitura a configuração Production Branch Git (não inferir da branch do commit), bindings DATABASE_URL/DIRECT_URL, armazenamento e segredos do Preview, sem expor valores sensíveis.
+4. Reavaliar capacidade Neon e vínculos das branches. Não excluir/reutilizar/resetar branch com dados ou conexão ativa sem análise e autorização específica; não contratar plano por iniciativa própria. Backup/restore fresco e proteção dos objetos continuam pendentes.
+5. Quando novamente autorizado, seguir o runbook para ambiente isolado, migrations 0018–0021, fixtures sintéticas e Preview. Não aplicar migrations nesta retomada apenas por estarem listadas aqui; não reaplicar o histórico até 0017.
+6. Homologar login/MFA, cross-tenant e permissões, uploads/HEIC/documentos, cotas concorrentes Neon, PDFs, visitas, branding, desktop/mobile/teclado e domínios. Confirmar visualmente `cd8fbd3` e `ace1ea7`.
+7. WhatsApp oficial, limites/preços comerciais, configuração externa e testes autorizados de e-mail continuam pendentes. E-mail real por último, sem atingir clientes.
+8. Production exige aprovação final específica após os gates. Não fazer rollback para login sem MFA depois de inscrição real.
+
+Nenhum código de aplicação foi alterado neste checkpoint; não se repetiram lint/test/build por ser alteração exclusivamente documental. Resultados anteriores estão registrados acima. Fixtures/PDFs locais em `test-results/pdf-audit/` seguem ignorados pelo Git; não incluir dados reais ou segredos no commit.
+
+---
+
+## Histórico de 10/10/2026 — não usar como confirmação atual
+
 Atualizado após a rodada completa de refinamento interno pós-auditoria em 2026-10-10.
 
 ## Escopo preservado

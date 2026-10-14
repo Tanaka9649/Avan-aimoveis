@@ -1,7 +1,8 @@
 import "server-only";
+import { platformBaseUrl } from "@/lib/platform-url";
 import { sendEmail } from "@/lib/email";
 import { randomUUID } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { tenantAuditLogs, tenantInvites, tenantMemberships, tenantProvisioning, tenants, users } from "@/db/schema";
 import { canActivateMembership, canCreateResource } from "@/lib/entitlements";
@@ -61,7 +62,7 @@ export async function createTenantInvitation(input: {
     }),
   ]);
 
-  const base = (process.env.PLATFORM_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const base = platformBaseUrl();
   const inviteUrl = `${base}/convite/${token}`;
   const emailSent = await sendEmail({ to: email, subject: "Convite para sua plataforma imobiliária", text: `Você foi convidado para acessar a plataforma. Abra ${inviteUrl} para ativar seu acesso. O convite expira em 7 dias.`, key: `invite/${inviteId}/${hashToken(token).slice(0,16)}` });
   return { inviteId, inviteUrl, expiresAt, emailSent };
@@ -90,7 +91,8 @@ export async function acceptInvitation(token: string, password: string) {
     return { ok: false as const, error: "A empresa não está disponível." };
   }
 
-  const [existing] = await db.select({ id: users.id, passwordHash: users.passwordHash }).from(users).where(eq(users.email, invite.email)).limit(1);
+  const [existing] = await db.select({ id: users.id, passwordHash: users.passwordHash, active: users.active }).from(users).where(eq(users.email, invite.email)).limit(1);
+  if (existing && !existing.active) return { ok: false as const, error: "Esta conta não está disponível. Contate o administrador da plataforma." };
   const userId = existing?.id || randomUUID();
   const [membership] = existing
     ? await db.select({ status: tenantMemberships.status }).from(tenantMemberships).where(and(eq(tenantMemberships.tenantId, invite.tenantId), eq(tenantMemberships.userId, existing.id))).limit(1)
@@ -103,13 +105,21 @@ export async function acceptInvitation(token: string, password: string) {
     if (!await verifyPassword(password, existing.passwordHash)) {
       return { ok: false as const, error: "Esta conta já existe. Informe a senha atual para aceitar o convite." };
     }
-    userMutation = db.update(users).set({ active: true, updatedAt: now }).where(eq(users.id, userId));
+    // Invitations must not change global account state, credentials or role.
+    userMutation = db.select({ id: users.id }).from(users).where(and(eq(users.id, userId), eq(users.active, true)));
   } else {
     const passwordHash = await hashPassword(password);
     userMutation = db.insert(users).values({ id: userId, name: invite.name, email: invite.email, passwordHash, role: "equipe", active: true });
   }
 
-  await db.batch([
+  try { await db.batch([
+    // A zero-row claim aborts the transaction, including membership mutations.
+    db.execute(sql`with claimed as (
+      update tenant_invites set accepted_at=now()
+      where id=${invite.id}::uuid and token_hash=${hashToken(token)}
+        and accepted_at is null and expires_at>now()
+      returning id
+    ) select 1 / count(*)::int as claimed_once from claimed`),
     userMutation,
     db.insert(tenantMemberships).values({
       tenantId: invite.tenantId,
@@ -127,6 +137,8 @@ export async function acceptInvitation(token: string, password: string) {
     db.update(tenantProvisioning).set({ status: "complete", lastError: null, updatedAt: now }).where(and(eq(tenantProvisioning.tenantId, invite.tenantId), eq(tenantProvisioning.step, "admin_invite"))),
     db.update(tenants).set({ status: "trial", updatedAt: now }).where(and(eq(tenants.id, invite.tenantId), eq(tenants.status, "configuring"))),
     db.insert(tenantAuditLogs).values({ tenantId: invite.tenantId, actorUserId: userId, action: "invite_accepted", entityType: "user", entityId: userId }),
-  ]);
+  ]); } catch {
+    return { ok: false as const, error: "Não foi possível aceitar o convite. Confira se continua válido e tente novamente." };
+  }
   return { ok: true as const, tenantSlug: tenant.slug };
 }

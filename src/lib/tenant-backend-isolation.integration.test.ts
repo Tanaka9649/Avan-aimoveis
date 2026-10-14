@@ -2,6 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { PGlite } from "@electric-sql/pglite";
 import { applyDrizzleMigrations } from "@/test/apply-drizzle-migrations";
 import { drizzle } from "drizzle-orm/pglite";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 
 const fixture = vi.hoisted(() => ({
   db: null as unknown,
@@ -19,6 +21,7 @@ const fixture = vi.hoisted(() => ({
 }));
 
 vi.mock("@/db", () => ({ getDb: () => fixture.db }));
+vi.mock("@/lib/email", () => ({ sendEmail: async () => false, emailConfigured: () => false }));
 vi.mock("@/lib/access", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/access")>();
   return {
@@ -39,6 +42,10 @@ import { canConsumeResource, canCreateResource, getUsage } from "@/lib/entitleme
 import { acceptInvitation } from "@/lib/invitations";
 import { provisionTenant } from "@/lib/provisioning";
 import { hashToken } from "@/lib/security";
+import { repairTenantDefaults } from "@/lib/tenant-defaults";
+import { visitRows, visitChoices } from "@/lib/visit-queries";
+import { commercialRows } from "@/lib/commercial-queries";
+import type { AuthenticatedUser } from "@/lib/auth";
 
 const TENANT_A = "71000000-0000-4000-8000-000000000001";
 const TENANT_B = fixture.user.tenantId;
@@ -70,6 +77,7 @@ beforeAll(async () => {
   await pg.exec(`UPDATE plans SET limits = '{"max_users":null,"max_properties":null,"max_clients":null,"max_opportunities":null,"max_documents":null,"max_storage_bytes":null,"custom_domain":0}'::jsonb;`);
   const db = drizzle(pg);
   fixture.db = Object.assign(db, {
+    execute: (query: SQL) => ({ toSQL: () => new PgDialect().sqlToQuery(query) }),
     batch: async (queries: { toSQL: () => { sql: string; params: unknown[] } }[]) => pg.transaction(async (transaction) => {
       const results = [];
       for (const query of queries) {
@@ -197,5 +205,71 @@ describe.sequential("authenticated tenant isolation", () => {
     await pg.query("insert into property_photos(tenant_id,property_id,storage_path,alt,position,size_bytes) values($1,$2,'tenants/b/photo.webp','Foto B',0,80)", [TENANT_B, PROPERTY_B]);
     expect(await getUsage(TENANT_B, "max_storage_bytes")).toBe(80);
     expect(await canConsumeResource(TENANT_B, "max_storage_bytes", 21)).toBe(false);
+  });
+
+  it("provisions a usable funnel atomically, repairs only missing defaults and accepts activation once", async () => {
+    const result = await provisionTenant({name:"Operational test",slug:"operational-test",plan:"max",modules:["imoveis","clientes","crm"],admin:{name:"Test admin",email:"operational@example.invalid"}}, USER_B);
+    const token = result.inviteUrl.split("/").at(-1)!;
+    const stageRows = (await pg.query<{name:string;is_won:boolean;is_lost:boolean}>("select name,is_won,is_lost from stages where tenant_id=$1 order by position",[result.tenantId])).rows;
+    expect(stageRows.map(row=>row.name)).toEqual(["Novos leads","Em contato","Visita","Proposta","Ganho","Perdido"]);
+    expect(stageRows.filter(row=>row.is_won)).toHaveLength(1);
+    expect(stageRows.filter(row=>row.is_lost)).toHaveLength(1);
+    await repairTenantDefaults(result.tenantId);
+    expect((await pg.query("select id from stages where tenant_id=$1",[result.tenantId])).rows).toHaveLength(6);
+    expect((await pg.query("select id from document_categories where tenant_id=$1",[result.tenantId])).rows).toHaveLength(3);
+    await repairTenantDefaults(TENANT_B);
+    expect((await pg.query("select id from stages where tenant_id=$1",[TENANT_B])).rows).toHaveLength(2);
+    expect((await acceptInvitation(token,"synthetic-password-only")).ok).toBe(true);
+    expect((await acceptInvitation(token,"synthetic-password-only")).ok).toBe(false);
+    const propertyId = "73000000-0000-4000-8000-000000000010";
+    await pg.query("insert into properties(id,tenant_id,code,title,slug,type,price_cents,description,state,city,neighborhood,address_private,status,published_at) values($1,$2,'OP-1','Synthetic property','synthetic-property','Casa',100,'Synthetic','MG','Teste','Teste','Teste','disponivel',now())",[propertyId,result.tenantId]);
+    const lead = await pg.query<{id:string}>("select intake_property_lead($1,'Synthetic lead','11999991122','synthetic@example.invalid','Test') id",[propertyId]);
+    expect(lead.rows[0].id).toBeTruthy();
+    expect((await pg.query("select id from deals where tenant_id=$1",[result.tenantId])).rows).toHaveLength(1);
+  });
+
+  it("never reactivates a globally disabled account through a tenant invitation", async () => {
+    await pg.query("update users set active=false where id=$1",[USER_A]);
+    await pg.query("insert into tenant_invites(tenant_id,email,name,token_hash,expires_at) values($1,'admin-a@example.invalid','Admin A',$2,now()+interval '1 day')",[TENANT_B,hashToken("disabled-invite")]);
+    expect((await acceptInvitation("disabled-invite","synthetic-password-only")).ok).toBe(false);
+    expect((await pg.query<{active:boolean;global_role:string}>("select active,global_role from users where id=$1",[USER_A])).rows[0]).toEqual({active:false,global_role:"user"});
+    expect((await pg.query("select id from tenant_invites where token_hash=$1 and accepted_at is null",[hashToken("disabled-invite")])).rows).toHaveLength(1);
+  });
+
+  it("scopes commercial listings/selectors and rejects another broker's client on writes", async () => {
+    const broker="72000000-0000-4000-8000-000000000080",client="72000000-0000-4000-8000-000000000081",deal="72000000-0000-4000-8000-000000000082";
+    await pg.query("update tenants set quota_overrides='{}' where id=$1",[TENANT_B]);
+    await pg.query("insert into users(id,name,email,password_hash,role) values($1,'Broker two','broker-two@example.invalid','unused','equipe')",[broker]);
+    await pg.query("insert into tenant_memberships(tenant_id,user_id,role,status) values($1,$2,'agent','active')",[TENANT_B,broker]);
+    await pg.query("update clients set assigned_to=$1 where id=$2",[USER_B,CLIENT_B]);
+    await pg.query("insert into clients(id,tenant_id,name,phone,origin,assigned_to) values($1,$2,'Other broker client','11988882222','test',$3)",[client,TENANT_B,broker]);
+    await pg.query("insert into deals(id,tenant_id,client_id,stage_id,title,position) values($1,$2,$3,$4,'Other broker deal',2)",[deal,TENANT_B,client,STAGE_B]);
+    await pg.query("insert into proposals(tenant_id,deal_id,property_id,amount_cents,status) values($1,$2,$3,100,'enviada'),($1,$4,$3,100,'enviada')",[TENANT_B,DEAL_B,PROPERTY_B,deal]);
+    const restricted={...fixture.user,role:"equipe",membershipRole:"agent",access:{...fixture.user.access,clients:"own"}} as AuthenticatedUser;
+    expect((await commercialRows(restricted))[0].map(row=>row.deal)).toEqual(["Negócio B"]);
+    expect((await commercialRows({...restricted,id:broker}))[0].map(row=>row.deal)).toEqual(["Other broker deal"]);
+    expect((await commercialRows(restricted))[2].map(row=>row.id)).toEqual([DEAL_B]);
+    expect((await commercialRows({...restricted,id:broker}))[2].map(row=>row.id)).toEqual([deal]);
+    expect((await commercialRows({...restricted,tenantId:TENANT_A}))[0]).toEqual([]);
+    expect((await commercialRows({...restricted,role:"admin"}))[0]).toHaveLength(2);
+    const previous={role:fixture.user.role,access:fixture.user.access};
+    fixture.user.role="equipe";fixture.user.access={...fixture.user.access,clients:"own"};
+    try {
+      expect((await saveProposal({ok:false,message:""},form({dealId:deal,propertyId:PROPERTY_B,advertised:"100",amount:"95",counter:"",validUntil:"",status:"enviada",notes:""}))).ok).toBe(false);
+      expect((await saveVisit({ok:false,message:""},form({clientId:client,propertyId:PROPERTY_B,dealId:deal,scheduledAt:"2026-12-10T10:00",notes:"",status:"agendada"}))).ok).toBe(false);
+      expect((await saveSale({ok:false,message:""},form({dealId:deal,propertyId:PROPERTY_B,proposalId:"",advertised:"100",amount:"95",commissionPercent:"5",soldAt:"2026-10-13",notes:""}))).ok).toBe(false);
+    } finally {fixture.user.role=previous.role;fixture.user.access=previous.access;}
+  });
+
+  it("paginates beyond 100 visits and scopes list and selectors to the owning broker", async () => {
+    await pg.query("update clients set assigned_to=$1 where id=$2",[USER_B,CLIENT_B]);
+    await pg.query("insert into visits(tenant_id,client_id,property_id,scheduled_at) select $1,$2,$3,now()+make_interval(days=>n) from generate_series(1,105) n",[TENANT_B,CLIENT_B,PROPERTY_B]);
+    const own={...fixture.user,role:"equipe",membershipRole:"agent",globalRole:"user",access:{...fixture.user.access,clients:"own"}} as AuthenticatedUser;
+    const other={...own,id:USER_A};
+    expect(await visitRows(other,1,"all")).toEqual([]);
+    expect((await visitChoices(other))[0]).toEqual([]);
+    expect((await visitChoices(other))[2]).toEqual([]);
+    expect(await visitRows(own,5,"upcoming")).toHaveLength(5);
+    expect(await visitRows({...own,tenantId:TENANT_A},1,"all")).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { consumeMfa, enabledMfa } from "@/lib/mfa";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { and, eq, inArray } from "drizzle-orm";
@@ -10,14 +11,14 @@ import { SESSION_COOKIE, TENANT_COOKIE } from "@/lib/auth";
 import { firstAllowedRoute } from "@/lib/permissions";
 import { ROOT_TENANT_SLUG, normalizeHostname, normalizeTenantSlug } from "@/lib/tenant";
 
-const input=z.object({email:z.email(),password:z.string().min(8).max(200),tenantSlug:z.string().max(120).optional()});
+const input=z.object({email:z.email(),password:z.string().min(8).max(200),tenantSlug:z.string().max(120).optional(),code:z.string().trim().max(40).optional()});
 export async function POST(request:Request){
   const invalid=()=>NextResponse.json({error:"E-mail ou senha inválidos."},{status:401});
   try{
     const parsed=input.safeParse(await request.json()); if(!parsed.success)return invalid();
     const requestHeaders=await headers();
     const ip=requestHeaders.get("x-forwarded-for")?.split(",")[0]||"unknown";
-    if(!await checkRateLimit(`login:${ip}`,8,15*60*1000) || !await checkRateLimit(`login-account:${parsed.data.email.toLowerCase()}`,12,15*60*1000))return NextResponse.json({error:"Aguarde alguns minutos antes de tentar novamente."},{status:429});
+    if(!await checkRateLimit(`login:${ip}`,8,15*60*1000) || !await checkRateLimit(`login-account-ip:${ip}:${parsed.data.email.toLowerCase()}`,12,15*60*1000))return NextResponse.json({error:"Aguarde alguns minutos antes de tentar novamente."},{status:429});
     const slug=normalizeTenantSlug(parsed.data.tenantSlug||ROOT_TENANT_SLUG);
     const db=getDb();
     const [row]=await db.select({user:users,membership:tenantMemberships,tenant:tenants})
@@ -26,8 +27,10 @@ export async function POST(request:Request){
       .innerJoin(tenants,eq(tenants.id,tenantMemberships.tenantId))
       .where(and(eq(users.email,parsed.data.email.toLowerCase()),eq(tenants.slug,slug),eq(users.active,true),eq(tenantMemberships.status,"active"),inArray(tenants.status,["active","trial"]))).limit(1);
     if(!row||!await verifyPassword(parsed.data.password,row.user.passwordHash))return invalid();
+    const mfa=await enabledMfa(row.user.id);
+    if(mfa && !await consumeMfa(row.user.id,parsed.data.code||""))return NextResponse.json({error:"Informe um código válido do autenticador ou de recuperação.",mfaRequired:true},{status:401});
     const token=issueToken(); const expiresAt=new Date(Date.now()+7*24*60*60*1000);
-    await db.insert(sessions).values({userId:row.user.id,tenantId:row.tenant.id,tokenHash:hashToken(token),expiresAt});
+    await db.insert(sessions).values({userId:row.user.id,tenantId:row.tenant.id,tokenHash:hashToken(token),expiresAt,mfaVerifiedAt:mfa?new Date():null});
     const role=row.membership.role==="owner"||row.membership.role==="admin"?"admin":"equipe";
     const base=firstAllowedRoute({role,access:row.membership.permissions});
     const host=normalizeHostname(requestHeaders.get("host"));

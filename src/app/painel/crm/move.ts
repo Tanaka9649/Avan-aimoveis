@@ -3,10 +3,10 @@ import {sql} from "drizzle-orm";
 import {z} from "zod";
 import {revalidatePath} from "next/cache";
 import {getDb} from "@/db";
-import {requireModule} from "@/lib/access";
+import {requireWriteModule} from "@/lib/access";
 
 export async function moveOpportunity(input:{id:string;stageId:string;beforeId:string|null;fromStageId:string;lostReason?:string}){
- const user=await requireModule("crm");
+ const user=await requireWriteModule("crm");
  const parsed=z.object({id:z.uuid(),stageId:z.uuid(),beforeId:z.uuid().nullable(),fromStageId:z.uuid(),lostReason:z.string().trim().max(2000).optional()}).safeParse(input);
  if(!parsed.success)return{ok:false,message:"Movimentação inválida."};
  const v=parsed.data;const all=user.role==="admin"||user.access.clients==="all";

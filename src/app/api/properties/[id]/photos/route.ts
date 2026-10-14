@@ -1,3 +1,5 @@
+import { databaseErrorIs } from "@/lib/database-error";
+import { reportOperationFailure } from "@/lib/observability";
 import { withApiErrors } from "@/lib/api-errors";
 import { randomUUID } from "node:crypto";
 import { and, count, eq, inArray, max } from "drizzle-orm";
@@ -60,7 +62,10 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
       isCover: reservation.isCover,
       variants: {},
     })));
-  } catch {
+  } catch (error) {
+    if(databaseErrorIs(error,"property_photo_limit"))return NextResponse.json({error:"O imóvel permite até 10 fotos, incluindo envios em andamento."},{status:409});
+    if(databaseErrorIs(error,"tenant_quota_exceeded"))return NextResponse.json({error:"O limite de armazenamento do plano foi atingido."},{status:409});
+    reportOperationFailure("upload","photo_reservation_failed");
     return NextResponse.json({ error: "Não foi possível preparar o envio das fotos." }, { status: 500 });
   }
 

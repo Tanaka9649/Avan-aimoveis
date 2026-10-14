@@ -1,3 +1,5 @@
+import { claimUpload, releaseUpload } from "@/lib/upload-lifecycle";
+import { reportOperationFailure } from "@/lib/observability";
 import { withApiErrors } from "@/lib/api-errors";
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { and, eq } from "drizzle-orm";
@@ -23,6 +25,7 @@ async function handlePOST(_: Request, { params }: { params: Promise<{ id: string
   if (!photo) return NextResponse.json({ error: "Foto não encontrada." }, { status: 404 });
   if (photo.processingStatus === "ready") return NextResponse.json({ photo: publicPhoto(photo) });
 
+  if (!await claimUpload("property_photos", user.tenantId, photo.id)) return NextResponse.json({ error: "Envio expirado ou em processamento. Atualize as fotos e tente novamente." }, { status: 409 });
   try {
     const head = await storageClient().send(new HeadObjectCommand({ Bucket: PHOTO_BUCKET, Key: photo.storagePath }));
     const firstBytes = await storageClient().send(new GetObjectCommand({ Bucket: PHOTO_BUCKET, Key: photo.storagePath, Range: "bytes=0-63" }));
@@ -40,6 +43,8 @@ async function handlePOST(_: Request, { params }: { params: Promise<{ id: string
     after(() => generatePhotoVariants(photo.id, user.tenantId));
     return NextResponse.json({ photo: publicPhoto({ ...photo, processingStatus: "processing" }) }, { status: 202, headers: { "cache-control": "no-store" } });
   } catch {
+    await releaseUpload("property_photos", user.tenantId, photo.id);
+    reportOperationFailure("upload", "photo_confirmation_failed");
     return NextResponse.json({ error: "Não foi possível confirmar a foto enviada." }, { status: 502 });
   }
 }

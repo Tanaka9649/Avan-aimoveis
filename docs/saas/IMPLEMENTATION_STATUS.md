@@ -1,5 +1,31 @@
 # Status da implementação SaaS
 
+## Revisão vigente — 13/10/2026
+
+As conclusões antigas de “Concluído/READY” abaixo **não representam homologação atual**. A auditoria confirmou defeitos de PDF, defaults, permissões, marca pública, uploads e operação; foram corrigidos localmente até `50fdaa2`, com 204 testes aprovados, lint/typecheck/build e nove regressões opt-in dos PDFs reais.
+
+| Área | Estado atual verificado |
+| --- | --- |
+| Dados da Avança / migrations aplicadas | Preservados, leitura real até 0017, nenhuma escrita nesta rodada |
+| PDF / provisionamento / convites / permissões | Corrigidos em código e testes locais; ensaio UI em Preview pendente |
+| Identidade / 404 / contatos / links de Preview | Corrigidos localmente; WhatsApp real pendente; homologação visual bloqueada |
+| MFA / uploads / quotas / operação | Implementação e regressões locais aprovadas; novas 0018–0021 não aplicadas externamente |
+| E-mail | Convite/recuperação/lembretes com transporte simulado aprovados; nenhum envio real |
+| Domínios / planos comerciais | Integração e validações prontas; provider/DNS/decisões comerciais pendentes |
+| Backup / restauração | Inventário lido; restore isolado não ensaiado; capacidade limitada a dez branches |
+| Preview consolidado / milestone15 | Leitura Vercel de deployments funciona sem teamId/slug; helper e isolamento/configuração do Preview pendentes; nenhum push/deploy deste conjunto |
+| Produção / onboarding de outras empresas | Não aprovado para este release; exige homologação e aprovação final explícita |
+
+O comportamento de revisão de arquivos (`cd8fbd3`) e status de visitas (`ace1ea7`) permanece no código, mas **não foi confirmado visualmente nesta sessão**. Teste automatizado não equivale a fluxo pela interface. Jobs de recuperação anteriores foram cancelados intencionalmente sem publicação, não são evidência de falha de release.
+
+Production reconfirmada via Vercel em `48ccfa4` / `READY`; Preview mais recente listado em `ace1ea7` / `READY`. Isso não homologa as correções locais. Último pedido: salvar antes de reiniciar, **sem deploy/migrations**; não fazer push que dispare publicação automática.
+
+Fonte atual: [checkpoint de reinicialização e consultas sem escopo](CURRENT_CHECKPOINT.md), [auditoria F01–F24](../audit-remediation-2026-10-13.md) e [roteiro de retomada](AUDIT_RELEASE_RUNBOOK.md).
+
+---
+
+## Histórico anterior — conclusões abaixo mantidas apenas para rastreabilidade
+
 Atualizado em 09/10/2026.
 
 | Milestone | Estado | Evidência |

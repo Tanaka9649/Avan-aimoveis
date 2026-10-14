@@ -1,4 +1,5 @@
 "use client";
+import { telephoneContactUrl, whatsappContactUrl } from "@/lib/contact";
 import { AdminDropdownMenu } from "@/components/admin-dropdown-menu";
 
 import Link from "next/link";
@@ -80,7 +81,7 @@ function ClientAssignment({client,team}:{client:CrmClient;team:{id:string;name:s
 
 function ClientSummary({client,onEdit,team,canAssign}:{client:CrmClient;onEdit:()=>void;team:{id:string;name:string}[];canAssign:boolean}){
  return <div className="crm-drawer-scroll client-summary">
-  <section><h3>Contato</h3><a href={`tel:${client.phone}`}><Phone/> {maskPhone(client.phone)}</a><a href={`https://wa.me/55${digits(client.phone)}`} target="_blank" rel="noreferrer"><MessageCircle/> Abrir WhatsApp</a>{client.email?<a href={`mailto:${client.email}`}><Mail/> {client.email}</a>:<p>Sem e-mail</p>}<p>Origem: {client.origin}</p><p>Responsável: {client.responsible || "Sem responsável"}</p>{canAssign?<ClientAssignment client={client} team={team}/>:null}</section>
+  <section><h3>Contato</h3><a href={`tel:${client.phone}`}><Phone/> {maskPhone(client.phone)}</a><a href={whatsappContactUrl(client.phone) || telephoneContactUrl(client.phone) || `/painel/clientes/${client.id}`} target="_blank" rel="noreferrer"><MessageCircle/> Abrir WhatsApp</a>{client.email?<a href={`mailto:${client.email}`}><Mail/> {client.email}</a>:<p>Sem e-mail</p>}<p>Origem: {client.origin}</p><p>Responsável: {client.responsible || "Sem responsável"}</p>{canAssign?<ClientAssignment client={client} team={team}/>:null}</section>
   <section><h3>O que procura</h3><p>Orçamento: {client.budgetMin===null&&client.budgetMax===null?"Não informado":`${money(client.budgetMin)} a ${money(client.budgetMax)}`}</p><p>Tipos: {client.desiredTypes.join(", ")||"Não informado"}</p><p>Regiões: {client.desiredRegions.join(", ")||"Não informado"}</p><p>Preferências: {client.desiredFeatures.join(", ")||"Não informado"}</p></section>
   <section><h3>Relacionamento</h3><div className="client-stat-grid"><span><b>{client.matches}</b>{client.matches===1?"Compatível":"Compatíveis"}</span><span><b>{client.favorites}</b>Favoritos</span><span><b>{client.presented}</b>Apresentados</span><span><b>{client.history}</b>Histórico</span><span><b>{client.visits}</b>Visitas</span><span><b>{client.proposals}</b>Propostas</span></div></section>
   <section><h3>Próxima ação</h3>{client.nextActionAt?<><p>{client.nextActionType||"Próxima ação"}</p><time>{formatLongDateTime(client.nextActionAt)}</time></>:<p>Nenhuma ação agendada.</p>}</section>

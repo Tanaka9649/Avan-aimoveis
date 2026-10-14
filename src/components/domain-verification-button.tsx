@@ -16,7 +16,11 @@ export function DomainVerificationButton() {
       setState({
         loading: false,
         message: response.ok ? (data.status === "active" ? "Domínio verificado e ativo." : "Aguardando os registros DNS abaixo.") : data.error || "Falha na verificação.",
-        challenges: Array.isArray(data.verification) ? data.verification : [],
+        challenges: [
+          ...(Array.isArray(data.verification) ? data.verification : []),
+          ...(data.dns?.misconfigured && Array.isArray(data.dns?.recommendedCNAME) ? data.dns.recommendedCNAME.filter((item: {rank:number}) => item.rank === 1).map((item: {value:string}) => ({type:"CNAME recomendado",domain:"No provedor DNS do domínio/subdomínio",value:item.value})) : []),
+          ...(data.dns?.misconfigured && Array.isArray(data.dns?.recommendedIPv4) ? data.dns.recommendedIPv4.filter((item: {rank:number}) => item.rank === 1).map((item: {value:string[]}) => ({type:"A recomendado",domain:"No provedor DNS, se aplicável ao domínio",value:item.value.join(", ")})) : []),
+        ],
       });
       if (response.ok) router.refresh();
     } catch {

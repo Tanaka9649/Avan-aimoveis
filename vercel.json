@@ -4,6 +4,8 @@
     "cle1"
   ],
   "crons": [
+    { "path": "/api/cron/upload-cleanup", "schedule": "30 3 * * *" },
+    { "path": "/api/cron/visit-reminder-emails", "schedule": "10 6 * * *" },
     {
       "path": "/api/cron/analytics-retention",
       "schedule": "15 3 * * *"

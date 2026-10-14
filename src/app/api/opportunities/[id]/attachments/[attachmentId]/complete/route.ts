@@ -1,3 +1,5 @@
+import { claimUpload, releaseUpload } from "@/lib/upload-lifecycle";
+import { reportOperationFailure } from "@/lib/observability";
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -21,6 +23,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   if (!attachment) return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
   if (attachment.uploadStatus === "ready") return NextResponse.json({ attachment: serialize(attachment) });
 
+  if (!await claimUpload("opportunity_attachments", user.tenantId, attachment.id)) return NextResponse.json({ error: "Envio expirado ou em processamento." }, { status: 409 });
   try {
     const head = await storageClient().send(new HeadObjectCommand({ Bucket: DOCUMENT_BUCKET, Key: attachment.storageKey }));
     const firstBytes = await storageClient().send(new GetObjectCommand({ Bucket: DOCUMENT_BUCKET, Key: attachment.storageKey, Range: "bytes=0-63" }));
@@ -40,8 +43,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     ]);
     return NextResponse.json({ attachment: serialize({ ...attachment, uploadStatus: "ready" }) }, { headers: { "cache-control": "no-store" } });
   } catch {
+    reportOperationFailure("upload", "attachment_confirmation_failed");
     return NextResponse.json({ error: "Não foi possível confirmar o arquivo enviado." }, { status: 502 });
-  }
+  } finally { await releaseUpload("opportunity_attachments", user.tenantId, attachment.id); }
 }
 
 function serialize(attachment: typeof opportunityAttachments.$inferSelect) {

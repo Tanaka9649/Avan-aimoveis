@@ -26,7 +26,7 @@ export const PHOTO_SIZES = {
 
 /**
  * URL of one photo at one size. Keys are immutable (a replaced photo gets a new id),
- * so these URLs are safe to cache for a year — see the route handler.
+ * but responses must revalidate publication and tenant status on every request.
  */
 export function photoUrl(photoId: string, variant: PhotoVariant = "full") {
   return variant === "full" ? `/api/property-photos/${photoId}` : `/api/property-photos/${photoId}?v=${variant}`;

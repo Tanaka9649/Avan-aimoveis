@@ -5,7 +5,7 @@ function platformRequest(request: NextRequest) {
   const host = normalizeHostname(request.headers.get("host"));
   const configured = normalizeHostname(process.env.ROOT_DOMAIN || process.env.NEXT_PUBLIC_SITE_URL || null);
   const preview = normalizeHostname(process.env.VERCEL_URL || null);
-  return !host || host === configured || host === preview || host === "localhost";
+  return !host || host === configured || host === preview || (process.env.VERCEL_ENV === "preview" && host === normalizeHostname(process.env.VERCEL_BRANCH_URL || null)) || host === "localhost";
 }
 
 function routeRequest(request: NextRequest, headers: Headers) {

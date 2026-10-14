@@ -25,6 +25,16 @@ describe("audit database invariants", () => {
     expect(first.rows[0].id).toBeTruthy(); expect(repeat.rows[0].id).toBe(first.rows[0].id);
     expect((await pg.query<{n:number}>("SELECT count(*)::int n FROM clients WHERE tenant_id=$1",[tenant])).rows[0].n).toBe(1);
   });
+  it("never merges a different person with a shared contact", async () => {
+    const before=(await pg.query("SELECT id,name,phone,email FROM clients WHERE tenant_id=$1",[tenant])).rows;
+    await expect(pg.query("SELECT intake_property_lead($1,'Pessoa diferente','34999991122','lead@example.invalid','')",[property])).rejects.toThrow("lead_contact_conflict");
+    expect((await pg.query("SELECT id,name,phone,email FROM clients WHERE tenant_id=$1",[tenant])).rows).toEqual(before);
+  });
+  it("rejects normalized duplicate contact inserts without silently overwriting", async () => {
+    await expect(pg.query("INSERT INTO clients(tenant_id,name,phone,origin) VALUES($1,'Duplicado','(34) 99999-1122','teste')",[tenant])).rejects.toThrow("client_contact_duplicate");
+    await expect(pg.query("INSERT INTO clients(tenant_id,name,phone,email,origin) VALUES($1,'Duplicado','11977771122',' LEAD@EXAMPLE.INVALID ','teste')",[tenant])).rejects.toThrow("client_contact_duplicate");
+    expect((await pg.query("SELECT id FROM clients WHERE tenant_id=$1",[tenant])).rows).toHaveLength(1);
+  });
   it("rejects leads from suspended tenants without creating data", async () => {
     await pg.query("UPDATE tenants SET status='suspended' WHERE id=$1",[tenant]);
     expect((await pg.query<{id:null}>("SELECT intake_property_lead($1,'Outro','34999998888','other@example.invalid','') AS id",[property])).rows[0].id).toBeNull();

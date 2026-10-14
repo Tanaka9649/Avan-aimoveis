@@ -1,3 +1,4 @@
+import { reportOperationFailure } from "@/lib/observability";
 import { withApiErrors } from "@/lib/api-errors";
 import { normalizeWhatsApp } from "@/lib/contact";
 import { NextResponse } from "next/server";
@@ -17,7 +18,7 @@ const input=z.object({
  admin:z.object({name:z.string().trim().min(2).max(160),email:z.email()})
 });
 async function handleGET(){const user=await requireSuperAdmin();void user;const db=getDb();const rows=await db.select({id:tenants.id,name:tenants.name,slug:tenants.slug,status:tenants.status,plan:tenants.plan,domain:tenants.customDomain,users:sql<number>`count(distinct ${tenantMemberships.id})`,properties:sql<number>`count(distinct ${properties.id})`}).from(tenants).leftJoin(tenantMemberships,eq(tenantMemberships.tenantId,tenants.id)).leftJoin(properties,eq(properties.tenantId,tenants.id)).groupBy(tenants.id);return NextResponse.json({tenants:rows})}
-async function handlePOST(request:Request){const user=await requireSuperAdmin();try{const parsed=input.safeParse(await request.json());if(!parsed.success)return NextResponse.json({error:"Revise os dados da empresa.",issues:parsed.error.flatten().fieldErrors},{status:400});const created=await provisionTenant(parsed.data,user.id);return NextResponse.json(created,{status:201})}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Não foi possível criar a empresa."},{status:409})}}
+async function handlePOST(request:Request){const user=await requireSuperAdmin();try{const parsed=input.safeParse(await request.json());if(!parsed.success)return NextResponse.json({error:"Revise os dados da empresa.",issues:parsed.error.flatten().fieldErrors},{status:400});const created=await provisionTenant(parsed.data,user.id);return NextResponse.json(created,{status:201})}catch(error){const allowed=["Slug inválido.","A combinação de módulos possui dependências ausentes.","Os módulos selecionados não estão disponíveis neste plano.","Este slug já está em uso.","Configure e salve os limites deste plano no Super Admin antes de criar uma empresa."];const message=error instanceof Error&&allowed.includes(error.message)?error.message:null;if(!message)reportOperationFailure("provisioning","tenant_creation_failed");return NextResponse.json({error:message||"Não foi possível criar a empresa. Atualize e tente novamente."},{status:message?409:503})}}
 
 export const GET = withApiErrors(handleGET);
 export const POST = withApiErrors(handlePOST);

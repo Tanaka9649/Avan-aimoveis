@@ -1,6 +1,9 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { tenantDefaultQueries } from "@/lib/tenant-defaults";
+import { tenantAuditLogs } from "@/db/schema";
+import { reportOperationFailure } from "@/lib/observability";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, count, eq, ne, or } from "drizzle-orm";
@@ -17,6 +20,20 @@ import { normalizeWhatsApp } from "@/lib/contact";
 import { ROOT_TENANT_ID, ROOT_TENANT_SLUG } from "@/lib/tenant";
 
 type ActionState = { message: string; ok: boolean };
+
+export async function restoreMissingDefaults(tenantIdValue: string): Promise<ActionState> {
+  const actor=await requireSuperAdmin();
+  const parsed=z.uuid().safeParse(tenantIdValue);
+  if(!parsed.success)return {ok:false,message:"Empresa inválida."};
+  const db=getDb();
+  const [tenant]=await db.select({id:tenants.id}).from(tenants).where(eq(tenants.id,parsed.data));
+  if(!tenant)return {ok:false,message:"Empresa não encontrada."};
+  try {
+    await db.batch([...tenantDefaultQueries(db,tenant.id),db.insert(tenantAuditLogs).values({tenantId:tenant.id,actorUserId:actor.id,action:"tenant_defaults_repaired",entityType:"tenant",entityId:tenant.id})]);
+    revalidatePath("/superadmin/empresas/"+tenant.id);
+    return {ok:true,message:"Configurações iniciais conferidas. Funis e categorias já existentes foram preservados."};
+  }catch{reportOperationFailure("provisioning","defaults_repair_failed");return {ok:false,message:"Não foi possível conferir as configurações iniciais."};}
+}
 
 const tenantIdSchema = z.uuid();
 const slugSchema = z.string().trim().min(2).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
@@ -242,7 +259,7 @@ export async function accessTenant(formData: FormData) {
   await db.insert(sessions).values({
     userId: actor.id,
     tenantId: tenant.id,
-    tokenHash: hashToken(token),
+    tokenHash: hashToken(token), mfaVerifiedAt: new Date(),
     expiresAt,
   });
   await auditTenantAction({

@@ -1,4 +1,6 @@
 import "server-only";
+import { releaseUpload } from "@/lib/upload-lifecycle";
+import { reportOperationFailure } from "@/lib/observability";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
@@ -28,8 +30,10 @@ export async function generatePhotoVariants(photoId: string, tenantId: string) {
       await storageClient().send(new PutObjectCommand({ Bucket: PHOTO_BUCKET, Key: key, Body: variant.body, ContentType: "image/webp", CacheControl: "public, max-age=31536000, immutable" }));
     }));
     await db.update(propertyPhotos).set({ variants, blurData: processed.blurData, width: processed.width, height: processed.height, processingStatus: "ready" }).where(and(eq(propertyPhotos.id, photo.id), eq(propertyPhotos.tenantId, tenantId)));
-  } catch (error) {
+  } catch {
     await db.update(propertyPhotos).set({ processingStatus: "failed" }).where(and(eq(propertyPhotos.id, photo.id), eq(propertyPhotos.tenantId, tenantId))).catch(() => undefined);
-    console.error("property_photo_processing_failed", { photoId, tenantId, reason: error instanceof Error ? error.message : "unknown" });
+    reportOperationFailure("upload", "photo_processing_failed");
+  } finally {
+    await releaseUpload("property_photos", tenantId, photoId);
   }
 }

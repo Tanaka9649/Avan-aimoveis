@@ -46,7 +46,7 @@ function useToast() {
  */
 export function PropertyShareDialog({ property, client, onClose }: { property: SharableProperty; client?: ShareClientContext; onClose: () => void }) {
   const publicBase = useTenantPublicPath();
-  const publicUrlBase = `${siteUrl().replace(/\/$/, "")}${publicBase}`;
+  const publicUrlBase = `${typeof window === "undefined" ? siteUrl().replace(/\/$/, "") : window.location.origin}${publicBase}`;
   const [current, setCurrent] = useState(property);
   const [toast, setToast] = useToast();
   const [missing, setMissing] = useState<string[]>([]);
