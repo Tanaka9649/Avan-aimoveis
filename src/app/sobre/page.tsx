@@ -1,6 +1,6 @@
 import { Award, Handshake, MapPinned } from "lucide-react";
 import { notFound } from "next/navigation";
-import { tenantForRequest } from "@/lib/tenant";
+import { tenantForRequest, tenantPublicBase } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -21,4 +21,9 @@ export default async function AboutPage() {
       </div>
     </section>
   );
+}
+
+export async function generateMetadata() {
+ const tenant = await tenantForRequest();
+ return tenant ? {title:"Sobre",alternates:{canonical:tenantPublicBase(tenant)+"/sobre"}} : {};
 }

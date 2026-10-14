@@ -4,7 +4,8 @@ export function dealPosition(timestampMs:number){
 }
 
 export function maskPhone(value:string){
- const raw=value.replace(/\D/g,"").slice(0,11);
+ const digits=value.replace(/\D/g,"");
+ const raw=(digits.startsWith("55") && (digits.length===12||digits.length===13)?digits.slice(2):digits).slice(0,11);
  if(raw.length<=2)return raw;
  if(raw.length<=6)return`(${raw.slice(0,2)}) ${raw.slice(2)}`;
  if(raw.length<=10)return`(${raw.slice(0,2)}) ${raw.slice(2,6)}-${raw.slice(6)}`;

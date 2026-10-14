@@ -27,11 +27,11 @@ export function Catalog({ properties, initial = {}, basePath = "", tenantKey }: 
   );
 
   const list = useMemo(() => {
-    const term = filters.q.trim().toLocaleLowerCase("pt-BR");
+    const term = filters.q.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
     const ceiling = Number(filters.max.replace(/\D/g, "")) * 100;
     return properties
       .filter((property) =>
-        (!term || `${property.title} ${property.neighborhood} ${property.city} ${property.code}`.toLocaleLowerCase("pt-BR").includes(term)) &&
+        (!term || `${property.title} ${property.neighborhood} ${property.city} ${property.code}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(term)) &&
         (!filters.type || property.type === filters.type) &&
         (!filters.city || property.city === filters.city) &&
         (!filters.neighborhood || property.neighborhood === filters.neighborhood) &&

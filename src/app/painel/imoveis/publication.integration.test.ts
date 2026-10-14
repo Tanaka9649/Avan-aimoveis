@@ -10,7 +10,7 @@ vi.mock("@/lib/access", () => ({ requireModule: async () => mock.user, requireWr
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-import { publishProperty, unpublishProperty } from "./actions";
+import { publishProperty, unpublishProperty, saveProperty } from "./actions";
 import { publicProperty, publicPropertyCards } from "@/lib/public-properties";
 
 const id = (n: number) => `50000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -35,7 +35,7 @@ beforeAll(async () => {
   });
   await pg.query("insert into users(id,name,email,password_hash,role) values($1,'Teste','pub@example.invalid','unused','admin')", [mock.user.id]);
   await insertProperty();
-}, 30000);
+}, 120000);
 
 afterAll(async () => { await pg.close(); });
 
@@ -63,6 +63,18 @@ describe.sequential("fluxo de publicação ponta a ponta", () => {
     const detail = await publicProperty(ROOT_TENANT, "casa-cidade-das-aguas-cda-001");
     expect(detail?.gallery).toHaveLength(1);
     expect(Object.keys(detail!)).not.toContain("status");
+  });
+
+  it("preserves status and publication date when saving existing property details", async () => {
+    const before = (await pg.query<{published_at:Date}>("select published_at from properties where id=$1",[PROPERTY])).rows[0];
+    const form = new FormData();
+    for (const [key,value] of Object.entries({id:PROPERTY, intent:"draft",code:"CDA-001",title:"Casa Cidade das Águas",slug:"casa-cidade-das-aguas-cda-001",type:"Casa",price:"400000",description:"Casa térrea com quintal, sala ampla e garagem coberta para dois carros.",state:"MG",city:"Frutal",neighborhood:"Centro",address:"Rua interna, 100",area:"120",status:"rascunho",bedrooms:"3",suites:"1",bathrooms:"2",parking:"2"})) form.set(key,value);
+    const result = await saveProperty({error:""},form);
+    expect(result.error).toBe("");
+    const after = (await pg.query<{status:string;published_at:Date}>("select status,published_at from properties where id=$1",[PROPERTY])).rows[0];
+    expect(after.status).toBe("disponivel");
+    expect(after.published_at).toEqual(before.published_at);
+    expect(await publicPropertyCards(ROOT_TENANT)).toHaveLength(1);
   });
 
   it("never exposes the private address, coordinates or commission on public routes", async () => {

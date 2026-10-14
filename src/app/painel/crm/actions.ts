@@ -1,4 +1,5 @@
 "use server";
+import { databaseErrorIs } from "@/lib/database-error";
 import {randomUUID} from "node:crypto";
 import {and,eq,asc,ne,or,sql} from "drizzle-orm";
 import {redirect} from "next/navigation";
@@ -37,7 +38,7 @@ export async function saveDeal(_:State,form:FormData):Promise<State>{
   ...(links.data.length?[db.insert(dealProperties).values([...new Set(links.data)].map(propertyId=>({tenantId:user.tenantId,dealId:id,propertyId})))]:[]),
   db.insert(activities).values({tenantId:user.tenantId,clientId:client.id,dealId:id,userId:user.id,type:"deal_updated",description:`${v.id?"Oportunidade atualizada":"Oportunidade criada"}: ${v.title}. Etapa: ${stage.name}.${stage.isLost?" Motivo: "+v.lostReason:""}${v.note?"\n"+v.note:""}`}),
  ]);}catch(error){console.error("[crm/saveDeal] failed",{error:error instanceof Error?error.message:String(error),userId:user.id,clientId:client.id});return {ok:false,message:"Não foi possível salvar a oportunidade."};}
- revalidatePath("/painel","layout");if(form.get("returnToBoard")==="1")return{ok:true,message:"Oportunidade criada com sucesso."};redirect(`/painel/crm/${id}`);
+ revalidatePath("/painel","layout");if(form.get("returnToBoard")==="1")return{ok:true,message:v.id?"Oportunidade atualizada com sucesso.":"Oportunidade criada com sucesso."};redirect(`/painel/crm/${id}`);
 }
 
 export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmClientState>{
@@ -64,7 +65,7 @@ export async function saveCrmClient(_:CrmClientState,form:FormData):Promise<CrmC
    raw?db.update(clients).set(values).where(and(eq(clients.id,id),clientScope(user))):db.insert(clients).values({tenantId:user.tenantId,id,...values,assignedTo:user.id}),
    db.insert(activities).values({tenantId:user.tenantId,clientId:id,userId:user.id,type:raw?"client_updated":"client_created",description:raw?"Cadastro e preferências atualizados no CRM.":"Cliente cadastrado pelo CRM."}),
   ]);
- }catch(error){console.error("[crm/saveClient] failed",{error:error instanceof Error?error.message:String(error),userId:user.id,clientId:id});return{ok:false,message:"Não foi possível salvar o cliente. Tente novamente."};}
+ }catch(error){if(databaseErrorIs(error,"client_contact_duplicate"))return{ok:false,message:"Já existe um cliente com este telefone ou e-mail."};return{ok:false,message:"Não foi possível salvar o cliente. Tente novamente."};}
  revalidatePath("/painel/crm");
  revalidatePath("/painel/busca");
  return{ok:true,message:raw?"Alterações salvas com sucesso.":"Cliente cadastrado com sucesso.",clientId:id};

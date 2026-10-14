@@ -92,8 +92,9 @@ export async function saveProperty(_previous: { error: string; id?: string; save
       }
     }
 
-    let current: { publishedAt: Date | null } | undefined;
-    if(rawId){const [found]=await db.select({id:properties.id,publishedAt:properties.publishedAt}).from(properties).where(and(eq(properties.id,id),eq(properties.tenantId,user.tenantId),ne(properties.status,"vendido")));if(!found)return {error:"Imóvel indisponível ou vendido."};current=found;}
+    let current: { publishedAt: Date | null; status: typeof values.status } | undefined;
+    if(rawId){const [found]=await db.select({id:properties.id,publishedAt:properties.publishedAt,status:properties.status}).from(properties).where(and(eq(properties.id,id),eq(properties.tenantId,user.tenantId),ne(properties.status,"vendido")));if(!found || found.status === "vendido")return {error:"Imóvel indisponível ou vendido."};current={publishedAt:found.publishedAt,status:found.status};}
+    if (current && formData.get("intent") === "draft") values.status = current.status;
     if (wantsPublication) {
       const [photos] = rawId ? await db.select({ value: count() }).from(propertyPhotos).where(and(eq(propertyPhotos.tenantId,user.tenantId),eq(propertyPhotos.propertyId, id), eq(propertyPhotos.processingStatus, "ready"))) : [{ value: 0 }];
       const candidate = { status: p.status, title: p.title, priceCents: p.price, description: p.description, neighborhood: p.neighborhood, city: p.city, state: p.state, area: p.area || p.lotArea || 0, photoCount: Number(photos.value) };

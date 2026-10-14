@@ -30,7 +30,7 @@ export async function visitChoices(user: AuthenticatedUser) {
   return Promise.all([
     db.select({ id: clients.id, name: clients.name }).from(clients).where(clientScope(user)).orderBy(asc(clients.name)),
     db.select({ id: properties.id, title: properties.title, code: properties.code }).from(properties).where(eq(properties.tenantId, user.tenantId)).orderBy(asc(properties.title)),
-    db.select({ id: deals.id, title: deals.title }).from(deals)
+    db.select({ id: deals.id, title: deals.title, clientId: deals.clientId }).from(deals)
       .innerJoin(clients, and(eq(clients.id, deals.clientId), eq(clients.tenantId, deals.tenantId)))
       .where(and(eq(deals.tenantId, user.tenantId), clientScope(user))).orderBy(asc(deals.title)),
   ]);

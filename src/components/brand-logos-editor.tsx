@@ -33,11 +33,13 @@ export function BrandLogosEditor({
   inputName = "logosJson",
   onChange,
   maxLogos = 8,
+  stageFile,
 }: {
   initialLogos?: BrandLogoEntry[];
   inputName?: string;
   onChange?: (logos: BrandLogoEntry[]) => void;
   maxLogos?: number;
+  stageFile?: (file: File) => string;
 }) {
   const [logos, setLogos] = useState<EditableLogo[]>(() => initialLogos.length ? initialLogos.map(editable) : [emptyLogo(0)]);
   const [active, setActive] = useState(0);
@@ -113,8 +115,8 @@ export function BrandLogosEditor({
               Nome da empresa ou marca
               <input value={current.name} maxLength={80} onChange={(event) => update("name", event.target.value)} placeholder="Ex.: Avança Imóveis"/>
             </label>
-            <BrandAssetUpload label="Logo para fundo claro" value={current.logoLight} onChange={(value) => update("logoLight", value)}/>
-            <BrandAssetUpload label="Logo para fundo escuro/transparente" value={current.logoDark} onChange={(value) => update("logoDark", value)}/>
+            <BrandAssetUpload stageFile={stageFile} key={current.id + "-light"} label="Logo para fundo claro" value={current.logoLight} onChange={(value) => update("logoLight", value)}/>
+            <BrandAssetUpload stageFile={stageFile} key={current.id + "-dark"} label="Logo para fundo escuro/transparente" value={current.logoDark} onChange={(value) => update("logoDark", value)}/>
             <details className="brand-url-fallback">
               <summary>Usar URL externa como alternativa</summary>
               <label>URL para fundo claro<input value={current.logoLight.startsWith("http") ? current.logoLight : ""} type="url" onChange={(event) => update("logoLight", event.target.value)} placeholder="https://..."/></label>

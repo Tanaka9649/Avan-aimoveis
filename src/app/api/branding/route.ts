@@ -5,7 +5,7 @@ import { canConsumeResource } from "@/lib/entitlements";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/access";
+import { brandingActor } from "@/lib/branding-access";
 import { PHOTO_BUCKET, signedUploadUrl, tenantStorageKey } from "@/lib/storage";
 import { brandingExtension, MAX_BRANDING_BYTES } from "@/lib/branding-upload";
 
@@ -18,7 +18,7 @@ const input = z.object({
 });
 
 async function handlePOST(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await brandingActor(request);
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Revise o arquivo selecionado." }, { status: 400 });
   const extension = brandingExtension(parsed.data.type);

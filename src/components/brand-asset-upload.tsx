@@ -1,5 +1,6 @@
 "use client";
 
+import { uploadBrandingFile } from "@/lib/branding-client";
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { ImageUp, Trash2 } from "lucide-react";
@@ -10,20 +11,23 @@ export function BrandAssetUpload({
   onChange,
   inputName,
   favicon = false,
+  stageFile,
 }: {
   label: string;
   value: string;
   onChange?: (value: string) => void;
   inputName?: string;
   favicon?: boolean;
+  stageFile?: (file: File) => string;
 }) {
-  const [current, setCurrent] = useState(value);
+  const [internal, setInternal] = useState(value);
+  const current = onChange ? value : internal;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const input = useRef<HTMLInputElement>(null);
 
   const commit = (next: string) => {
-    setCurrent(next);
+    setInternal(next);
     onChange?.(next);
   };
 
@@ -31,17 +35,9 @@ export function BrandAssetUpload({
     setBusy(true);
     setMessage("");
     try {
-      const prepare = await fetch("/api/branding", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: file.name, type: file.type, size: file.size }),
-      });
-      const payload = await prepare.json();
-      if (!prepare.ok) throw new Error(payload.error || "Não foi possível preparar o envio.");
-      const sent = await fetch(payload.uploadUrl, { method: "PUT", headers: { "content-type": payload.contentType }, body: file });
-      if (!sent.ok) throw new Error("O envio da imagem falhou.");
-      commit(payload.publicUrl);
-      setMessage("Imagem enviada. Salve as configurações para aplicar.");
+      const publicUrl = stageFile ? stageFile(file) : await uploadBrandingFile(file, favicon);
+      commit(publicUrl);
+      setMessage(stageFile ? "Imagem selecionada. Será enviada para a nova empresa ao concluir." : "Imagem confirmada. Salve as configurações para aplicar.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
     } finally {
@@ -59,7 +55,7 @@ export function BrandAssetUpload({
           {current ? <Image src={current} alt={"Prévia de " + label} width={favicon ? 40 : 150} height={favicon ? 40 : 54} unoptimized/> : <small>Sem imagem</small>}
         </div>
         <div>
-          <input ref={input} className="crm-visually-hidden" type="file" accept={favicon ? "image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml" : "image/png,image/jpeg,image/webp,image/svg+xml"} onChange={(event) => { const file=event.target.files?.[0]; if(file) void upload(file); }}/>
+          <input ref={input} className="crm-visually-hidden" type="file" accept={favicon ? "image/png,image/x-icon,image/vnd.microsoft.icon" : "image/png,image/jpeg,image/webp"} onChange={(event) => { const file=event.target.files?.[0]; if(file) void upload(file); }}/>
           <button className="admin-button secondary" type="button" disabled={busy} onClick={() => input.current?.click()}><ImageUp/> {busy ? "Enviando…" : current ? "Substituir arquivo" : "Enviar arquivo"}</button>
           {current ? <button className="text-action danger" type="button" disabled={busy} onClick={() => commit("")}><Trash2/> Remover</button> : null}
         </div>

@@ -1,4 +1,5 @@
 "use client";
+import { PreservedForm } from "./preserved-form";
 import { telephoneContactUrl, whatsappContactUrl } from "@/lib/contact";
 import { AdminDropdownMenu } from "@/components/admin-dropdown-menu";
 
@@ -40,7 +41,7 @@ export function ClientForm({client,onClose,onSaved}:{client?:CrmClient;onClose:(
  const hasPreferences=Boolean(client&&(client.budgetMin!==null||client.budgetMax!==null||client.desiredTypes.length||client.desiredRegions.length||client.desiredFeatures.length||client.minBedrooms||client.minBathrooms||client.minParkingSpaces));
  const[preferencesOpen,setPreferencesOpen]=useState(hasPreferences);
  useEffect(()=>{if(state.ok)router.refresh()},[state.ok,router]);
- return <form action={action} className="crm-client-form">
+ return <PreservedForm action={action} className="crm-client-form">
   <input type="hidden" name="id" value={client?.id||""}/>
   <div className="crm-drawer-scroll">
    {state.message?<div className={state.ok?"crm-toast success":"crm-form-message error"} role={state.ok?"status":"alert"}>{state.message}</div>:null}
@@ -66,42 +67,42 @@ export function ClientForm({client,onClose,onSaved}:{client?:CrmClient;onClose:(
    </div></details>
   </div>
   <footer className="crm-drawer-actions"><button type="button" className="admin-button secondary" onClick={onClose}>Cancelar</button><button className="admin-button primary" disabled={pending||state.ok}>{pending?"Salvando…":client?"Salvar alterações":"Salvar cliente"}</button></footer>
- </form>;
+ </PreservedForm>;
 }
 
 function ClientAssignment({client,team}:{client:CrmClient;team:{id:string;name:string}[]}){
  const[state,action,pending]=useActionState(assignCrmClient,{ok:false,message:""});
- return <form action={action} className="client-assignment-form">
+ return <PreservedForm action={action} className="client-assignment-form">
   <input type="hidden" name="clientId" value={client.id}/>
   <label>Responsável comercial<select name="userId" defaultValue={team.find(person=>person.name===client.responsible)?.id||""}><option value="">Sem responsável</option>{team.map(person=><option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
   <button className="admin-button secondary" disabled={pending}>{pending?"Salvando…":"Atualizar"}</button>
   {state.message?<small className={state.ok?"form-success-inline":"admin-form-error"}>{state.message}</small>:null}
- </form>;
+ </PreservedForm>;
 }
 
-function ClientSummary({client,onEdit,team,canAssign}:{client:CrmClient;onEdit:()=>void;team:{id:string;name:string}[];canAssign:boolean}){
+function ClientSummary({client,onEdit,team,canAssign,writable}:{client:CrmClient;onEdit:()=>void;team:{id:string;name:string}[];canAssign:boolean;writable:boolean}){
  return <div className="crm-drawer-scroll client-summary">
   <section><h3>Contato</h3><a href={`tel:${client.phone}`}><Phone/> {maskPhone(client.phone)}</a><a href={whatsappContactUrl(client.phone) || telephoneContactUrl(client.phone) || `/painel/clientes/${client.id}`} target="_blank" rel="noreferrer"><MessageCircle/> Abrir WhatsApp</a>{client.email?<a href={`mailto:${client.email}`}><Mail/> {client.email}</a>:<p>Sem e-mail</p>}<p>Origem: {client.origin}</p><p>Responsável: {client.responsible || "Sem responsável"}</p>{canAssign?<ClientAssignment client={client} team={team}/>:null}</section>
   <section><h3>O que procura</h3><p>Orçamento: {client.budgetMin===null&&client.budgetMax===null?"Não informado":`${money(client.budgetMin)} a ${money(client.budgetMax)}`}</p><p>Tipos: {client.desiredTypes.join(", ")||"Não informado"}</p><p>Regiões: {client.desiredRegions.join(", ")||"Não informado"}</p><p>Preferências: {client.desiredFeatures.join(", ")||"Não informado"}</p></section>
   <section><h3>Relacionamento</h3><div className="client-stat-grid"><span><b>{client.matches}</b>{client.matches===1?"Compatível":"Compatíveis"}</span><span><b>{client.favorites}</b>Favoritos</span><span><b>{client.presented}</b>Apresentados</span><span><b>{client.history}</b>Histórico</span><span><b>{client.visits}</b>Visitas</span><span><b>{client.proposals}</b>Propostas</span></div></section>
   <section><h3>Próxima ação</h3>{client.nextActionAt?<><p>{client.nextActionType||"Próxima ação"}</p><time>{formatLongDateTime(client.nextActionAt)}</time></>:<p>Nenhuma ação agendada.</p>}</section>
-  <footer className="crm-drawer-actions"><button type="button" className="admin-button secondary" onClick={onEdit}><Edit3/> Editar cliente</button><Link className="admin-button primary" href={`/painel/crm/novo?cliente=${client.id}`}>Nova oportunidade</Link></footer>
+  {writable?<footer className="crm-drawer-actions"><button type="button" className="admin-button secondary" onClick={onEdit}><Edit3/> Editar cliente</button><Link className="admin-button primary" href={`/painel/crm/novo?cliente=${client.id}`}>Nova oportunidade</Link></footer>:null}
  </div>;
 }
 
-function ClientDrawer({drawer,onClose,onEdit,team,canAssign}:{drawer:Drawer;onClose:()=>void;onEdit:(client:CrmClient)=>void;team:{id:string;name:string}[];canAssign:boolean}){
+function ClientDrawer({drawer,onClose,onEdit,team,canAssign,writable}:{drawer:Drawer;onClose:()=>void;onEdit:(client:CrmClient)=>void;team:{id:string;name:string}[];canAssign:boolean;writable:boolean}){
  const client="client" in drawer?drawer.client:undefined;
- return <CrmDialog title={drawer.mode==="new"?"Novo cliente":client?.name||"Cliente"} description={drawer.mode==="view"?"Contato, preferências e relacionamento em um só lugar.":"Cadastre os dados essenciais e complemente as preferências quando quiser."} onClose={onClose}>{drawer.mode==="view"&&client?<ClientSummary client={client} onEdit={()=>onEdit(client)} team={team} canAssign={canAssign}/>:<ClientForm key={`${drawer.mode}-${client?.id||"new"}`} client={client} onClose={onClose}/>}</CrmDialog>;
+ return <CrmDialog title={drawer.mode==="new"?"Novo cliente":client?.name||"Cliente"} description={drawer.mode==="view"?"Contato, preferências e relacionamento em um só lugar.":"Cadastre os dados essenciais e complemente as preferências quando quiser."} onClose={onClose}>{drawer.mode==="view"&&client?<ClientSummary client={client} onEdit={()=>onEdit(client)} team={team} canAssign={canAssign} writable={writable}/>:<ClientForm key={`${drawer.mode}-${client?.id||"new"}`} client={client} onClose={onClose}/>}</CrmDialog>;
 }
 
-export function CrmWorkspace({query,view,columns,cards,clients,team,canAssign,dealTotal,clientTotal,selectedClientId,openNew}:{query:Query;view:"funil"|"clientes";columns:Column[];cards:DealCard[];clients:CrmClient[];team:{id:string;name:string}[];canAssign:boolean;dealTotal:number;clientTotal:number;selectedClientId?:string;openNew?:boolean}){
+export function CrmWorkspace({query,view,columns,cards,clients,team,canAssign,dealTotal,clientTotal,selectedClientId,openNew,writable}:{query:Query;view:"funil"|"clientes";columns:Column[];cards:DealCard[];clients:CrmClient[];team:{id:string;name:string}[];canAssign:boolean;dealTotal:number;clientTotal:number;selectedClientId?:string;openNew?:boolean;writable:boolean}){
  const selected=useMemo(()=>clients.find(client=>client.id===selectedClientId),[clients,selectedClientId]);
- const[drawer,setDrawer]=useState<Drawer|null>(()=>openNew?{mode:"new"}:selected?{mode:"view",client:selected}:null);
+ const[drawer,setDrawer]=useState<Drawer|null>(()=>openNew&&writable?{mode:"new"}:selected?{mode:"view",client:selected}:null);
  const[opportunity,setOpportunity]=useState(false);const[notice,setNotice]=useState(query.criado?"Oportunidade criada com sucesso.":"");
  const queryText=typeof query.q==="string"?query.q:"";
  const origins=useMemo(()=>[...new Set(cards.map(card=>card.origin).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR")),[cards]);
  return <div className="admin-content crm-center">
-  <PageHeader eyebrow="Relacionamento" title="CRM comercial" description={view==="funil"?`${dealTotal} negócios no funil. Acompanhe cada oportunidade por etapa.`:`${clientTotal} contatos na base comercial.`} action={<div className="crm-header-actions"><button className="admin-button primary" onClick={()=>setOpportunity(true)}><Plus/> Nova oportunidade</button><button className="admin-button secondary" onClick={()=>setDrawer({mode:"new"})}>Novo cliente</button></div>}/>
+  <PageHeader eyebrow="Relacionamento" title="CRM comercial" description={view==="funil"?`${dealTotal} negócios no funil. Acompanhe cada oportunidade por etapa.`:`${clientTotal} contatos na base comercial.`} action={writable?<div className="crm-header-actions"><button className="admin-button primary" onClick={()=>setOpportunity(true)}><Plus/> Nova oportunidade</button><button className="admin-button secondary" onClick={()=>setDrawer({mode:"new"})}>Novo cliente</button></div>:undefined}/>
   {notice?<div role="status" className="crm-toast success">{notice}<button type="button" onClick={()=>setNotice("")} aria-label="Dispensar mensagem">×</button></div>:null}
   <nav className="crm-view-tabs" aria-label="Visualização do CRM"><Link className={view==="funil"?"active":""} href={queryText?`/painel/crm?q=${encodeURIComponent(queryText)}`:"/painel/crm"}>Funil</Link><Link className={view==="clientes"?"active":""} href={`/painel/crm?view=clientes${queryText?`&q=${encodeURIComponent(queryText)}`:""}`}>Clientes</Link></nav>
   <form className="crm-inline-search" action="/painel/crm" method="get" role="search">
@@ -113,9 +114,9 @@ export function CrmWorkspace({query,view,columns,cards,clients,team,canAssign,de
    {view==="funil"?<select name="acao" defaultValue={typeof query.acao==="string"?query.acao:""} aria-label="Filtrar por próxima ação" onChange={event=>event.currentTarget.form?.requestSubmit()}><option value="">Todas as ações</option><option value="atrasada">Com ação atrasada</option><option value="sem-proxima">Sem próxima ação</option></select>:null}
    {queryText||query.responsavel||query.origem||query.acao?<Link href={view==="clientes"?"/painel/crm?view=clientes":"/painel/crm"}>Limpar</Link>:null}
   </form>
-  {view==="funil"?<CrmBoard columns={columns} cards={cards}/>:clients.length?<section className="crm-client-list" aria-label="Clientes do CRM"><div className="crm-client-list-head" aria-hidden="true"><span>Cliente</span><span>Origem</span><span>Responsável</span><span>Relacionamento</span><span>Próxima ação</span><span>Ações</span></div>{clients.map(client=><article key={client.id}><button className="client-row-main" onClick={()=>setDrawer({mode:"view",client})}><span className="client-avatar"><UserRound/></span><div><strong>{client.name}</strong><small>{maskPhone(client.phone)} · {client.email||"Sem e-mail"}</small></div></button><span className="source-tag">{uiLabel(client.origin.toLowerCase())}</span><div className="client-row-meta"><span>{client.responsible||"Sem responsável"}</span><small>Responsável comercial</small></div><div className="client-row-meta client-relationship"><span>{client.opportunities} {client.opportunities===1?"oportunidade":"oportunidades"} · {client.visits} {client.visits===1?"visita":"visitas"} · {client.proposals} {client.proposals===1?"proposta":"propostas"}</span><small>{client.matches} {client.matches===1?"imóvel compatível":"imóveis compatíveis"}</small></div><div className="client-row-meta"><span>{client.nextActionAt?client.nextActionType||"Próxima ação":"Sem próxima ação"}</span><small>{client.nextActionAt?formatDate(client.nextActionAt):"Nenhum compromisso agendado"}</small></div><AdminDropdownMenu label={`Ações de ${client.name}`}>{close => <><button type="button" role="menuitem" onClick={()=>{close();setDrawer({mode:"view",client});}}>Abrir cliente</button><button type="button" role="menuitem" onClick={()=>{close();setDrawer({mode:"edit",client});}}>Editar</button><Link role="menuitem" onClick={close} href={`/painel/crm/novo?cliente=${client.id}`}>Nova oportunidade</Link></>}</AdminDropdownMenu></article>)}</section>:<section className="crm-clients-empty"><Search/><h2>Nenhum cliente cadastrado</h2><p>Cadastre o primeiro contato para começar o atendimento.</p><button className="admin-button primary" onClick={()=>setDrawer({mode:"new"})}><Plus/> Novo cliente</button></section>}
+  {view==="funil"?<CrmBoard columns={columns} cards={cards} writable={writable}/>:clients.length?<section className="crm-client-list" aria-label="Clientes do CRM"><div className="crm-client-list-head" aria-hidden="true"><span>Cliente</span><span>Origem</span><span>Responsável</span><span>Relacionamento</span><span>Próxima ação</span><span>Ações</span></div>{clients.map(client=><article key={client.id}><button className="client-row-main" onClick={()=>setDrawer({mode:"view",client})}><span className="client-avatar"><UserRound/></span><div><strong>{client.name}</strong><small>{maskPhone(client.phone)} · {client.email||"Sem e-mail"}</small></div></button><span className="source-tag">{uiLabel(client.origin.toLowerCase())}</span><div className="client-row-meta"><span>{client.responsible||"Sem responsável"}</span><small>Responsável comercial</small></div><div className="client-row-meta client-relationship"><span>{client.opportunities} {client.opportunities===1?"oportunidade":"oportunidades"} · {client.visits} {client.visits===1?"visita":"visitas"} · {client.proposals} {client.proposals===1?"proposta":"propostas"}</span><small>{client.matches} {client.matches===1?"imóvel compatível":"imóveis compatíveis"}</small></div><div className="client-row-meta"><span>{client.nextActionAt?client.nextActionType||"Próxima ação":"Sem próxima ação"}</span><small>{client.nextActionAt?formatDate(client.nextActionAt):"Nenhum compromisso agendado"}</small></div><AdminDropdownMenu label={`Ações de ${client.name}`}>{close => <><button type="button" role="menuitem" onClick={()=>{close();setDrawer({mode:"view",client});}}>Abrir cliente</button>{writable?<><button type="button" role="menuitem" onClick={()=>{close();setDrawer({mode:"edit",client});}}>Editar</button><Link role="menuitem" onClick={close} href={`/painel/crm/novo?cliente=${client.id}`}>Nova oportunidade</Link></>:null}</>}</AdminDropdownMenu></article>)}</section>:<section className="crm-clients-empty"><Search/><h2>Nenhum cliente cadastrado</h2><p>Cadastre o primeiro contato para começar o atendimento.</p>{writable?<button className="admin-button primary" onClick={()=>setDrawer({mode:"new"})}><Plus/> Novo cliente</button>:null}</section>}
   {view==="clientes"?<Pagination query={{...query,view}} page={Number(query.page)||1} total={clientTotal}/>:null}
-  {drawer?<ClientDrawer drawer={drawer} onClose={()=>setDrawer(null)} onEdit={client=>setDrawer({mode:"edit",client})} team={team} canAssign={canAssign}/>:null}
+  {drawer?<ClientDrawer drawer={drawer} onClose={()=>setDrawer(null)} onEdit={client=>setDrawer({mode:"edit",client})} team={team} canAssign={canAssign} writable={writable}/>:null}
   {opportunity?<OpportunityDrawer onClose={()=>setOpportunity(false)} onSaved={()=>{setOpportunity(false);setNotice("Oportunidade criada com sucesso.");}}/>:null}
  </div>;
 }

@@ -41,7 +41,7 @@ export function wrapPdfText(value: string, font: PDFFont, size: number, width: n
 export type PropertyPdfInput = {
   tenantName: string; contact?: string | null; title: string; code: string;
   type: string; neighborhood: string; city: string; state: string;
-  priceCents: number; bedrooms: number; bathrooms: number; parkingSpaces: number;
+  suites?: number; features?: string[]; priceCents: number; bedrooms: number; bathrooms: number; parkingSpaces: number;
   privateArea: string | null; lotArea: string | null; description: string;
 };
 
@@ -74,6 +74,8 @@ export async function generatePropertyPdf(p: PropertyPdfInput, coverJpg?: Uint8A
   write([p.code, p.type, p.neighborhood + ", " + p.city + "/" + p.state].join(" | "), 10);
   write(formatMoney(p.priceCents), 22, bold);
   write(p.bedrooms + " quartos | " + p.bathrooms + " banheiros | " + p.parkingSpaces + " vagas");
+  if (p.suites) write(`${p.suites} ${p.suites === 1 ? "suíte" : "suítes"}`);
+  if (p.features?.length) write("Características: " + p.features.join(", "));
   const areas = [
     p.privateArea ? "Construída/privativa: " + Number(p.privateArea).toLocaleString("pt-BR") + " m²" : "",
     p.lotArea ? "Terreno: " + Number(p.lotArea).toLocaleString("pt-BR") + " m²" : "",
@@ -83,7 +85,7 @@ export async function generatePropertyPdf(p: PropertyPdfInput, coverJpg?: Uint8A
   if (p.contact) write("Fale com " + p.tenantName + ": " + p.contact, 10, bold);
   const pages = pdf.getPages();
   pages.forEach((item, index) => item.drawText(
-    "Página " + (index + 1) + " de " + pages.length + " · Símbolo não suportado: [?]",
+    "Página " + (index + 1) + " de " + pages.length,
     { x: 30, y: 30, size: 8, font: regular, color: rgb(0.4, 0.4, 0.4) },
   ));
   pdf.setTitle(pdfText(p.title, regular));

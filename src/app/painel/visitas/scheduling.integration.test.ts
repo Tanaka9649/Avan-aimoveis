@@ -9,7 +9,7 @@ vi.mock("@/lib/access", () => ({ requireModule: async () => mock.user, requireWr
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-import { saveVisit } from "./actions";
+import { saveVisit, updateVisit } from "./actions";
 import { saveProposal } from "../propostas/actions";
 
 const id = (n: number) => `40000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -49,6 +49,15 @@ describe.sequential("agendamentos no fuso da operação", () => {
   it("rejects a visit without a usable date", async () => {
     const result = await saveVisit({ ok: false, message: "" }, form({ clientId: id(3), propertyId: id(4), dealId: "", scheduledAt: "ontem", notes: "", status: "agendada" }));
     expect(result.ok).toBe(false);
+  });
+
+  it("rejects future completion in both create and update actions", async () => {
+    const data={clientId:id(3),propertyId:id(4),dealId:"",scheduledAt:"2099-10-15T14:00",notes:"",status:"realizada"};
+    expect((await saveVisit({ok:false,message:""},form(data))).ok).toBe(false);
+    expect((await saveVisit({ok:false,message:""},form({...data,status:"agendada"}))).ok).toBe(true);
+    const row=(await pg.query<{id:string}>("select id from visits where scheduled_at > '2099-01-01'")).rows[0];
+    expect((await updateVisit(form({id:row.id,status:"realizada",feedback:""}))).ok).toBe(false);
+    expect((await pg.query<{status:string}>("select status from visits where id=$1",[row.id])).rows[0].status).toBe("agendada");
   });
 
   it("keeps a proposal deadline inside the chosen calendar day in Brasília", async () => {

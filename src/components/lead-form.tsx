@@ -1,4 +1,5 @@
 "use client";
+import { PreservedForm } from "./preserved-form";
 import { useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
@@ -26,7 +27,7 @@ export function LeadForm({ propertyId, propertyTitle, tenantSlug }: { propertyId
   }
 
   if (state === "success") return <div className="form-success"><CheckCircle2/><h3>Interesse registrado</h3><p>{message}</p></div>;
-  return <form className="lead-form" action={submit}>
+  return <PreservedForm className="lead-form" action={submit}>
     <div><span className="eyebrow">Atendimento pessoal</span><h2>Quero conhecer este imóvel</h2><p>Conte como prefere ser atendido. Retornaremos em horário comercial.</p></div>
     <label>Nome<input required name="name" autoComplete="name"/></label>
     <label>WhatsApp<input required name="phone" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999"/></label>
@@ -35,5 +36,5 @@ export function LeadForm({ propertyId, propertyTitle, tenantSlug }: { propertyId
     <label className="check"><input required name="consent" type="checkbox" value="true"/><span>Concordo com o uso dos meus dados para este atendimento, conforme a <a href={`/empresa/${encodeURIComponent(tenantSlug)}/privacidade`} target="_blank" rel="noreferrer">Política de Privacidade</a>.</span></label>
     {state === "error" ? <p className="form-error" role="alert">{message}</p> : null}
     <button disabled={state === "loading"} className="button button-accent">{state === "loading" ? <><Loader2 className="spin"/> Enviando...</> : "Solicitar atendimento"}</button>
-  </form>;
+  </PreservedForm>;
 }

@@ -1,11 +1,10 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Catalog } from "@/components/catalog";
 import { publicPropertyCards } from "@/lib/public-properties";
-import { tenantForRequest, tenantPublicPathBase } from "@/lib/tenant";
+import { tenantForRequest, tenantPublicBase, tenantPublicPathBase } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Imóveis", description: "Encontre seu próximo imóvel." };
+
 
 export default async function PropertiesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const tenant = await tenantForRequest();
@@ -22,4 +21,9 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
       <Catalog key={JSON.stringify(initial)} properties={properties} initial={initial} basePath={tenantPublicPathBase(tenant)} tenantKey={tenant.slug}/>
     </section>
   );
+}
+
+export async function generateMetadata() {
+ const tenant = await tenantForRequest();
+ return tenant ? {title:"Imóveis",alternates:{canonical:tenantPublicBase(tenant)+"/imoveis"}} : {};
 }

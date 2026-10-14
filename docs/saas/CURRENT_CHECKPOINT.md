@@ -1,5 +1,17 @@
 # CURRENT_CHECKPOINT
 
+## Preview publicado — 14/10/2026 (estado mais recente)
+
+- Autorização do usuário: publicar Preview; Production não promovida.
+- Branch Production confirmada no painel Vercel: `feat/plataforma-base`. Código publicado na branch `feat/saas-multitenant`, commit `150f637ee15ed10ec18f9f5590e26dfb81a125b8`; tree `d681a579fa22527cf5cf236968764ae598e615ab`, idêntica ao conteúdo local validado. Push de terminal falhou por ausência de autenticação; envio concluído via integração GitHub, com lease no HEAD anterior.
+- Deployment Preview: `dpl_ESuBDo4BQz3HjEjGBXusiwbHnKhA`, READY, build 79 segundos. URL: https://avan-aimoveis-kje4xl97n-guitanakabrasil-7316s-projects.vercel.app
+- Configuradas 13 variáveis exclusivamente para Preview / feat/saas-multitenant: banco sintético br-falling-firefly-b57arz1t, armazenamento da mesma branch com nova credencial de leitura/escrita, buckets existentes, peppers exclusivos, MFA_ENCRYPTION_KEY, CRON_SECRET. RESEND_API_KEY vazio para impedir e-mails reais. Credenciais não incluídas no Git.
+- Reconfirmado banco sintético: 19 migrations, 6 usuários e zero imóveis. Nenhuma migration reaplicada nesta rodada.
+- Navegador remoto abriu página inicial (portfólio vazio esperado) e /login. Isso não comprova login autenticado, MFA, upload ou homologação completa; matriz UI permanece pendente.
+- /api/health não validado: navegador retornou ERR_BLOCKED_BY_CLIENT. Fetch protegido via conector retornou 403 no acesso ao bypass; leitura de deployment funciona. Logs de build pelo conector retornaram 404; painel confirmou READY. Não remover proteção nem pedir reconexão como pré-condição para ler o projeto.
+- Production reconfirmada após deploy: imoveisplatform.vercel.app permanece em dpl_8w3WsvFyMiTbsA24fpUAJJXrjtCx / 48ccfa4, READY. Nenhuma variável, migration ou credencial de Production alterada.
+- Este registro documental é salvo localmente após o deploy, sem novo push para evitar build duplicado. Próximo passo: homologação autenticada do Preview antes de qualquer release de Production.
+
 ## Banco sintético preparado — 13/10/2026 (estado mais recente)
 
 - Após autorização do usuário para preparar a branch vazia, atualizado exclusivamente `wandering-snow-32301627` / `br-falling-firefly-b57arz1t` / `neondb` (`vercel-preview`). Endpoint: `ep-polished-brook-b5pxuxkk.c-7.us-east-2.aws.neon.tech`.

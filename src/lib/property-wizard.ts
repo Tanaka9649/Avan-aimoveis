@@ -1,3 +1,4 @@
+import { isValidBrazilianPhone } from "./owner-identity";
 import { z } from "zod";
 import { propertyInput } from "./property-input";
 export const propertySteps = [
@@ -97,8 +98,8 @@ export function propertyErrors(values: Record<string, string>, step?: number) {
       (values.ownerName.trim().length < 2 || values.ownerName.length > 160)
     )
       errors.ownerName = "Informe um nome entre 2 e 160 caracteres.";
-    if (values.ownerPhone?.length > 30)
-      errors.ownerPhone = "Use até 30 caracteres.";
+    if (values.ownerPhone && !isValidBrazilianPhone(values.ownerPhone))
+      errors.ownerPhone = "Informe um telefone válido com DDD.";
     if (values.ownerEmail && !z.email().safeParse(values.ownerEmail).success)
       errors.ownerEmail = "Informe um e-mail válido.";
   }

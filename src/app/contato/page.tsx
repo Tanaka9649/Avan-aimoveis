@@ -1,8 +1,8 @@
-import { whatsappContactUrl } from "@/lib/contact";
+import { whatsappContactUrl, telephoneContactUrl } from "@/lib/contact";
 import Link from "next/link";
 import { MessageCircle, Phone } from "lucide-react";
 import { notFound } from "next/navigation";
-import { tenantForRequest, tenantPublicPathBase } from "@/lib/tenant";
+import { tenantForRequest, tenantPublicBase, tenantPublicPathBase } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +23,16 @@ export default async function ContactPage() {
         <MessageCircle aria-hidden="true"/>
         <h2>Atendimento próximo,<br/>desde o primeiro contato.</h2>
         <p>Nossa equipe ajuda com os detalhes e com o agendamento de uma visita.</p>
-        {phone ? <a href={`tel:+55${phone.replace(/\D/g, "")}`}><Phone size={18}/>{phone}</a> : null}
+        {telephoneContactUrl(phone || "") ? <a href={telephoneContactUrl(phone || "")!}><Phone size={18}/>{phone}</a> : null}
+        {tenant.email ? <a href={`mailto:${tenant.email}`}>{tenant.email}</a> : null}
+        {!phone && !tenant.email ? <p>Os canais de contato desta empresa ainda não foram configurados. Você pode solicitar atendimento na página de um imóvel.</p> : null}
         {whatsappContactUrl(tenant.whatsapp || "") ? <a href={whatsappContactUrl(tenant.whatsapp || "")!} className="button" target="_blank" rel="noreferrer"><MessageCircle size={18}/>Conversar pelo WhatsApp</a> : null}
       </aside>
     </section>
   );
+}
+
+export async function generateMetadata() {
+ const tenant = await tenantForRequest();
+ return tenant ? {title:"Contato",alternates:{canonical:tenantPublicBase(tenant)+"/contato"}} : {};
 }

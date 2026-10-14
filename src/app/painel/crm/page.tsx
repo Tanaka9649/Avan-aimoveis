@@ -1,3 +1,4 @@
+import { canWrite } from "@/lib/permissions";
 import {and,asc,count,desc,eq,ilike,inArray,isNotNull,or,sql} from "drizzle-orm";
 import {z} from "zod";
 import {getDb} from "@/db";
@@ -145,7 +146,7 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
      stageDays:Number(card.stageDays),
    }));
 
-   return <CrmWorkspace
+   return <CrmWorkspace writable={canWrite(user)}
      query={query}
      view="funil"
      team={team}
@@ -287,7 +288,7 @@ export default async function CrmPage({searchParams}:{searchParams:Promise<Query
    };
  });
 
- return <CrmWorkspace
+ return <CrmWorkspace writable={canWrite(user)}
    key={`${selectedClientId}-${value(query,"novo")}`}
    query={query}
    view="clientes"

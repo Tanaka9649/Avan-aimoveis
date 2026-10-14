@@ -229,7 +229,7 @@ export function PropertyEditor({
     const data = new FormData();
     for (const [key, value] of Object.entries(values)) data.set(key, value);
     data.set("id", propertyId);
-    data.set("status", intent === "draft" ? "rascunho" : values.status);
+    data.set("status", intent === "draft" && !propertyId ? "rascunho" : values.status);
     data.set("intent", intent || "save");
     // "Salvar rascunho" never changes the publication state; the review step owns that decision.
     if (intent !== "draft") data.set("publish", publish ? "1" : "0");
@@ -784,7 +784,7 @@ export function PropertyEditor({
           value="draft"
           disabled={pending}
         >
-          Salvar rascunho
+          {propertyId ? "Salvar alterações" : "Salvar rascunho"}
         </button>
         {step < 5 ? (
           <button

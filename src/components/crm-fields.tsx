@@ -1,10 +1,10 @@
 "use client";
 import {useId,useState} from "react";
+import {MoneyInput} from "./money-input";
 import Image from "next/image";
 import {Search,X} from "lucide-react";
 export function MoneyField({name,label,initial="",required=false}:{name:string;label:string;initial?:string;required?:boolean}){
- const[cents,setCents]=useState(initial?String(Math.round(Number(initial)*100)):"");
- return <label>{label}<input inputMode="decimal" required={required} value={cents?new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(cents)/100):""} placeholder="R$ 0,00" onChange={e=>setCents(e.target.value.replace(/\D/g,"").slice(0,10))}/><input type="hidden" name={name} value={cents?(Number(cents)/100).toFixed(2):""}/></label>;
+ return <label>{label}<MoneyInput name={name} defaultValue={initial} required={required}/></label>;
 }
 type Option={id:string;label:string;detail?:string;image?:string|null};
 export function SearchPicker({label,name,options,value,onChange,multiple=false,disabled=false}:{label:string;name:string;options:Option[];value:string[];onChange:(ids:string[])=>void;multiple?:boolean;disabled?:boolean}){

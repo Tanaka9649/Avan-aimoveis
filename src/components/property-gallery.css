@@ -15,3 +15,6 @@
 .gallery-lightbox button:hover{background:rgba(255,255,255,.22)}
 .gallery-close{position:absolute;right:18px;top:18px;z-index:2}
 @media(max-width:760px){.gallery{grid-template-columns:1fr;grid-template-rows:auto}.gallery-main{grid-row:auto;height:260px}.gallery-small{display:none}.gallery-lightbox{grid-template-columns:48px 1fr 48px}.gallery-lightbox figure{height:70dvh}}
+
+/* Explicit width also covers the single-photo block layout on small screens. */
+.gallery-main{display:block;width:100%;min-width:0}

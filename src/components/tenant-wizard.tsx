@@ -1,7 +1,8 @@
 "use client";
 
+import { uploadBrandingFile, validateBrandingFile } from "@/lib/branding-client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Building2, Palette, Globe2, Boxes, UserRound, ClipboardCheck } from "lucide-react";
 import { modules, moduleLabels, type Module } from "@/lib/permissions";
 import { BrandLogosEditor } from "@/components/brand-logos-editor";
@@ -65,6 +66,11 @@ const emailOk = (value: string) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v
 
 export type WizardPlan = { code: string; name: string; configured: boolean; modules: string[] };
 export function TenantWizard({ plans }: { plans: WizardPlan[] }) {
+  const stagedFiles = useRef(new Map<string, File>());
+  const createdTenant = useRef<{tenantId:string;inviteUrl:string} | null>(null);
+  const uploaded = useRef(new Map<string,string>());
+  useEffect(() => { const files = stagedFiles.current; return () => { for (const url of files.keys()) URL.revokeObjectURL(url); }; }, []);
+  function stageFile(file: File) { validateBrandingFile(file); const url = URL.createObjectURL(file); stagedFiles.current.set(url,file); return url; }
   const [step, setStep] = useState(0);
   const [attempted, setAttempted] = useState(false);
   const [draft, setDraft] = useState(initial);
@@ -143,7 +149,7 @@ export function TenantWizard({ plans }: { plans: WizardPlan[] }) {
     setResult(null);
     setMessage("");
     try {
-      const response = await fetch("/api/superadmin/tenants", {
+      const response = createdTenant.current ? null : await fetch("/api/superadmin/tenants", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -155,9 +161,9 @@ export function TenantWizard({ plans }: { plans: WizardPlan[] }) {
           plan: draft.plan,
           modules: draft.modules,
           branding: {
-            logos: draft.logos,
-            logoLight: draft.logos[0]?.logoLight,
-            logoDark: draft.logos[0]?.logoDark,
+            logos: draft.logos.map(logo => ({...logo,logoLight:logo.logoLight?.startsWith("blob:") ? "" : logo.logoLight,logoDark:logo.logoDark?.startsWith("blob:") ? "" : logo.logoDark})),
+
+
             favicon: draft.favicon,
           },
           site: {
@@ -169,10 +175,27 @@ export function TenantWizard({ plans }: { plans: WizardPlan[] }) {
           admin: { name: draft.adminName, email: draft.adminEmail },
         }),
       });
-      const data = await response.json();
-      setResult(response.ok ? { inviteUrl: data.inviteUrl } : { error: data.error || "Não foi possível criar a empresa." });
-    } catch {
-      setResult({ error: "Não foi possível conectar." });
+      const data = response ? await response.json() : createdTenant.current!;
+      if(response && !response.ok) throw new Error(data.error || "Não foi possível criar a empresa.");
+      createdTenant.current = data;
+      const logos: BrandLogoEntry[] = [];
+      for (const logo of draft.logos) {
+        const next = {...logo};
+        for (const key of ["logoLight","logoDark"] as const) {
+          const url = logo[key];
+          if (!url?.startsWith("blob:")) continue;
+          const file = stagedFiles.current.get(url);
+          if (!file) throw new Error("Selecione novamente a imagem.");
+          if (!uploaded.current.has(url)) uploaded.current.set(url, await uploadBrandingFile(file,false,data.tenantId));
+          next[key] = uploaded.current.get(url)!;
+        }
+        logos.push(next);
+      }
+      const saved = await fetch(`/api/superadmin/tenants/${data.tenantId}/branding`, {method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({logos})});
+      if(!saved.ok) throw new Error((await saved.json()).error || "Não foi possível salvar as logos. Tente novamente.");
+      setResult({inviteUrl:data.inviteUrl});
+    } catch (error) {
+      setResult({ error: (createdTenant.current ? "Empresa criada; falta concluir a identidade. Clique novamente em Criar empresa para retomar. " : "") + (error instanceof Error ? error.message : "Não foi possível conectar.") });
     } finally {
       setBusy(false);
     }
@@ -198,7 +221,7 @@ export function TenantWizard({ plans }: { plans: WizardPlan[] }) {
               set("name", name);
               if (!slugTouched) set("slug", slugify(name));
             }} placeholder="Ex.: XP Imóveis"/>{fieldErrors.name ? <small className="admin-field-error">{fieldErrors.name}</small> : null}</label>
-            <label>Endereço da empresa<input aria-invalid={Boolean(fieldErrors.slug)} value={draft.slug} onChange={(event) => { setSlugTouched(true); set("slug", slugify(event.target.value)); }} placeholder="xp-imoveis"/>{fieldErrors.slug ? <small className="admin-field-error">{fieldErrors.slug}</small> : null}<small className="field-hint">Será usado em /empresa/{draft.slug || "nome-da-empresa"}.</small></label>
+            <label>Endereço da empresa<input aria-invalid={Boolean(fieldErrors.slug)} value={draft.slug} onChange={(event) => { setSlugTouched(true); set("slug", event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")); }} placeholder="xp-imoveis"/>{fieldErrors.slug ? <small className="admin-field-error">{fieldErrors.slug}</small> : null}<small className="field-hint">Será usado em /empresa/{draft.slug || "nome-da-empresa"}.</small></label>
             <label>Telefone<input value={draft.phone} onChange={(event) => set("phone", event.target.value)} placeholder="(00) 0000-0000"/></label>
             <label className="wide">E-mail comercial<input aria-invalid={Boolean(fieldErrors.email)} type="email" value={draft.email} onChange={(event) => set("email", event.target.value)} placeholder="contato@empresa.com.br"/>{fieldErrors.email ? <small className="admin-field-error">{fieldErrors.email}</small> : null}</label>
           </div>
@@ -206,7 +229,7 @@ export function TenantWizard({ plans }: { plans: WizardPlan[] }) {
 
         {step === 1 ? (
           <div className="entity-form">
-            <BrandLogosEditor initialLogos={draft.logos} onChange={(logos) => set("logos", logos)}/>
+            <BrandLogosEditor stageFile={stageFile} initialLogos={draft.logos} onChange={(logos) => set("logos", logos)}/>
             <label className="wide">Favicon — URL<input type="url" value={draft.favicon} onChange={(event) => set("favicon", event.target.value)} placeholder="https://..."/></label>
           </div>
         ) : null}

@@ -1,4 +1,5 @@
 "use server";
+import { visitStatusError } from "@/lib/visit-status";
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -15,6 +16,8 @@ export async function saveVisit(_: { ok: boolean; message: string }, formData: F
   if (!parsed.success) return { ok: false, message: "Revise cliente, imóvel, data e horário." };
   const at = parseOperationDateTime(parsed.data.scheduledAt);
   if (!at) return { ok: false, message: "Informe a data e o horário da visita." };
+  const statusError = visitStatusError(parsed.data.status, at);
+  if (statusError) return {ok:false,message:statusError};
   const db = getDb();
   const [clientRows, propertyRows, dealRows] = await Promise.all([
     db.select({ id: clients.id }).from(clients).where(and(eq(clients.id, parsed.data.clientId), clientScope(user))).limit(1),
@@ -35,7 +38,13 @@ export async function saveVisit(_: { ok: boolean; message: string }, formData: F
 export async function updateVisit(formData: FormData) {
   const user = await requireWriteModule("visitas");
   const parsed = z.object({ id: z.uuid(), status: z.enum(["agendada", "realizada", "cancelada", "nao_compareceu"]), feedback: z.string().trim().max(4000) }).safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return;
+  if (!parsed.success) return {ok:false,message:"Revise o status e o feedback."};
+  const scope = and(eq(visits.id, parsed.data.id), eq(visits.tenantId, user.tenantId), inArray(visits.clientId, getDb().select({ id: clients.id }).from(clients).where(clientScope(user))));
+  const [visit] = await getDb().select({scheduledAt:visits.scheduledAt}).from(visits).where(scope).limit(1);
+  if (!visit) return {ok:false,message:"Visita indisponível."};
+  const statusError = visitStatusError(parsed.data.status, visit.scheduledAt);
+  if (statusError) return {ok:false,message:statusError};
   await getDb().update(visits).set({ status: parsed.data.status, feedback: parsed.data.feedback || null, updatedAt: new Date() }).where(and(eq(visits.id, parsed.data.id), eq(visits.tenantId, user.tenantId), inArray(visits.clientId, getDb().select({ id: clients.id }).from(clients).where(clientScope(user)))));
   revalidatePath("/painel/visitas");
+  return {ok:true,message:"Visita atualizada."};
 }

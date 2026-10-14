@@ -159,7 +159,7 @@ export function PropertyShareButton({ property, client, label = "Compartilhar" }
 }
 
 /** The card's "…" menu: publish, open on the site, unpublish — without crowding the card. */
-export function PropertyPublicationMenu({ property, full = false }: { property: SharableProperty; full?: boolean }) {
+export function PropertyPublicationMenu({ property, full = false, writable = true }: { property: SharableProperty; full?: boolean; writable?: boolean }) {
   const publicBase = useTenantPublicPath();
   const [open, setOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -222,7 +222,7 @@ export function PropertyPublicationMenu({ property, full = false }: { property: 
     <>
       <button className="property-menu-backdrop" type="button" aria-label="Fechar menu de ações" onClick={() => { close(); buttonRef.current?.focus(); }}/>
       <div className="property-menu-popover" role="menu" aria-label={`Ações de ${property.title}`} style={{ top: position.top, left: position.left }}>
-        {full ? (
+        {full && writable ? (
           <>
             <form action={duplicateProperty}>
               <input type="hidden" name="id" value={property.id} />
@@ -234,13 +234,13 @@ export function PropertyPublicationMenu({ property, full = false }: { property: 
         {live ? (
           <>
             <Link role="menuitem" href={publicPropertyPath(property.slug, publicBase)} target="_blank" rel="noreferrer" onClick={close}><ExternalLink /> Ver no site</Link>
-            <button type="button" role="menuitem" disabled={pending} onClick={() => run(() => unpublishProperty(property.id))}><Link2Off /> Despublicar</button>
+            {writable?<button type="button" role="menuitem" disabled={pending} onClick={() => run(() => unpublishProperty(property.id))}><Link2Off /> Despublicar</button>:null}
           </>
-        ) : (
+        ) : writable ? (
           <button type="button" role="menuitem" disabled={pending || property.status === "vendido"} onClick={() => run(() => publishProperty(property.id))}>
             <Globe /> {published ? "Republicar no site" : "Publicar no site"}
           </button>
-        )}
+        ) : null}
         <a role="menuitem" href={`/api/properties/${property.id}/pdf`} onClick={close}><FileText /> Gerar PDF</a>
         {feedback ? <p role="status">{feedback}</p> : null}
       </div>

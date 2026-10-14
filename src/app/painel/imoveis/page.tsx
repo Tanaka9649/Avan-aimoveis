@@ -1,3 +1,4 @@
+import { canWrite } from "@/lib/permissions";
 import Image from "next/image";
 import Link from "next/link";
 import { Building2, Check, Plus, SlidersHorizontal, X } from "lucide-react";
@@ -142,13 +143,13 @@ export default async function AdminPropertiesPage({
         eyebrow="Portfólio"
         title="Imóveis"
         description="Gerencie o portfólio, a qualidade dos cadastros e a publicação no site."
-        action={
+        action={canWrite(user)?
           <Link className="admin-button primary" href="/painel/imoveis/novo">
             <Plus /> Novo imóvel
-          </Link>
+          </Link>:undefined
         }
       />
-      <PhotoOptimizer initialPending={Number(pendingPhotos.value)} />
+      {canWrite(user)?<PhotoOptimizer initialPending={Number(pendingPhotos.value)} />:null}
       <ListFilters scope="imoveis" userId={user.id} query={query}>
         <label className="filter-control filter-control-status">
           <span className="crm-visually-hidden">Status</span>
@@ -288,13 +289,13 @@ export default async function AdminPropertiesPage({
                     </ul>
                   </details>
                   <footer>
-                    <Link
+                    {canWrite(user)?<Link
                       className="admin-button secondary"
                       href={`/painel/imoveis/${p.id}`}
                     >
                       Editar
-                    </Link>
-                    <PropertyPublicationMenu property={sharable} full />
+                    </Link>:null}
+                    <PropertyPublicationMenu property={sharable} full writable={canWrite(user)} />
                   </footer>
                 </div>
               </article>
@@ -306,10 +307,10 @@ export default async function AdminPropertiesPage({
           icon={Building2}
           title="Nenhum imóvel cadastrado"
           description="Cadastre o primeiro imóvel para iniciar seu portfólio."
-          action={
+          action={canWrite(user)?
             <Link className="admin-button primary" href="/painel/imoveis/novo">
               <Plus /> Novo imóvel
-            </Link>
+            </Link>:undefined
           }
         />
       )}

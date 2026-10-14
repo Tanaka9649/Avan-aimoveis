@@ -7,7 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { brandingAssets } from "@/db/schema";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/access";
+import { brandingActor } from "@/lib/branding-access";
 import { PHOTO_BUCKET, storageClient, tenantStorageKey } from "@/lib/storage";
 import { detectMime } from "@/lib/upload";
 
@@ -33,7 +33,7 @@ function detectBrandingMime(bytes: Uint8Array) {
 }
 
 async function handlePOST(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await brandingActor(request);
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Não foi possível confirmar a imagem." }, { status: 400 });
 

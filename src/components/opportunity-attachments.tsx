@@ -6,7 +6,7 @@ import { attachmentCategories, type OpportunityAttachment } from "@/lib/opportun
 
 type Reservation = { attachmentId: string; uploadUrl: string; contentType: string };
 
-export function OpportunityAttachments({ opportunityId, initialAttachments = [], onCountChange }: { opportunityId: string; initialAttachments?: OpportunityAttachment[]; onCountChange?: (count: number) => void }) {
+export function OpportunityAttachments({ opportunityId, initialAttachments = [], onCountChange, writable = true }: { writable?: boolean; opportunityId: string; initialAttachments?: OpportunityAttachment[]; onCountChange?: (count: number) => void }) {
   const [attachments, setAttachments] = useState(initialAttachments);
   const [category, setCategory] = useState<string>("");
   const [busy, setBusy] = useState(false);
@@ -32,6 +32,7 @@ export function OpportunityAttachments({ opportunityId, initialAttachments = [],
   }
 
   async function upload(files: File[]) {
+    if (!writable) return;
     if (!files.length) return;
     setBusy(true);
     setNotice("Preparando envio seguro…");
@@ -94,14 +95,14 @@ export function OpportunityAttachments({ opportunityId, initialAttachments = [],
 
   return <section className="opportunity-files">
     <header><div><h3>Arquivos</h3><p>{attachments.length} {attachments.length === 1 ? "anexo" : "anexos"}</p></div><label>Categoria para novos arquivos<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="">Sem categoria</option>{attachmentCategories.map((item) => <option key={item}>{item}</option>)}</select></label></header>
-    <button type="button" className={`attachment-drop${dragging ? " is-dragging" : ""}`} disabled={busy} onClick={() => inputRef.current?.click()} onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); void upload([...event.dataTransfer.files]); }}>
+    <button type="button" className={`attachment-drop${dragging ? " is-dragging" : ""}`} disabled={busy || !writable} onClick={() => inputRef.current?.click()} onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); void upload([...event.dataTransfer.files]); }}>
       <Upload/><span><strong>Adicionar arquivos</strong><small>Arraste aqui ou selecione PDF, JPG, JPEG, PNG ou WebP · até 20 MB cada</small></span>
     </button>
     <input ref={inputRef} hidden type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => { void upload([...(event.target.files || [])]); event.target.value = ""; }}/>
     {attachments.length ? <div className="opportunity-file-list">{attachments.map((attachment) => <article key={attachment.id}>
       <FileText/><div><strong>{attachment.displayName}</strong><small>{formatType(attachment.mimeType)} · {formatBytes(attachment.sizeBytes)}{attachment.category ? ` · ${attachment.category}` : ""}</small></div>
-      <select aria-label={`Categoria de ${attachment.displayName}`} value={attachment.category || ""} onChange={(event) => void edit(attachment, event.target.value)}><option value="">Sem categoria</option>{attachmentCategories.map((item) => <option key={item}>{item}</option>)}</select>
-      <span className="attachment-actions"><a href={`/api/opportunities/${opportunityId}/attachments/${attachment.id}?view=1`} target="_blank" rel="noreferrer" title="Visualizar" aria-label={`Visualizar ${attachment.displayName}`}><Eye/></a><a href={`/api/opportunities/${opportunityId}/attachments/${attachment.id}`} title="Baixar" aria-label={`Baixar ${attachment.displayName}`}><Download/></a><button type="button" title="Renomear" aria-label={`Renomear ${attachment.displayName}`} onClick={() => void edit(attachment)}><Pencil/></button><button type="button" title="Excluir" aria-label={`Excluir ${attachment.displayName}`} disabled={busy} onClick={() => void remove(attachment)}><Trash2/></button></span>
+      <select disabled={!writable || busy} aria-label={`Categoria de ${attachment.displayName}`} value={attachment.category || ""} onChange={(event) => void edit(attachment, event.target.value)}><option value="">Sem categoria</option>{attachmentCategories.map((item) => <option key={item}>{item}</option>)}</select>
+      <span className="attachment-actions"><a href={`/api/opportunities/${opportunityId}/attachments/${attachment.id}?view=1`} target="_blank" rel="noreferrer" title="Visualizar" aria-label={`Visualizar ${attachment.displayName}`}><Eye/></a><a href={`/api/opportunities/${opportunityId}/attachments/${attachment.id}`} title="Baixar" aria-label={`Baixar ${attachment.displayName}`}><Download/></a><button type="button" disabled={!writable || busy} title="Renomear" aria-label={`Renomear ${attachment.displayName}`} onClick={() => void edit(attachment)}><Pencil/></button><button type="button" title="Excluir" aria-label={`Excluir ${attachment.displayName}`} disabled={busy || !writable} onClick={() => void remove(attachment)}><Trash2/></button></span>
     </article>)}</div> : <p className="attachment-empty"><Paperclip/> Nenhum arquivo anexado.</p>}
     {notice ? <p className="attachment-notice" role="status" aria-live="polite">{notice}</p> : null}
   </section>;
