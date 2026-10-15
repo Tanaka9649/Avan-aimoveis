@@ -1,5 +1,14 @@
 # CURRENT_CHECKPOINT
 
+## Homologação autenticada parcial — 15/10/2026, retomada
+
+- Baseline limpo e sincronizado `b5b005f`; Preview mais recente reconfirmado READY `dpl_4xiVDgrnHdpUimXyBDQALmHCRDGj`, executando esse commit: https://avan-aimoveis-depnd8v1v-guitanakabrasil-7316s-projects.vercel.app . O commit contém somente documentação sobre o código `9aec044`.
+- Navegador local falhou com `Sheep MCP session closed: RPC INTERNAL`. Navegador cloud abriu o Preview; após uma tentativa inválida, autenticação segura fornecida pelo usuário confirmou AUDIT admin-a / Administrador da empresa A. Nenhuma credencial foi lida ou alterada.
+- Admin A: painel, CRM, lista de imóveis e edição da Fazenda abriram. Atalho `/painel/crm` foi corretamente contextualizado para `/empresa/audit-synthetic-a/painel/crm`. Acesso ao painel B redirecionou para o login B; `/superadmin` exibiu página 404, sem dados administrativos. Esses testes não substituem a matriz completa de autorização por endpoint/ID.
+- Salvar sem modificar campos a fixture `AUDIT-QA15-20261015` pelo formulário autenticado preservou status `disponivel`, preço `35000000057` centavos e published_at `2026-10-15T18:45:41.593Z`. SELECT antes/depois exclusivamente na branch sintética `br-falling-firefly-b57arz1t` confirmou os valores. Não houve despublicação ou correção de registros antigos.
+- Falha visual reproduzida: sucesso dizia "Rascunho salvo" para imóvel publicado. Texto corrigido para "Imóvel salvo", sem mudança de regras ou schema. Verificação/publicação da correção deve ser confirmada no deployment resultante.
+- Ainda pendentes: viewer e corretores em sessões reais, escrita negada no Preview, fluxos restantes de formulários/visitas/propostas/wizard/upload, mobile 390px e recuperação ensaiada. Não pronto para Production. Nenhuma migration, seed, redefinição de senha ou escrita de Production nesta retomada.
+
 ## QA15 implementada e migration isolada — 15/10/2026
 
 Correções, evidências e limitações em [QA15_2026_10_15.md](QA15_2026_10_15.md). Migration 0022 aplicada somente ao Preview sintético; dados anteriores preservados. Código enviado em `8ec7dcd` e `9aec044`; Preview READY `dpl_HTdvy8TFzYwWcHyCDhWaz8rCNx3J`, executando `9aec044b8e8902915b505c3b1cd6ea82f33db27e`: https://avan-aimoveis-dk1aq7zpd-guitanakabrasil-7316s-projects.vercel.app . Validação pública no navegador confirmou tipos, limite com centavos, preservação do formulário inválido e abertura da galeria. Suíte final: 247 aprovados, 1 ignorado; lint, TypeScript e build aprovados. Homologação autenticada/mobile bloqueada pelo mecanismo de navegador, não concluída. Production permanece sem alteração.

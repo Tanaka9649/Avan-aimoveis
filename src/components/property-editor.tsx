@@ -756,7 +756,7 @@ export function PropertyEditor({
           </fieldset>
           {state.saved || saveHint ? (
             <p role="status" className="wizard-save-hint">
-              {state.saved ? "Rascunho salvo. O envio de fotos e documentos está liberado." : saveHint}
+              {state.saved ? "Imóvel salvo. O envio de fotos e documentos está liberado." : saveHint}
             </p>
           ) : null}
           {state.error ? (
