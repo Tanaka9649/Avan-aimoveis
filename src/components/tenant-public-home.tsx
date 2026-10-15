@@ -1,3 +1,4 @@
+import { PROPERTY_TYPES } from "@/lib/property-types";
 import Image from "next/image";
 import { whatsappContactUrl } from "@/lib/contact";
 import Link from "next/link";
@@ -28,7 +29,7 @@ export function TenantPublicHome({ tenant, properties, basePath = "" }: Props) {
           <p>Busca simples, informações claras e acompanhamento próximo para avançar com segurança.</p>
           <form action={portfolio} className="modern-search">
             <label><MapPin/><input name="q" placeholder="Bairro, cidade ou código" aria-label="Localização ou código"/></label>
-            <select name="type" aria-label="Tipo de imóvel"><option value="">Todos os tipos</option><option>Casa</option><option>Apartamento</option><option>Cobertura</option><option>Studio</option></select>
+            <select name="type" aria-label="Tipo de imóvel"><option value="">Todos os tipos</option>{PROPERTY_TYPES.map(type => <option key={type}>{type}</option>)}</select>
             <button><Search/> Buscar imóveis</button>
           </form>
         </div>

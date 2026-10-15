@@ -69,7 +69,7 @@ const messages: Record<string, string> = {
   code: "Use entre 3 e 30 caracteres.",
   slug: "Use letras minúsculas, números e hífens.",
   price:
-    "Informe um valor de R$ 0,01 até R$ 21.474.836,47, com até 2 casas decimais.",
+    "Informe um valor de R$ 0,01 até R$ 999.999.999.999,99, com até 2 casas decimais.",
   area: "Informe uma área construída ou privativa maior que zero, até 99.999.999,99 m².",
   lotArea: "Informe uma área de terreno maior que zero, até 99.999.999,99 m².",
   bedrooms: "Informe um número inteiro de 0 a 100.",

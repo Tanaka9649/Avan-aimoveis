@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { moneyInput } from "./money";
 
-export const optionalMoney = z.string().trim().default("").refine(v => !v || /^\d+(?:\.\d{1,2})?$/.test(v), "Valor inválido").transform(v => v ? Math.round(Number(v) * 100) : null).pipe(z.number().int().min(0).max(2147483647).nullable());
+export const optionalMoney = z.union([moneyInput, z.literal("").transform(() => null)]).default(null);
 export const listInput = z.string().max(4000).default("").transform(v => [...new Set(v.split(/[,;\n]/).map(s => s.trim()).filter(Boolean))].slice(0,50));
 export const clientInput = z.object({
   name: z.string().trim().min(2).max(160), phone: z.string().transform(v=>v.replace(/\D/g, "")).pipe(z.string().min(10).max(15)),

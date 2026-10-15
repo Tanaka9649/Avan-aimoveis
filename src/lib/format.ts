@@ -2,6 +2,6 @@ export const formatMoney = (cents: number) => new Intl.NumberFormat("pt-BR", { s
 export const formatArea = (area: number) => `${new Intl.NumberFormat("pt-BR").format(area)} m²`;
 
 export function calculateCommission(amountCents: number, percent: number) {
-  if (!Number.isInteger(amountCents) || amountCents < 0 || percent < 0 || percent > 100) throw new Error("Valores inválidos");
-  return Math.round(amountCents * percent / 100);
+  if (!Number.isSafeInteger(amountCents) || amountCents < 0 || !Number.isFinite(percent) || percent < 0 || percent > 100 || Math.abs(percent * 100 - Math.round(percent * 100)) > 0.000001) throw new Error("Valores inválidos");
+  return Number((BigInt(amountCents) * BigInt(Math.round(percent * 100)) + 5000n) / 10000n);
 }

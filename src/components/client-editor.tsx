@@ -1,3 +1,4 @@
+import { PROPERTY_TYPES } from "@/lib/property-types";
 import { SettingsForm } from "./settings-form";
 import { saveClient } from "@/app/painel/clientes/actions";
 import { TagInput } from "./tag-input";
@@ -7,7 +8,7 @@ export function ClientEditor({initial={}}:{initial?:Initial}){
   return <section className="admin-card client-editor"><SettingsForm action={saveClient} label="Salvar cliente"><input type="hidden" name="id" value={initial.id||""}/>
     <h3 className="form-group-title">Dados do cliente</h3>{field("name","Nome","text",true)}{field("phone","Telefone / WhatsApp","tel",true)}{field("email","E-mail","email")}{field("origin","Origem do contato","text",true)}
     <h3 className="form-group-title">O que ele procura?</h3>{field("budgetMin","Orçamento mínimo (R$)","number")}{field("budgetMax","Orçamento máximo (R$)","number")}
-    <TagInput name="desiredTypes" label="Tipos de imóvel" initial={String(initial.desiredTypes||"")} suggestions={["Apartamento","Casa","Cobertura","Studio","Terreno"]}/><TagInput name="desiredRegions" label="Bairros e regiões" initial={String(initial.desiredRegions||"")}/>
+    <TagInput name="desiredTypes" label="Tipos de imóvel" initial={String(initial.desiredTypes||"")} suggestions={[...PROPERTY_TYPES]}/><TagInput name="desiredRegions" label="Bairros e regiões" initial={String(initial.desiredRegions||"")}/>
     <h3 className="form-group-title">Preferências</h3>{field("minBedrooms","Mínimo de quartos","number")}{field("minBathrooms","Mínimo de banheiros","number")}{field("minParkingSpaces","Mínimo de vagas","number")}
     <TagInput name="desiredFeatures" label="Características desejadas" initial={String(initial.desiredFeatures||"")} suggestions={["Piscina","Varanda","Área gourmet","Elevador","Portaria","Quintal"]}/>
   </SettingsForm></section>;

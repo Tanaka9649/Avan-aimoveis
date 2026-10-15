@@ -1,3 +1,5 @@
+import { moneyFilterCents } from "@/lib/money";
+import { PROPERTY_TYPES } from "@/lib/property-types";
 import { canWrite } from "@/lib/permissions";
 import Image from "next/image";
 import Link from "next/link";
@@ -43,8 +45,8 @@ export default async function AdminPropertiesPage({
   const query = await searchParams;
   const page = pageNumber(query);
   const search = value(query, "q");
-  const low = Number(value(query, "min"));
-  const high = Number(value(query, "max"));
+  const low = moneyFilterCents(value(query, "min"));
+  const high = moneyFilterCents(value(query, "max"));
   const where = and(
     eq(properties.tenantId,user.tenantId),
     search
@@ -65,11 +67,11 @@ export default async function AdminPropertiesPage({
     value(query, "status")
       ? sql`${properties.status}::text = ${value(query, "status")}`
       : undefined,
-    Number.isFinite(low) && low > 0
-      ? gte(properties.priceCents, Math.min(2147483647, Math.round(low * 100)))
+    low !== null
+      ? gte(properties.priceCents, low)
       : undefined,
-    Number.isFinite(high) && high > 0
-      ? lte(properties.priceCents, Math.min(2147483647, Math.round(high * 100)))
+    high !== null
+      ? lte(properties.priceCents, high)
       : undefined,
     // "No site" is the publication switch, not the commercial status — they filter independently.
     value(query, "site") === "publicado"
@@ -178,7 +180,7 @@ export default async function AdminPropertiesPage({
           <span className="crm-visually-hidden">Tipo</span>
           <select name="type" defaultValue={value(query, "type")} aria-label="Tipo de imóvel">
             <option value="">Todos os tipos</option>
-            {["Apartamento", "Casa", "Cobertura", "Studio", "Terreno"].map((type) => <option key={type}>{type}</option>)}
+            {[...PROPERTY_TYPES].map((type) => <option key={type}>{type}</option>)}
           </select>
         </label>
         <details className="advanced-filters">

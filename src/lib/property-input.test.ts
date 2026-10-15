@@ -43,7 +43,7 @@ describe("property input", () => {
   });
 
   it("rejects overflow, exponent and extra decimals", () => {
-    for (const price of ["21474836.48", "1e6", "2.001", "-1", "0"]) {
+    for (const price of ["1000000000000", "1e6", "2.001", "-1", "0"]) {
       expect(propertyInput.safeParse({ ...valid, price }).success).toBe(false);
     }
   });
@@ -59,5 +59,15 @@ describe("property input", () => {
 
   it("does not allow sale completion through the property form", () => {
     expect(propertyInput.safeParse({ ...valid, status: "vendido" }).success).toBe(false);
+  });
+});
+
+describe("rural and commercial properties", () => {
+  it.each(["Rural", "Fazenda", "Sítio", "Chácara"])("accepts %s with land and without a building", type => {
+    expect(propertyInput.parse({...valid,type,price:"350000000.57",area:"",lotArea:"35000000"}).price).toBe(35000000057);
+    expect(propertyInput.safeParse({...valid,type,area:"",lotArea:""}).success).toBe(false);
+  });
+  it.each(["Comercial", "Sala comercial", "Loja", "Galpão", "Sobrado"])("accepts %s with built area", type => {
+    expect(propertyInput.safeParse({...valid,type,price:"21474836.48"}).success).toBe(true);
   });
 });

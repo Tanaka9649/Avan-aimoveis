@@ -77,6 +77,16 @@ describe.sequential("fluxo de publicação ponta a ponta", () => {
     expect(await publicPropertyCards(ROOT_TENANT)).toHaveLength(1);
   });
 
+  it("persists a large rural price and returns exact cents in public reads", async () => {
+    const form = new FormData();
+    for (const [key,value] of Object.entries({id:PROPERTY,intent:"draft",code:"CDA-001",title:"Casa Cidade das Águas",slug:"casa-cidade-das-aguas-cda-001",type:"Fazenda",price:"350000000.57",description:"Imóvel sintético rural para regressão de valores e publicação.",state:"MG",city:"Frutal",neighborhood:"Zona rural",address:"Estrada sintética 100",area:"",lotArea:"35000000",status:"rascunho",bedrooms:"0",suites:"0",bathrooms:"0",parking:"0"})) form.set(key,value);
+    expect((await saveProperty({error:""},form)).error).toBe("");
+    const detail = await publicProperty(ROOT_TENANT,"casa-cidade-das-aguas-cda-001");
+    expect(detail).toMatchObject({type:"Fazenda",priceCents:35000000057,lotArea:35000000});
+    expect(detail?.publishedAt).toBeTruthy();
+    expect(JSON.parse(JSON.stringify(detail)).priceCents).toBe(35000000057);
+  });
+
   it("never exposes the private address, coordinates or commission on public routes", async () => {
     const detail = await publicProperty(ROOT_TENANT, "casa-cidade-das-aguas-cda-001");
     const serialized = JSON.stringify(detail);

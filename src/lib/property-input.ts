@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { positiveMoneyInput } from "./money";
+import { PROPERTY_TYPES, requiresLotArea } from "./property-types";
 
 const optionalArea = z.preprocess(
   (value) => value === "" || value === null || value === undefined ? undefined : value,
@@ -9,11 +11,8 @@ export const propertyInput = z.object({
   code: z.string().trim().min(3).max(30),
   title: z.string().trim().min(8).max(180),
   slug: z.string().trim().max(200).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  type: z.enum(["Apartamento", "Casa", "Cobertura", "Studio", "Terreno"]),
-  price: z.string().regex(/^\d+(?:\.\d{1,2})?$/).transform((s) => {
-    const [a, b = ""] = s.split(".");
-    return Number(a) * 100 + Number(b.padEnd(2, "0"));
-  }).pipe(z.number().int().positive().max(2147483647)),
+  type: z.enum(PROPERTY_TYPES),
+  price: positiveMoneyInput,
   area: optionalArea,
   lotArea: optionalArea,
   bedrooms: z.coerce.number().int().min(0).max(100),
@@ -28,7 +27,7 @@ export const propertyInput = z.object({
   status: z.enum(["rascunho", "disponivel", "pausado", "reservado"]),
 }).superRefine((value, ctx) => {
   if (value.suites > value.bedrooms) ctx.addIssue({code:"custom",path:["suites"],message:"Suítes não podem superar o total de quartos."});
-  if (value.type === "Terreno") {
+  if (requiresLotArea(value.type)) {
     if (!value.lotArea) ctx.addIssue({ code: "custom", path: ["lotArea"], message: "Informe a área do terreno." });
     return;
   }

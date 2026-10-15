@@ -1,5 +1,10 @@
 # Status da implementação SaaS
 
+## Atualização — 15/10/2026
+
+QA15 implementada; migration 0022 aplicada exclusivamente ao Preview sintético, com preservação dos registros anteriores. Testes locais e limites de homologação em [relatório QA15](QA15_2026_10_15.md). As restrições históricas de escrita abaixo foram substituídas pela autorização atual para correções, testes e Preview; Production continua proibida. Validação autenticada/mobile permanece pendente.
+
+
 ## Revisão vigente — 13/10/2026
 
 As conclusões antigas de “Concluído/READY” abaixo **não representam homologação atual**. A auditoria confirmou defeitos de PDF, defaults, permissões, marca pública, uploads e operação; foram corrigidos localmente até `50fdaa2`, com 204 testes aprovados, lint/typecheck/build e nove regressões opt-in dos PDFs reais.

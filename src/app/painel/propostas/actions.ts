@@ -2,12 +2,14 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
+import { positiveMoneyInput } from "@/lib/money";
+import { calculateCommission } from "@/lib/format";
 import { getDb } from "@/db";
 import { activities, clients, deals, properties, proposals, sales, stages } from "@/db/schema";
 import { clientScope, requireWriteModule } from "@/lib/access";
 import { parseOperationDateTime } from "@/lib/datetime";
 
-const money = z.coerce.number().positive().max(21474836.47).transform((value) => Math.round(value * 100));
+const money = positiveMoneyInput;
 const proposalStatuses = ["enviada", "em_negociacao", "contraproposta", "aceita", "recusada", "expirada"] as const;
 
 export async function saveProposal(_: { ok: boolean; message: string }, formData: FormData) {
@@ -42,10 +44,10 @@ export async function updateProposal(formData: FormData) {
 
 export async function saveSale(_: { ok: boolean; message: string }, formData: FormData) {
   const user = await requireWriteModule("propostas");
-  const parsed = z.object({ dealId: z.uuid(), propertyId: z.uuid(), proposalId: z.union([z.uuid(), z.literal("")]), advertised: money, amount: money, commissionPercent: z.coerce.number().min(0).max(100), soldAt: z.string().min(1), notes: z.string().trim().max(5000) }).safeParse(Object.fromEntries(formData));
+  const parsed = z.object({ dealId: z.uuid(), propertyId: z.uuid(), proposalId: z.union([z.uuid(), z.literal("")]), advertised: money, amount: money, commissionPercent: z.coerce.number().min(0).max(100).multipleOf(0.01), soldAt: z.string().min(1), notes: z.string().trim().max(5000) }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: "Revise os dados da venda." };
   const soldAt = parseOperationDateTime(parsed.data.soldAt);
-  const commission = Math.round(parsed.data.amount * parsed.data.commissionPercent / 100);
+  const commission = calculateCommission(parsed.data.amount, parsed.data.commissionPercent);
   const db = getDb();
   const [won] = await db.select({ id: stages.id }).from(stages).where(and(eq(stages.tenantId, user.tenantId), eq(stages.isWon, true))).limit(1);
   if (!won || !soldAt) return { ok: false, message: "Confira a data e a etapa de fechamento." };

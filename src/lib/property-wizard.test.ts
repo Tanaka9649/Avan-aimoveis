@@ -53,7 +53,7 @@ describe("property wizard", () => {
       ...values,
       bedrooms: "1.5",
       state: "Minas",
-      price: "21474836.48",
+      price: "1000000000000",
     });
     expect(Object.keys(errors).sort()).toEqual(["bedrooms", "price", "state"]);
   });

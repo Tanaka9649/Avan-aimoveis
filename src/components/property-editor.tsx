@@ -1,4 +1,7 @@
 "use client";
+import { decimalToCents } from "@/lib/money";
+import { PROPERTY_TYPES, requiresLotArea } from "@/lib/property-types";
+
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -257,7 +260,7 @@ export function PropertyEditor({
   const publicationBlockers = publicationChecks({
     status: values.status,
     title: values.title,
-    priceCents: Math.round(Number(values.price || 0) * 100),
+    priceCents: decimalToCents(values.price || "0") ?? 0,
     description: values.description,
     neighborhood: values.neighborhood,
     city: values.city,
@@ -355,7 +358,7 @@ export function PropertyEditor({
                       value={values.type}
                       onChange={(e) => change("type", e.target.value)}
                     >
-                      {["Apartamento", "Casa", "Cobertura", "Studio", "Terreno"].map(
+                      {[...PROPERTY_TYPES].map(
                         (type) => (
                           <option key={type}>{type}</option>
                         ),
@@ -536,14 +539,15 @@ export function PropertyEditor({
                     max: 99999999.99,
                     step: "0.01",
                     placeholder: "120",
+                    optional: requiresLotArea(values.type),
                   }) : null}
-                  {values.type === "Casa" || values.type === "Terreno" ? field("lotArea", "Área do terreno (m²)", {
+                  {!["Apartamento", "Cobertura", "Studio", "Sala comercial"].includes(values.type) ? field("lotArea", "Área do terreno (m²)", {
                     type: "number",
                     min: 0.01,
                     max: 99999999.99,
                     step: "0.01",
                     placeholder: "250",
-                    optional: values.type !== "Terreno",
+                    optional: !requiresLotArea(values.type),
                   }) : null}
                 </div>
               </>

@@ -1,5 +1,9 @@
 # CURRENT_CHECKPOINT
 
+## QA15 implementada e migration isolada — 15/10/2026
+
+Correções, evidências e limitações em [QA15_2026_10_15.md](QA15_2026_10_15.md). Migration 0022 aplicada somente ao Preview sintético; dados anteriores preservados. Código validado localmente, publicação do novo Preview e verificação pública seguem como próxima etapa. Homologação autenticada/mobile bloqueada pelo mecanismo de navegador, não concluída. Production permanece sem alteração.
+
 ## Recuperação e conciliação — 15/10/2026 (estado mais recente)
 
 - Terminal e integração GitHub responderam normalmente nesta sessão; fetch do GitHub concluído.

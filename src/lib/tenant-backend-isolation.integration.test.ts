@@ -272,4 +272,15 @@ describe.sequential("authenticated tenant isolation", () => {
     expect(await visitRows(own,5,"upcoming")).toHaveLength(5);
     expect(await visitRows({...own,tenantId:TENANT_A},1,"all")).toEqual([]);
   });
+  it("supports high-value proposals and sales end to end with exact commissions",async()=>{
+    const proposal=await saveProposal({ok:false,message:""},form({dealId:DEAL_B,propertyId:PROPERTY_B,advertised:"350000000.57",amount:"350000000.57",counter:"",validUntil:"2026-12-30",status:"aceita",notes:"AUDIT QA15"}));
+    expect(proposal.ok).toBe(true);
+    const [saved]=(await pg.query<{id:string;amount:string}>("select id,amount_cents::text as amount from proposals where notes='AUDIT QA15'")).rows;
+    expect(saved.amount).toBe("35000000057");
+    const sale=await saveSale({ok:false,message:""},form({dealId:DEAL_B,propertyId:PROPERTY_B,proposalId:saved.id,advertised:"350000000.57",amount:"350000000.57",commissionPercent:"6.25",soldAt:"2026-10-15",notes:"AUDIT QA15"}));
+    expect(sale.ok).toBe(true);
+    const [result]=(await pg.query("select amount_cents::text,commission_cents::text from sales where notes='AUDIT QA15'")).rows;
+    expect(result).toEqual({amount_cents:"35000000057",commission_cents:"2187500004"});
+  });
+
 });

@@ -1,4 +1,6 @@
 "use client";
+import { PROPERTY_TYPES } from "@/lib/property-types";
+
 import { PreservedForm } from "./preserved-form";
 import { telephoneContactUrl, whatsappContactUrl } from "@/lib/contact";
 import { AdminDropdownMenu } from "@/components/admin-dropdown-menu";
@@ -57,7 +59,7 @@ export function ClientForm({client,onClose,onSaved}:{client?:CrmClient;onClose:(
     <section className="crm-form-section"><header><span>O que o cliente procura?</span></header><div className="crm-form-grid">
      <label>Orçamento mínimo<input value={minBudget} onChange={event=>setMinBudget(moneyDisplay(event.target.value))} inputMode="numeric" placeholder="R$ 300.000"/><input type="hidden" name="budgetMin" value={moneyRaw(minBudget)}/></label>
      <label>Orçamento máximo<input value={maxBudget} onChange={event=>setMaxBudget(moneyDisplay(event.target.value))} inputMode="numeric" placeholder="R$ 500.000"/><input type="hidden" name="budgetMax" value={moneyRaw(maxBudget)}/></label>
-     <TagInput name="desiredTypes" label="Tipos de imóvel" initial={client?.desiredTypes.join(", ")||""} suggestions={["Casa","Apartamento","Terreno","Cobertura","Studio"]}/>
+     <TagInput name="desiredTypes" label="Tipos de imóvel" initial={client?.desiredTypes.join(", ")||""} suggestions={[...PROPERTY_TYPES]}/>
      <TagInput name="desiredRegions" label="Bairros e regiões" initial={client?.desiredRegions.join(", ")||""} suggestions={["Centro","Cidade das Águas"]}/>
     </div></section>
     <section className="crm-form-section"><header><span>Preferências</span></header><div className="crm-form-grid crm-small-fields">

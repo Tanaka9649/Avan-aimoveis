@@ -1,4 +1,7 @@
 "use client";
+import { PROPERTY_TYPES } from "@/lib/property-types";
+
+import { moneyFilterCents } from "@/lib/money";
 import { Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { PublicPropertyCard } from "@/data/properties";
@@ -28,7 +31,7 @@ export function Catalog({ properties, initial = {}, basePath = "", tenantKey }: 
 
   const list = useMemo(() => {
     const term = filters.q.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-    const ceiling = Number(filters.max.replace(/\D/g, "")) * 100;
+    const ceiling = moneyFilterCents(filters.max);
     return properties
       .filter((property) =>
         (!term || `${property.title} ${property.neighborhood} ${property.city} ${property.code}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(term)) &&
@@ -36,7 +39,7 @@ export function Catalog({ properties, initial = {}, basePath = "", tenantKey }: 
         (!filters.city || property.city === filters.city) &&
         (!filters.neighborhood || property.neighborhood === filters.neighborhood) &&
         (!filters.bedrooms || property.bedrooms >= Number(filters.bedrooms)) &&
-        (!ceiling || property.priceCents <= ceiling))
+        (ceiling === null || property.priceCents <= ceiling))
       .sort((a, b) => (sort === "menor" ? a.priceCents - b.priceCents : sort === "maior" ? b.priceCents - a.priceCents : 0));
   }, [properties, filters, sort]);
 
@@ -44,11 +47,11 @@ export function Catalog({ properties, initial = {}, basePath = "", tenantKey }: 
     <>
       <div className="catalog-toolbar">
         <label className="search-field"><Search /><input value={filters.q} onChange={set("q")} placeholder="Cidade, bairro, código ou palavra-chave" aria-label="Buscar imóvel" /></label>
-        <label><span>Tipo</span><select value={filters.type} onChange={set("type")}><option value="">Todos</option>{[...new Set(["Apartamento", "Casa", "Cobertura", "Studio", "Terreno", ...properties.map((property) => property.type)])].map((type) => <option key={type}>{type}</option>)}</select></label>
+        <label><span>Tipo</span><select value={filters.type} onChange={set("type")}><option value="">Todos</option>{[...new Set([...PROPERTY_TYPES, ...properties.map((property) => property.type)])].map((type) => <option key={type}>{type}</option>)}</select></label>
         <label><span>Cidade</span><select value={filters.city} onChange={(event) => setFilters((old) => ({ ...old, city: event.target.value, neighborhood: "" }))}><option value="">Todas</option>{cities.map((city) => <option key={city}>{city}</option>)}</select></label>
         <label><span>Bairro</span><select value={filters.neighborhood} onChange={set("neighborhood")}><option value="">Todos</option>{neighborhoods.map((neighborhood) => <option key={neighborhood}>{neighborhood}</option>)}</select></label>
         <label><span>Quartos</span><select value={filters.bedrooms} onChange={set("bedrooms")}><option value="">Qualquer</option>{["1", "2", "3", "4"].map((value) => <option key={value} value={value}>{value}+</option>)}</select></label>
-        <label><span>Até R$</span><input value={filters.max} onChange={set("max")} inputMode="numeric" placeholder="Sem limite" aria-label="Preço máximo" /></label>
+        <label><span>Até R$</span><input value={filters.max} onChange={set("max")} inputMode="decimal" placeholder="Sem limite" aria-label="Preço máximo" /></label>
       </div>
       <div className="catalog-meta">
         <p role="status" aria-live="polite"><strong>{list.length}</strong> {list.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}</p>
