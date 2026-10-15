@@ -34,3 +34,7 @@ Estado inicial conferido: remoto `150f637`, local `b7f12fa`, Preview `dpl_ESuBDo
 - A suíte completa não foi concluída nesta rodada: a primeira execução paralela excedeu os timeouts de preparação PGlite. Os casos relevantes foram executados isoladamente. A preparação da suíte de publicação recebeu 120s; nenhuma asserção foi removida. PDF executado com testTimeout de 30s, sem alterar asserções.
 - Nenhuma migration, seed, restore ou alteração de credenciais executada.
 - Publicação planejada somente em Preview; navegador autenticado na proteção Vercel carregou o Preview anterior. Validação visual da versão nova ainda pendente no momento deste registro.
+
+## Preview publicado e verificações de navegador
+
+Commit `ad67ecc`, deployment `dpl_Hm4uSjwKWXc891KP9eAvvS5PHKT6`, READY. Catálogo e detalhe acessíveis, centavos preservados, busca sem acentos funcionando, foto única carregada e formulário público preservando dados após erro do servidor. Não foi simulada viewport mobile. Login do painel solicita autenticação; testes internos e entre perfis permanecem pendentes. Production não alterada.

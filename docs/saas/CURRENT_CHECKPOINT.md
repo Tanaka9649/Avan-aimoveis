@@ -1,6 +1,15 @@
 # CURRENT_CHECKPOINT
 
-## Retomada — 15/10/2026 (estado mais recente)
+## Recuperação e conciliação — 15/10/2026 (estado mais recente)
+
+- Terminal e integração GitHub responderam normalmente nesta sessão; fetch do GitHub concluído.
+- Checkout original recuperado em `/workspace/scratch/5e7a5b1d52d0/avan-imoveis`, branch `feat/saas-multitenant`, limpo antes da conciliação, HEAD `f66fe57e3b210ce8f6f6670b4e112f113b1ecffa`.
+- Remoto encontrado em `5bbe16fcdd9c41afab5129c7fddc07661261882c`. Seu registro de não recuperação se refere àquela sessão; nesta sessão o commit original foi localizado. Os registros foram conciliados; o commit original permanece preservado no histórico local.
+- Trabalho recuperado: somente documentação em CURRENT_CHECKPOINT.md e QA_REMEDIATION_2026_10_14.md. Código de aplicação permanece idêntico a `ad67ecc`.
+- Envio documental autorizado pelo usuário, sem promoção para Production. Nenhuma migration, alteração de variável, credencial ou execução de workflow de release nesta retomada.
+- Estados de Preview/Production e resultados de testes abaixo são registros anteriores; não houve nova homologação ou consulta à Vercel nesta conciliação. O push por terminal falhou por falta de autenticação; o envio usa a integração GitHub. Validação autenticada e mobile permanece pendente.
+
+## Retomada anterior — 15/10/2026
 
 - Novo ambiente: o diretório e o commit local `f66fe57` da sessão anterior não foram transferidos e não foram recuperados. Este registro substitui o conteúdo que ele teria. Repositório clonado do GitHub no commit `ad67ecc581fbab100dac6b463e926ef1ac2c1a06`, branch `feat/saas-multitenant`, árvore limpa.
 - Preview atual conferido na Vercel: `dpl_Hm4uSjwKWXc891KP9eAvvS5PHKT6`, READY, commit `ad67ecc`, mesmo código do GitHub. Este commit é só documental e não deve gerar novo Preview (`[skip ci]`).
@@ -205,3 +214,19 @@ O build lista e compila as rotas internas, inclusive os catch-alls de 404. A fer
 - nenhum imóvel existente recebeu valor automático em `lot_area`.
 
 Não reaplicar `0010`, `0011` ou `0012`.
+
+---
+
+## Registro recuperado de 14/10/2026 — correções QA publicadas em Preview
+
+- Código remoto e deployment: `ad67ecc581fbab100dac6b463e926ef1ac2c1a06` na branch `feat/saas-multitenant`.
+- Preview `dpl_Hm4uSjwKWXc891KP9eAvvS5PHKT6`: READY, target Preview (`null`), sem promoção Production.
+- URL: https://avan-aimoveis-gz09sf2xd-guitanakabrasil-7316s-projects.vercel.app
+- Lint, TypeScript, build e 47 testes direcionados aprovados. Suíte completa não concluída por timeouts de preparação; os casos relevantes passaram isoladamente. Nenhuma migration ou seed executada.
+- Navegador confirmou catálogo, centavos (R$ 799.900,50), busca acao encontrando Ação, foto única carregada com dimensões 1180×460 e campos preservados após POST inválido no formulário público (telefone inválido, resposta de validação).
+- Painel do novo domínio abriu login, sem sessão autenticada. Próximo passo: autenticação segura do viewer-a para concluir QA13 e os fluxos internos. Não declarar homologação autenticada concluída.
+- Banco sintético contém dados de auditoria anteriores com UF XX e suítes maiores que quartos: nova validação bloqueia novos cadastros inválidos; não altera dados existentes silenciosamente.
+- Pendências: matriz completa no arquivo QA_REMEDIATION_2026_10_14.md, expansão de tipos/limite financeiro, definição comercial dos planos, Resend adiado; MFA continua opcional.
+- Este registro foi originalmente salvo apenas no commit local `f66fe57`, após o deploy. Seu conteúdo foi recuperado e integrado ao checkpoint remoto em 15/10/2026; não confundir documentação enviada com nova versão publicada.
+
+---
