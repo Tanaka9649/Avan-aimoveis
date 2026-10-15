@@ -1,6 +1,18 @@
 # CURRENT_CHECKPOINT
 
-## Preview publicado — 14/10/2026 (estado mais recente)
+## Retomada — 15/10/2026 (estado mais recente)
+
+- Novo ambiente: o diretório e o commit local `f66fe57` da sessão anterior não foram transferidos e não foram recuperados. Este registro substitui o conteúdo que ele teria. Repositório clonado do GitHub no commit `ad67ecc581fbab100dac6b463e926ef1ac2c1a06`, branch `feat/saas-multitenant`, árvore limpa.
+- Preview atual conferido na Vercel: `dpl_Hm4uSjwKWXc891KP9eAvvS5PHKT6`, READY, commit `ad67ecc`, mesmo código do GitHub. Este commit é só documental e não deve gerar novo Preview (`[skip ci]`).
+- Production conferida sem alteração: `dpl_8w3WsvFyMiTbsA24fpUAJJXrjtCx`, commit `48ccfa4`, READY. Existe também `dpl_BygjqayGMaoUYA3Pn9s3kE3X5jyS` (target production, sem commit Git, 13/10) em ERROR no passo `node recovery.cjs`; corresponde aos jobs de recuperação encerrados de propósito, sem efeito no site.
+- Neon conferido somente com leitura: Preview sintético `br-falling-firefly-b57arz1t` com 19 migrations (última 0021); Production `br-raspy-snow-b58wt9zz` com 15 migrations (até 0017). Nenhuma migration aplicada.
+- Suíte completa executada em 15/10 no ambiente anterior, sobre o código de `ad67ecc`: 48 arquivos aprovados e 1 ignorado; 214 testes aprovados e 1 ignorado; cerca de 40,70 s. Comando: `npm test -- --maxWorkers=1 --testTimeout=30000`. O teste ignorado depende da fixture opcional de PDFs reais. O log (`/tmp/avan-qa-20261015.log`) não foi transferido; o resultado vem do relatório da sessão anterior, não de nova execução.
+- Validação pública no navegador (sessão anterior): preço com centavos R$ 799.900,50; busca "acao" encontra "Ação"; foto única carregou no desktop; telefone inválido no formulário de lead mostrou erro e preservou os campos.
+- Conferência de código nesta retomada (leitura, sem execução): as actions de imóveis, CRM, clientes, visitas, propostas e proprietários, a movimentação de etapas e as rotas de upload de fotos e documentos passam por `requireWriteModule`, que exige `canWrite` (owner, admin, manager, agent ou super admin). Perfil de leitura fica de fora. Não comprova o comportamento em execução; configurações, usuários e branding não foram revisados.
+- NÃO concluído: validação autenticada no Preview (admin A, viewer A, corretores, isolamento A/B, upload de logo no wizard, imóvel publicado, formulários, valores, visitas) e validação mobile em 390 px. Bloqueios nesta sessão: o chat não está vinculado a um computador (sem navegador) e `work/audit-preview/secrets.json` não existe aqui. Nenhum usuário foi recriado e nenhuma senha alterada.
+- Continuam pendentes: QA15 (tipos de imóvel e valores acima de int32), QA17 (limites e preços dos planos, decisão do proprietário), MFA opcional, Resend/domínio de e-mail, e os gates de Production (backup/recuperação, 0018–0021 não aplicadas em Production, aprovação final).
+
+## Preview publicado — 14/10/2026
 
 - Autorização do usuário: publicar Preview; Production não promovida.
 - Branch Production confirmada no painel Vercel: `feat/plataforma-base`. Código publicado na branch `feat/saas-multitenant`, commit `150f637ee15ed10ec18f9f5590e26dfb81a125b8`; tree `d681a579fa22527cf5cf236968764ae598e615ab`, idêntica ao conteúdo local validado. Push de terminal falhou por ausência de autenticação; envio concluído via integração GitHub, com lease no HEAD anterior.
