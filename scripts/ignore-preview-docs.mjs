@@ -1,5 +1,5 @@
 // Vercel: 0 skips the build, 1 builds. Only explicitly marked, docs-only Preview commits qualify.
-const { execFileSync } = require('node:child_process');
+import { execFileSync } from 'node:child_process';
 try {
   if (process.env.VERCEL_ENV !== 'preview' || process.env.VERCEL_GIT_COMMIT_REF !== 'feat/saas-multitenant') process.exit(1);
   const message = execFileSync('git', ['log', '-1', '--format=%B'], { encoding: 'utf8' });

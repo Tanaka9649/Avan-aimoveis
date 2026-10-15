@@ -21,5 +21,5 @@
       "schedule": "0 5 * * *"
     }
   ],
-  "ignoreCommand": "node scripts/ignore-preview-docs.cjs"
+  "ignoreCommand": "node scripts/ignore-preview-docs.mjs"
 }
