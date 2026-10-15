@@ -2,7 +2,7 @@
 
 ## Atualização — 15/10/2026
 
-QA15 implementada; migration 0022 aplicada exclusivamente ao Preview sintético, com preservação dos registros anteriores. Testes locais e limites de homologação em [relatório QA15](QA15_2026_10_15.md). As restrições históricas de escrita abaixo foram substituídas pela autorização atual para correções, testes e Preview; Production continua proibida. Validação autenticada/mobile permanece pendente.
+QA15 implementada; migration 0022 aplicada exclusivamente ao Preview sintético, com preservação dos registros anteriores. Testes locais e limites de homologação em [relatório QA15](QA15_2026_10_15.md). As restrições históricas de escrita abaixo foram substituídas pela autorização atual para correções, testes e Preview; Production continua proibida. Preview READY no commit `9aec044`, validação pública executada e suíte final com 247 testes aprovados e 1 ignorado. Validação autenticada/mobile permanece pendente; não pronto para Production.
 
 
 ## Revisão vigente — 13/10/2026

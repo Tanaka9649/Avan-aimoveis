@@ -2,9 +2,9 @@
 
 ## QA15 implementada e migration isolada — 15/10/2026
 
-Correções, evidências e limitações em [QA15_2026_10_15.md](QA15_2026_10_15.md). Migration 0022 aplicada somente ao Preview sintético; dados anteriores preservados. Código validado localmente, publicação do novo Preview e verificação pública seguem como próxima etapa. Homologação autenticada/mobile bloqueada pelo mecanismo de navegador, não concluída. Production permanece sem alteração.
+Correções, evidências e limitações em [QA15_2026_10_15.md](QA15_2026_10_15.md). Migration 0022 aplicada somente ao Preview sintético; dados anteriores preservados. Código enviado em `8ec7dcd` e `9aec044`; Preview READY `dpl_HTdvy8TFzYwWcHyCDhWaz8rCNx3J`, executando `9aec044b8e8902915b505c3b1cd6ea82f33db27e`: https://avan-aimoveis-dk1aq7zpd-guitanakabrasil-7316s-projects.vercel.app . Validação pública no navegador confirmou tipos, limite com centavos, preservação do formulário inválido e abertura da galeria. Suíte final: 247 aprovados, 1 ignorado; lint, TypeScript e build aprovados. Homologação autenticada/mobile bloqueada pelo mecanismo de navegador, não concluída. Production permanece sem alteração.
 
-## Recuperação e conciliação — 15/10/2026 (estado mais recente)
+## Recuperação e conciliação — 15/10/2026 (histórico anterior à QA15)
 
 - Terminal e integração GitHub responderam normalmente nesta sessão; fetch do GitHub concluído.
 - Checkout original recuperado em `/workspace/scratch/5e7a5b1d52d0/avan-imoveis`, branch `feat/saas-multitenant`, limpo antes da conciliação, HEAD `f66fe57e3b210ce8f6f6670b4e112f113b1ecffa`.

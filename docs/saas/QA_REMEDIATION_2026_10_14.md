@@ -20,7 +20,7 @@ Estado inicial conferido: remoto `150f637`, local `b7f12fa`, Preview `dpl_ESuBDo
 
 ## Pendências e limites que não devem ser apresentados como resolvidos
 
-- QA15: expansão de tipos de imóvel e valores acima do limite de int32 exige alteração de schema e migration planejada; este lote mantém o limite explícito.
+- QA15: implementada em 15/10/2026, tipos compartilhados e valores bigint em centavos; migration 0022 somente no Preview. Evidências e limites da homologação em [QA15_2026_10_15.md](QA15_2026_10_15.md).
 - QA17: limites comerciais dos planos dependem de decisão do proprietário; não preencher com valores inventados. Empresa configurando permanece sem acesso operacional até ativação.
 - QA18: MFA continua opt-in; obrigatoriedade é mudança de política, não aplicada silenciosamente.
 - Resend e domínio de email continuam adiados conforme solicitado.
