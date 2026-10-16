@@ -1,3 +1,4 @@
+import { canWrite } from "@/lib/permissions";
 import { ArrowLeft, Clock3, Mail, Phone, UserRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -57,11 +58,11 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
         eyebrow="Negócio"
         title={deal.title}
         description={`Atendimento de ${deal.name}`}
-        action={<span className="page-header-action-group"><StatusBadge value={deal.stage} />{deal.isLost ? <form action={reopenOpportunity}><input type="hidden" name="id" value={id}/><button className="admin-button secondary">Reabrir oportunidade</button></form> : null}</span>}
+        action={<span className="page-header-action-group"><StatusBadge value={deal.stage} />{canWrite(user) && deal.isLost ? <form action={reopenOpportunity}><input type="hidden" name="id" value={id}/><button className="admin-button secondary">Reabrir oportunidade</button></form> : null}</span>}
       />
 
-      <SectionCard title="Gerenciar oportunidade" description="Etapa, responsável pelo cliente, próxima ação, imóveis e notas."><DealEditor choices={choices} initial={{id,clientId:record.clientId,title:record.title,stageId:record.stageId,amount:record.estimatedValueCents===null?"":String(record.estimatedValueCents/100),nextActionAt:record.nextActionAt?.toISOString()||"",nextActionType:record.nextActionType||"",nextActionNote:record.nextActionNote||"",lostReason:record.lostReason||""}} selected={linked.map(p=>p.id)}/></SectionCard>
-      <SectionCard title="Arquivos da oportunidade" description="Documentos privados, disponíveis somente para pessoas autorizadas no CRM."><OpportunityAttachments opportunityId={id} initialAttachments={attachments}/></SectionCard>
+      {canWrite(user) ? <SectionCard title="Gerenciar oportunidade" description="Etapa, responsável pelo cliente, próxima ação, imóveis e notas."><DealEditor choices={choices} initial={{id,clientId:record.clientId,title:record.title,stageId:record.stageId,amount:record.estimatedValueCents===null?"":String(record.estimatedValueCents/100),nextActionAt:record.nextActionAt?.toISOString()||"",nextActionType:record.nextActionType||"",nextActionNote:record.nextActionNote||"",lostReason:record.lostReason||""}} selected={linked.map(p=>p.id)}/></SectionCard> : <p role="status">Acesso de leitura à oportunidade.</p>}
+      <SectionCard title="Arquivos da oportunidade" description="Documentos privados, disponíveis somente para pessoas autorizadas no CRM."><OpportunityAttachments writable={canWrite(user)} opportunityId={id} initialAttachments={attachments}/></SectionCard>
       <div className="deal-detail-grid">
         <SectionCard title="Contato e oportunidade" description="Dados usados durante o atendimento comercial.">
           <dl className="detail-list">

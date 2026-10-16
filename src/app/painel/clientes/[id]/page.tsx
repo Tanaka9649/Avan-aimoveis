@@ -17,7 +17,7 @@ import {
   propertyPhotos,
 } from "@/db/schema";
 import { clientScope, requireModule } from "@/lib/access";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, canWrite } from "@/lib/permissions";
 import { PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 import { ClientEditor } from "@/components/client-editor";
 import { AdminTabs } from "@/components/admin-tabs";
@@ -238,13 +238,13 @@ export default async function Page({
       {canAccess(user, "crm") ? (
         <SectionCard
           title="Oportunidades"
-          action={
+          action={canWrite(user) ?
             <Link
               className="text-action"
               href={`/painel/crm/novo?cliente=${id}`}
             >
               Nova oportunidade
-            </Link>
+            </Link> : undefined
           }
         >
           {opportunities.length ? (
@@ -285,7 +285,7 @@ export default async function Page({
             title="Imóveis favoritos"
             description="Marque e compare as opções preferidas do cliente."
           >
-            <form action={toggleFavorite} className="inline-relationship-form">
+            {canWrite(user) ? <form action={toggleFavorite} className="inline-relationship-form">
               <input type="hidden" name="clientId" value={id} />
               <input type="hidden" name="remove" value="0" />
               <select name="propertyId" required defaultValue="">
@@ -303,7 +303,7 @@ export default async function Page({
               <button className="admin-button secondary">
                 Adicionar favorito
               </button>
-            </form>
+            </form> : null}
             <FavoriteComparison
               items={favorites.map((f) => ({
                 ...f,
@@ -329,12 +329,12 @@ export default async function Page({
                     parkingSpaces: f.parking,
                   }}
                 />
-                <form action={toggleFavorite}>
+                {canWrite(user) ? <form action={toggleFavorite}>
                   <input type="hidden" name="clientId" value={id} />
                   <input type="hidden" name="propertyId" value={f.id} />
                   <input type="hidden" name="remove" value="1" />
                   <button className="text-action">Remover {f.code}</button>
-                </form>
+                </form> : null}
               </div>
             ))}
           </SectionCard>
@@ -342,7 +342,7 @@ export default async function Page({
             title="Imóveis apresentados"
             description="Evita repetir opções já enviadas ao cliente."
           >
-            <form
+            {canWrite(user) ? <form
               action={registerPresentation}
               className="inline-relationship-form"
             >
@@ -365,7 +365,7 @@ export default async function Page({
                 <option value="outro">Outro</option>
               </select>
               <button className="admin-button secondary">Registrar</button>
-            </form>
+            </form> : null}
             {presented.map((p) => (
               <p key={p.id}>
                 <strong>
@@ -445,14 +445,14 @@ export default async function Page({
           {
             id: "editar",
             label: "Dados e preferências",
-            content: <ClientEditor initial={initial} />,
+            content: canWrite(user) ? <ClientEditor initial={initial} /> : summary,
           },
           {
             id: "historico",
             label: "Histórico",
             content: (
               <SectionCard title="Histórico de atendimento">
-                <SettingsForm
+                {canWrite(user) ? <SettingsForm
                   action={addClientNote}
                   label="Registrar interação"
                 >
@@ -478,7 +478,7 @@ export default async function Page({
                       maxLength={10000}
                     />
                   </label>
-                </SettingsForm>
+                </SettingsForm> : null}
                 <div className="deal-timeline">
                   {history.map((h) => (
                     <article key={h.id}>

@@ -1,4 +1,4 @@
-import { requireModule } from "@/lib/access";
+import { requireWriteModule } from "@/lib/access";
 import { PageHeader } from "@/components/admin-ui";
 import { PropertyEditor } from "@/components/property-editor";
 import { getDb } from "@/db";
@@ -7,7 +7,7 @@ import { asc, eq } from "drizzle-orm";
 import { ownerIdentityKey } from "@/lib/owner-identity";
 
 export default async function NewPropertyPage() {
-  const user = await requireModule("imoveis");
+  const user = await requireWriteModule("imoveis");
   const rawOwners = await getDb()
     .select({ id: owners.id, name: owners.name, phone: owners.phone, email: owners.email, createdAt: owners.createdAt })
     .from(owners)

@@ -1,12 +1,21 @@
 # CURRENT_CHECKPOINT
 
+## Rotas diretas de leitura — 16/10/2026, continuação
+
+- Sessão real AUDIT viewer-a preservada no Preview 381aff7. Configurações administrativas retornaram 404/sem acesso.
+- Reproduzidos formulários indevidos nas URLs diretas Novo imóvel, Nova oportunidade, ficha de cliente (favoritos/apresentações) e ficha completa de oportunidade (edição/upload). Nenhuma criação ou alteração foi submetida nessa rodada.
+- Correção exige requireWriteModule antes de renderizar páginas de criação, e usa canWrite nas fichas de clientes, oportunidades e proprietários, incluindo anexos e reabertura. Mantém dados/histórico em leitura.
+- Teste novo executa as páginas de criação com identidade viewer e confirma recusa antes das consultas; 9 testes do arquivo de guards aprovados. Lint e TypeScript aprovados. Suíte completa: 248 aprovados e 1 ignorado, 49,86 s.
+- Incluída a confirmação documental local e517b8c no mesmo lote de código, evitando publicação documental separada. Sem migration ou alteração em Production. Revalidação do novo Preview deve ser registrada após publicação.
+
+
 ## Viewer autenticado — 16/10/2026
 
 - Preview `dc8226365c0d87f51dedba64974325c3ed1d746b` READY, URL https://avan-aimoveis-9pzdy64gs-guitanakabrasil-7316s-projects.vercel.app . Sessão real confirmada como AUDIT viewer-a após entrada segura manual.
 - Lista de imóveis sem criação/edição/publicação/exclusão; menu da Fazenda contém somente Ver no site e Gerar PDF. CRM informa acesso de leitura; ficha sem edição, upload desabilitado. Visitas sem agendamento.
 - Defeito reproduzido: detalhe de imóvel ainda exibia editor para Viewer. Salvar sem modificar campos retornou página de acesso negado/404 do servidor. Correção substitui o editor por consulta com dados, fotos e documentos para usuários sem canWrite; permissões do servidor preservadas.
 - Admin A no mesmo Preview: salvar a fixture mostrou a mensagem corrigida “Imóvel salvo”, preço exibido preservado em R$ 350.000.000,57. Esta rodada não fez SELECT de confirmação.
-- TypeScript e lint aprovados; suíte completa com 247 aprovados e 1 ignorado (48,02 s); publicação e revalidação da nova tela ainda devem ser confirmadas. Não declarar matriz completa de escrita/escopo, corretores, mobile ou wizard homologados. Nenhuma migration ou alteração em Production.
+- TypeScript e lint aprovados; suíte completa com 247 aprovados e 1 ignorado (48,02 s); Correção publicada em `381aff7896963ce6b4748e30e311468afdf121b9`, deployment `dpl_H9e9i3a8DJmiC2NMf8AA9Nw3cfwD` READY: https://avan-aimoveis-hzrshwhhr-guitanakabrasil-7316s-projects.vercel.app . Reautenticado como AUDIT viewer-a nesse Preview: detalhe mostra “Consultar imóvel” e “Seu acesso permite apenas consultar este imóvel”, preço R$ 350.000.000,57, sem formulário ou botão de salvar. Propostas no Preview anterior também apresentaram apenas consulta. Não declarar matriz completa de escrita/escopo, corretores, mobile ou wizard homologados. Nenhuma migration ou alteração em Production.
 
 
 ## Homologação autenticada parcial — 15/10/2026, retomada

@@ -13,8 +13,14 @@ import { moveOpportunity } from "@/app/painel/crm/move";
 import { saveProposal, saveSale } from "@/app/painel/propostas/actions";
 import { updateVisit } from "@/app/painel/visitas/actions";
 import { withApiErrors } from "./api-errors";
+import NewPropertyPage from "@/app/painel/imoveis/novo/page";
+import NewOpportunityPage from "@/app/painel/crm/novo/page";
 beforeEach(()=>{state.role="viewer";state.module=true;state.api=false;});
 describe("real permission guards",()=>{
+ it("denies creation pages before rendering forms or querying choices for viewers",async()=>{
+  await expect(NewPropertyPage()).rejects.toThrow("not-found");
+  await expect(NewOpportunityPage({searchParams:Promise.resolve({})})).rejects.toThrow("not-found");
+ });
  it("denies property create/edit/publish/unpublish/duplicate at the actual server actions", async()=>{
   await expect(saveProperty({error:""},new FormData())).rejects.toThrow("not-found");
   await expect(publishProperty("test")).rejects.toThrow("not-found");

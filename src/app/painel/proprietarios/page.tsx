@@ -1,3 +1,4 @@
+import { canWrite } from "@/lib/permissions";
 import Link from "next/link";
 import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { Contact, Search } from "lucide-react";
@@ -41,7 +42,7 @@ export default async function OwnersPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="admin-content">
-      <PageHeader eyebrow="Captação" title="Proprietários" description="Cadastre contatos e acompanhe os imóveis vinculados." action={<AdminDrawerComposer label="Novo proprietário" title="Novo proprietário" description="Dados protegidos e restritos à equipe." showPlus><OwnerForm/></AdminDrawerComposer>}/>
+      <PageHeader eyebrow="Captação" title="Proprietários" description="Cadastre contatos e acompanhe os imóveis vinculados." action={canWrite(user) ? <AdminDrawerComposer label="Novo proprietário" title="Novo proprietário" description="Dados protegidos e restritos à equipe." showPlus><OwnerForm/></AdminDrawerComposer> : undefined}/>
       <form className="admin-inline-search" method="get" role="search">
         <Search aria-hidden="true"/>
         <input name="q" defaultValue={q} placeholder="Buscar por nome, telefone ou e-mail" aria-label="Buscar proprietários"/>
