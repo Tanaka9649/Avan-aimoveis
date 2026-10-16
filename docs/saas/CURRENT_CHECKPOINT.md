@@ -1,5 +1,14 @@
 # CURRENT_CHECKPOINT
 
+## Viewer autenticado — 16/10/2026
+
+- Preview `dc8226365c0d87f51dedba64974325c3ed1d746b` READY, URL https://avan-aimoveis-9pzdy64gs-guitanakabrasil-7316s-projects.vercel.app . Sessão real confirmada como AUDIT viewer-a após entrada segura manual.
+- Lista de imóveis sem criação/edição/publicação/exclusão; menu da Fazenda contém somente Ver no site e Gerar PDF. CRM informa acesso de leitura; ficha sem edição, upload desabilitado. Visitas sem agendamento.
+- Defeito reproduzido: detalhe de imóvel ainda exibia editor para Viewer. Salvar sem modificar campos retornou página de acesso negado/404 do servidor. Correção substitui o editor por consulta com dados, fotos e documentos para usuários sem canWrite; permissões do servidor preservadas.
+- Admin A no mesmo Preview: salvar a fixture mostrou a mensagem corrigida “Imóvel salvo”, preço exibido preservado em R$ 350.000.000,57. Esta rodada não fez SELECT de confirmação.
+- TypeScript e lint aprovados; suíte completa com 247 aprovados e 1 ignorado (48,02 s); publicação e revalidação da nova tela ainda devem ser confirmadas. Não declarar matriz completa de escrita/escopo, corretores, mobile ou wizard homologados. Nenhuma migration ou alteração em Production.
+
+
 ## Homologação autenticada parcial — 15/10/2026, retomada
 
 - Baseline limpo e sincronizado `b5b005f`; Preview mais recente reconfirmado READY `dpl_4xiVDgrnHdpUimXyBDQALmHCRDGj`, executando esse commit: https://avan-aimoveis-depnd8v1v-guitanakabrasil-7316s-projects.vercel.app . O commit contém somente documentação sobre o código `9aec044`.

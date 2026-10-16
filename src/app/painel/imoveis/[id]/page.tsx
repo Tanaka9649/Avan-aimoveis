@@ -15,9 +15,12 @@ import { PageHeader, SectionCard, StatusBadge } from "@/components/admin-ui";
 import { SiteBadge } from "@/components/site-badge";
 import { PropertyEditor } from "@/components/property-editor";
 import { propertyMatch } from "@/lib/property-match";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, canWrite } from "@/lib/permissions";
 import { ownerIdentityKey } from "@/lib/owner-identity";
 import Link from "next/link";
+import Image from "next/image";
+import { formatMoney } from "@/lib/format";
+import { photoUrl } from "@/lib/photos";
 export default async function EditPropertyPage({
   params,
 }: {
@@ -83,7 +86,7 @@ export default async function EditPropertyPage({
     <div className="admin-content">
       <PageHeader
         eyebrow="Portfólio"
-        title="Editar imóvel"
+        title={canWrite(user) ? "Editar imóvel" : "Consultar imóvel"}
         description={p.code}
         action={<span className="page-header-badges"><StatusBadge value={p.status} /><SiteBadge property={p} /></span>}
       />
@@ -101,7 +104,32 @@ export default async function EditPropertyPage({
           </div>
         </SectionCard>
       ) : null}
-      {p.status === "vendido" ? (
+      {!canWrite(user) ? (
+        <section className="admin-card" aria-label="Imóvel em modo de leitura">
+          <h2>{p.title}</h2>
+          <p role="status">Seu acesso permite apenas consultar este imóvel.</p>
+          <dl className="admin-form-grid">
+            {Object.entries({
+              "Código": p.code, "Tipo": p.type, "Preço": formatMoney(p.priceCents),
+              "Área construída (m²)": p.privateArea, "Área do terreno (m²)": p.lotArea,
+              "Quartos": p.bedrooms, "Suítes": p.suites, "Banheiros": p.bathrooms,
+              "Vagas": p.parkingSpaces, "Estado": p.state, "Cidade": p.city,
+              "Bairro": p.neighborhood, "Endereço": p.addressPrivate,
+              "Proprietários": linkedUnique.map(owner => owner.name).join(", "),
+            }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? "Não informado"}</dd></div>)}
+          </dl>
+          <h3>Descrição</h3><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{p.description || "Não informada"}</p>
+          <h3>Características</h3><ul>{p.features.map(feature => <li key={feature}>{feature}</li>)}</ul>
+          <h3>Fotos</h3>
+          {photos.length ? photos.sort((a, b) => a.position - b.position).map(photo => (
+            <a key={photo.id} href={photoUrl(photo.id)} aria-label={photo.alt || "Abrir foto do imóvel"}>
+              <Image src={photoUrl(photo.id, "thumb")} alt={photo.alt || p.title} width={240} height={180} style={{ maxWidth: "100%", height: "auto" }} unoptimized />
+            </a>
+          )) : <p>Nenhuma foto cadastrada.</p>}
+          <h3>Documentos</h3>
+          {documents.length ? <ul>{documents.map(document => <li key={document.id}><a href={`/api/property-documents/${document.id}`}>{document.originalName}</a></li>)}</ul> : <p>Nenhum documento cadastrado.</p>}
+        </section>
+      ) : p.status === "vendido" ? (
         <section className="admin-card">
           <h2>Imóvel vendido</h2>
           <p className="muted-copy">
