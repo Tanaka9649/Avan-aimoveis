@@ -2,6 +2,9 @@
 
 ## Escopo dos corretores — 17/10/2026
 
+- Wizard: login real de AUDIT superadmin confirmado; preenchidos somente os campos locais de AUDIT Logo 20261017 até Identidade. Antes de selecionar arquivo, navegador recusou observação por `retained_data_restricted` após entrega nativa de credenciais e reiniciou a conexão. Nenhum upload ou criação de empresa foi executado. QA03 permanece pendente por bloqueio do navegador.
+- Leitura Vercel confirmou RESEND_API_KEY vazio no override exclusivo de Preview/branch; 13 overrides mantêm data de atualização de 14/10. Endpoint de storage Neon da branch sintética confirmado; o valor S3 sensitive da Vercel continua não retornável, portanto não houve nova comparação direta do segredo. Nenhuma variável alterada. Não foi criado deploy manual.
+
 - Revalidação autenticada posterior como AUDIT viewer-a no mesmo Preview: `/painel/imoveis/novo` e `/painel/crm/novo` recusadas (tela 404/sem acesso). Ficha do cliente A1 consultável, sem ações de favoritos/apresentações/nova oportunidade; aba Dados sem editor e Histórico sem formulário. Oportunidade A1 consultável com aviso de leitura, upload desabilitado e R$ 350.000.000,57. Lista de proprietários sem criação e ficha `701f1c1f-bf3c-4e09-8ecb-a7ee04f125f0` sem editor. Nenhuma tentativa de mutação nesta rodada; guards de servidor foram executados na suíte anterior de 248 testes, não repetida para esta alteração documental.
 
 - GitHub e Vercel reconfirmados: HEAD `e30b6dd0fc7e8d67cf4c34537eed35b11d812a23`, deployment `dpl_GdGuXSAT2eQVV6ui9egBn9zfMMr6` READY, Preview https://avan-aimoveis-nvqonybcu-guitanakabrasil-7316s-projects.vercel.app . Checkout limpo antes deste registro.
