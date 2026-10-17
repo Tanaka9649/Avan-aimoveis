@@ -1,5 +1,14 @@
 # CURRENT_CHECKPOINT
 
+## Escopo dos corretores — 17/10/2026
+
+- Revalidação autenticada posterior como AUDIT viewer-a no mesmo Preview: `/painel/imoveis/novo` e `/painel/crm/novo` recusadas (tela 404/sem acesso). Ficha do cliente A1 consultável, sem ações de favoritos/apresentações/nova oportunidade; aba Dados sem editor e Histórico sem formulário. Oportunidade A1 consultável com aviso de leitura, upload desabilitado e R$ 350.000.000,57. Lista de proprietários sem criação e ficha `701f1c1f-bf3c-4e09-8ecb-a7ee04f125f0` sem editor. Nenhuma tentativa de mutação nesta rodada; guards de servidor foram executados na suíte anterior de 248 testes, não repetida para esta alteração documental.
+
+- GitHub e Vercel reconfirmados: HEAD `e30b6dd0fc7e8d67cf4c34537eed35b11d812a23`, deployment `dpl_GdGuXSAT2eQVV6ui9egBn9zfMMr6` READY, Preview https://avan-aimoveis-nvqonybcu-guitanakabrasil-7316s-projects.vercel.app . Checkout limpo antes deste registro.
+- Rodada anterior no mesmo Preview: A1 criou pela interface o cliente `1fa035d9-5db4-4b52-b93f-af8af12536c6` (AUDIT A1 20261016 Escopo próprio) e a oportunidade `d2d6f74d-c0d5-4466-896e-ad1f8d524d96` (AUDIT A1 20261016 Negócio próprio). SELECT no Preview confirmou atribuição a broker-a1@example.invalid e valor de 35000000057 centavos. Registros preservados como evidência.
+- Nesta rodada, login seguro confirmou AUDIT broker-a2. Dashboard sem clientes próprios e CRM com zero negócios. URLs diretas do cliente e da oportunidade acima renderizaram 404/sem acesso, sem exibir os dados do A1. Nenhuma mutação submetida como A2.
+- Isso valida essas leituras por escopo no navegador; não equivale à matriz completa de mutações/IDs entre empresas. Wizard/logo, mobile 390px e a matriz completa de mutações continuam pendentes; revalidação de leitura do Viewer registrada acima. Sem nova migration ou alteração em Production.
+
 ## Rotas diretas de leitura — 16/10/2026, continuação
 
 - Sessão real AUDIT viewer-a preservada no Preview 381aff7. Configurações administrativas retornaram 404/sem acesso.
