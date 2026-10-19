@@ -1,4 +1,55 @@
+## Corretor A1 — isolamento inverso e atualização própria — 19/10/2026
+
+- Sessão `AUDIT broker-a1` confirmada. Propostas mostra somente sua proposta `1519c412-5c5f-4b2e-9592-da1cd5191fee`; alterada de Em negociação para Enviada pela UI, persistência confirmada após reload.
+- CRM mostra somente negócio A1. URL direta do negócio A2 `cb7ff5d7-f369-4ca5-9511-07f18b0f1fe2` retorna 404 interno. Painel do tenant B leva ao login de B sem expor dados.
+- Isolamento bidirecional A1/A2 de leitura e escrita autorizada própria validado na UI. Não afirmar matriz completa de mutações HTTP com IDs manipulados: esse gate continua pendente, junto com retentativa de falha de upload, fluxo completo de venda e backup/restore antes de Production.
+- Rodadas consolidadas abaixo são evidências do Preview de código `63caa91`. Este envio altera apenas documentação; código, migrations e Production permanecem inalterados. Capturas referidas nas rodadas são evidências locais da sessão.
+
+## Corretor A2 — leitura isolada e criação própria — 19/10/2026
+
+- Sessão `AUDIT broker-a2` confirmada no Preview 63caa91. Dashboard zero clientes/propostas/vendas antes da criação; CRM vazio; proposta do A1 não aparece na listagem nem seu negócio no seletor de Nova proposta.
+- URL direta do negócio A1 `d2d6f74d-c0d5-4466-896e-ad1f8d524d96` retorna 404 interno. `/superadmin` retorna 404 público.
+- Criados pela UI, como A2, cliente `AUDIT A2 20261019 Cliente próprio` (ID `2d2681e0-a490-4b61-8a5f-da00def5e000`) e oportunidade `AUDIT A2 20261019 Negócio próprio` (ID `cb7ff5d7-f369-4ca5-9511-07f18b0f1fe2`), ambos sintéticos no tenant A.
+- SELECT confirma cliente atribuído a `broker-a2@example.invalid`, tenant A e valor estimado 23456789 centavos. Card próprio reaparece após navegação; seletor Nova proposta contém somente oportunidade A2.
+- Esta rodada valida UI, GET direto negado e criação autorizada. Não equivale a teste HTTP de mutações com IDs manipulados. Próximo: sessão A1 para isolamento inverso e proposta própria.
+- Sem mudanças de código, migrations, credenciais, deployment ou Production. Evidência `docs/saas/evidence/broker-a2-20261019.png` e checkpoint locais pendentes de lote documental.
+
+## Proposta sintética e preparação de teste de escopo — 19/10/2026
+
+- Sessão AUDIT superadmin confirmada no Preview 63caa91. Nova proposta aberta normalmente (a interrupção anterior não se reproduziu).
+- Proposta `1519c412-5c5f-4b2e-9592-da1cd5191fee`, tenant A, negócio A1 `d2d6f74d-c0d5-4466-896e-ad1f8d524d96`, imóvel Fazenda `f71c4002-5b74-490e-bda4-41aae698b1e7`. Notas `AUDIT 20261019 proposta sintética — centavos e validação`.
+- Anunciado 35000000057 centavos; ofertado 12345678 centavos. SELECT no banco sintético confirmou valores exatos e validade `2026-10-21T02:59:59Z` = fim do dia 20/10 em São Paulo. UI exibe corretamente R$ 350.000.000,57 e R$ 123.456,78.
+- Campo anunciado obrigatório bloqueou submissão vazia no navegador, mantendo preenchimento. Status Contraproposta foi aceito com contraproposta monetária vazia (NULL); não tratar como teste de rejeição nem inferir regra obrigatória inexistente.
+- Status atualizado para Em negociação, confirmado na UI e após recarregamento. Formulário mobile 390×844 ocupa 390px sem ultrapassar lateral; screenshot inspecionada, viewport restaurado.
+- Concluir venda abriu; proposta em negociação não aparece entre propostas aceitas. Nenhuma venda submetida, preservando Fazenda e negócio A1 para testar escopo.
+- Próximo passo: sessão broker-a2@example.invalid para testar isolamento da proposta/negócio A1 e acesso a mutações. A evidência de superadmin não substitui prova de autorização de corretor/admin.
+- Nenhuma migration, mudança de credencial, novo deployment ou escrita em Production. Checkpoint e evidências locais aguardam lote de documentação.
+
+## QA03 — wizard com duas logos concluído no Preview — 19/10/2026
+
+- Usuário selecionou as duas imagens na etapa Identidade. Cadastro percorreu Site, Recursos (plano `AUDIT TEMPORARY - NOT COMMERCIAL`), Administrador e Revisão; ausência de WhatsApp rejeitada com preservação dos campos. Contato sintético `+55 11 90000-0000`, e-mails `example.invalid`.
+- Uma única submissão criou `AUDIT Logo 20261019`, slug `audit-logo-20261019`, tenant `1ecad888-c0ca-4d68-ac7f-abc3bec3a768`, status `configuring`, no banco sintético `br-falling-firefly-b57arz1t`.
+- Duas logos PNG persistidas em `branding_assets`, ambas confirmadas e pertencentes ao novo tenant: 350692 e 339389 bytes. Branding usa URLs estáveis `/api/branding/<tenantId>/<asset>`; ambas abertas no navegador e imagens renderizadas após sair do wizard. Nenhum blob URL persistido.
+- Super Admin reaberto: armazenamento 673,9 KB; Configuração mostra Identidade visual, Módulos, Plano, Site e Empresa concluídos (uma tentativa cada); Convite do administrador pendente. Não houve aceite de convite nem criação de senha.
+- Override RESEND_API_KEY da branch Preview confirmado vazio novamente; 13 overrides mantêm data de atualização anterior. Nenhuma variável alterada ou e-mail real enviado. Não registrar token do convite no Git.
+- Login do tenant `configuring` retorna tela vazia; código usa `notFound()` para tenant não operacional. Não validado login/site desse novo tenant como ativo; não alterar status para contornar provisionamento.
+- QA03 upload/persistência passou. Retentativa após falha de upload não induzida; matriz completa de mutações por papel, demais fluxos de propostas e gate de restore continuam pendentes. Produção intacta, sem migration ou novo deployment nesta rodada.
+
+## Validação mobile e retomada do wizard — 19/10/2026
+
+- Preview `63caa91`: sessão AUDIT superadmin confirmada na UI. Em 390×844, busca de imóveis mede 317px para formulário de 317px (antes 76,75px); screenshot confirma campo legível. Viewport restaurado.
+- Super Admin acessível. Wizard preenchido localmente com `AUDIT Logo 20261019`, slug `audit-logo-20261019` e e-mail `audit-logo-20261019@example.invalid`; chegou à etapa Identidade. Marca: `AUDIT Logo — teste sintético`.
+- Upload aguarda seleção de imagem sintética no computador do usuário; nenhum arquivo enviado e nenhuma empresa criada nesta rodada. Não repetir criação sem verificar resultado. Aba mantida para continuação.
+- Nenhuma alteração de credenciais, migration ou escrita em Production. QA03 permanece pendente até upload/persistência e conclusão do fluxo.
+
 # CURRENT_CHECKPOINT
+
+## Preview da correção mobile — 19/10/2026
+
+- Commit remoto `63caa91aa3422127bdea033cf5ed663bf8dfd0a7`, deployment `dpl_FRNwrrMhxoYriBxUL7wLZHUVRHZt` READY, Preview https://avan-aimoveis-oen7jkbha-guitanakabrasil-7316s-projects.vercel.app . Git local sincronizado; commit local equivalente preservado na branch checkpoint/mobile-local-20261019. Push terminal sem credenciais; integração GitHub concluiu o envio com lease sobre ef1553a.
+- Production reconfirmada em 48ccfa4, sem alteração. Nenhuma migration criada/aplicada.
+- Validação visual da correção publicada aguarda sessão no novo domínio; wizard/logo exige Super Admin sintético. Abertura da nova proposta no Preview anterior ficou sem resposta; chamada interrompida, nenhuma proposta submetida.
+- Este registro posterior ao deploy fica local para o próximo lote; não gerar deploy documental duplicado.
 
 ## Admin A e correção de busca mobile — 19/10/2026
 
