@@ -240,13 +240,13 @@
 .theme-light .advanced-filters-panel { box-shadow: 0 10px 28px rgba(31,45,68,.05); }
 
 @media (max-width: 1180px) {
-  .property-list-tools .list-search-field { flex-basis: 100%; }
+  .property-list-tools > .filter-toolbar > .list-search-field { flex-basis: 100%; }
   .property-list-tools .filter-control { flex: 1 1 150px; }
 }
 
 @media (max-width: 760px) {
   .list-tools { padding: 12px; }
-  .list-tools .list-search-field { flex: 1 0 100%; min-width: 0; }
+  .list-tools > .filter-toolbar > .list-search-field { flex: 1 0 100%; min-width: 0; }
   .property-list-tools .filter-control-status,
   .property-list-tools .filter-control-type { flex: 1 1 calc(50% - 5px); min-width: 130px; }
   .property-list-tools .filter-control-city { flex: 1 0 100%; }

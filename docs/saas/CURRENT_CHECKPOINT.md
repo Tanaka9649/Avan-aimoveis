@@ -1,5 +1,26 @@
 # CURRENT_CHECKPOINT
 
+## Admin A e correção de busca mobile — 19/10/2026
+
+- Login real AUDIT admin-a confirmado no Preview `ef1553a` (nw55pmas9). Empresa B redireciona para login próprio; `/superadmin` recusa com 404. Não equivale à matriz completa de mutações cross-tenant.
+- Nova visita sintética com data 20/10/2026 09:00: submissões Realizada e Não compareceu recusadas com mensagem adequada; cliente, imóvel, data e observações preservados. SELECT na branch sintética não encontrou visita com marcador AUDIT 20261019 após a primeira recusa.
+- Imóvel `f71c4002-5b74-490e-bda4-41aae698b1e7`: preço redigitado e salvo como admin; SELECT antes/depois no Preview confirmou status disponivel, price_cents 35000000057 e published_at 2026-10-15T18:45:41.593Z, sem despublicação. Mensagem Imóvel salvo correta.
+- Mobile: formulário de busca tinha 317px e campo de busca apenas 76,75px, flex computado 1 1 0%; regra legada `.filter-row label:first-child` sobrescrevia o flex responsivo. Correção aumenta a especificidade dos seletores existentes em 1180/760px, sem alterar site público ou regras de negócio. Validação visual do novo deployment ainda pendente.
+- Galeria pública da cópia QA-001-7B7797 carregou imagem e abriu diálogo com texto 1 de 1 em 390px. Segunda captura ficou sem resposta e a chamada foi interrompida; não tratar essa captura como evidência obtida.
+- Lint e TypeScript aprovados. Primeiro build falhou ao abrir persistência do cache Turbopack (invalid digit found in string); `.next` preservado em `/tmp/avan-next-before-build-20261019`, build limpo concluído com sucesso. Conexão com navegador voltou a responder; viewport restaurado.
+- Sem migrations, mudanças de credenciais ou escrita em Production. Próximos gates: Preview da correção mobile, wizard/logo com Super Admin, demais fluxos de propostas e homologação completa.
+
+
+## Viewer e verificação mobile parcial — 19/10/2026
+
+- Sessão real AUDIT viewer-a confirmada no Preview `ef1553a`, URL https://avan-aimoveis-nw55pmas9-guitanakabrasil-7316s-projects.vercel.app . Nenhuma mutação de dados submetida nesta rodada.
+- Imóveis: sem criação/edição; menu da Fazenda somente Ver no site/Gerar PDF; R$ 350.000.000,57 preservado na exibição. URLs diretas de novo imóvel e nova oportunidade recusadas com 404/sem acesso.
+- Viewport 390×844: lista de imóveis e ficha rápida do CRM inspecionadas visualmente; ficha cabe na largura, upload desabilitado, Escape fecha diálogo. Consulta de visitas (incluindo Todas) e propostas sem controles de escrita. Viewport restaurado ao encerrar.
+- Observação para próxima correção visual: busca da lista de imóveis fica estreita em 390px, truncando quase todo o placeholder. Ainda sem ajuste ou validação de correção. Não declarar mobile completo: galeria pública, temas, fluxos de edição e wizard continuam pendentes.
+- Testes locais nesta rodada: `npm test -- src/lib/access-regression.test.ts src/lib/tenant-backend-isolation.integration.test.ts --maxWorkers=1 --testTimeout=30000`: 24 aprovados, 2 arquivos, 33,49s. Exercitam guards de actions/APIs, escrita entre empresas e escopo de corretores; não equivalem a POST autenticado no deployment.
+- Próximo passo: login seguro admin-a para validar formulários/visitas/propostas; superadmin para wizard/logo. Nenhuma migration, push, deployment, alteração de credencial ou escrita em Production nesta rodada. Registro local para integrar ao próximo lote, evitando deploy exclusivamente documental.
+
+
 ## Escopo dos corretores — 17/10/2026
 
 - Wizard: login real de AUDIT superadmin confirmado; preenchidos somente os campos locais de AUDIT Logo 20261017 até Identidade. Antes de selecionar arquivo, navegador recusou observação por `retained_data_restricted` após entrega nativa de credenciais e reiniciou a conexão. Nenhum upload ou criação de empresa foi executado. QA03 permanece pendente por bloqueio do navegador.
