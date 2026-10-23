@@ -1,0 +1,82 @@
+name: "Neon DEV isolado - verificação manual"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Digite VERIFICAR-DEV-ISOLADO para testar somente o banco dev"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: avanca-neon-dev-isolado-verify
+  cancel-in-progress: false
+
+jobs:
+  verify-dev-isolado:
+    if: ${{ github.repository == 'Tanaka9649/Avan-aimoveis' && inputs.confirmation == 'VERIFICAR-DEV-ISOLADO' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: avanca-dev-isolado
+    steps:
+      - name: Checkout pinned SaaS source, read only
+        uses: actions/checkout@v5
+        with:
+          ref: 8d4d19bf3c09eff9f5c1d26484cda2b1c963498c
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependency lockfile before any secret is loaded
+        run: npm ci
+
+      - name: Verify exact Neon target and inspect safe counts (no SQL writes)
+        shell: bash
+        env:
+          ISOLATED_DIRECT_URL: ${{ secrets.AVANCA_DEV_ISOLATED_DIRECT_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { neon } from '@neondatabase/serverless';
+          const raw = process.env.ISOLATED_DIRECT_URL;
+          if (!raw) throw new Error('GitHub Environment secret AVANCA_DEV_ISOLATED_DIRECT_URL is missing.');
+          let target;
+          try { target = new URL(raw); } catch { throw new Error('Invalid PostgreSQL URL configured for isolated DEV.'); }
+          const EXPECTED_HOST = 'ep-empty-rain-b52xpcx0.c-7.us-east-2.aws.neon.tech';
+          if (!['postgres:', 'postgresql:'].includes(target.protocol) ||
+              target.hostname !== EXPECTED_HOST ||
+              (target.port && target.port !== '5432') ||
+              target.pathname !== '/neondb' ||
+              !target.username || !target.password) {
+            throw new Error('Safety check: not the approved isolated Neon DEV neondb.');
+          }
+          const sql = neon(raw);
+          const result = await sql`SELECT
+            (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE') AS tables,
+            (SELECT COUNT(*)::int FROM drizzle.__drizzle_migrations) AS migrations,
+            (SELECT COUNT(*)::int FROM public.users) AS users,
+            (SELECT COUNT(*)::int FROM public.properties) AS properties,
+            (SELECT COUNT(*)::int FROM public.clients) AS clients,
+            (SELECT COUNT(*)::int FROM public.tenants WHERE standard_domain IS NOT NULL OR custom_domain IS NOT NULL) AS domains,
+            (SELECT COUNT(*)::int FROM pg_index WHERE NOT indisvalid OR NOT indisready) AS invalid_indexes`;
+          const r = result[0];
+          console.log('Isolated Neon DEV: public tables',r.tables,'| applied migrations',r.migrations,
+            '| users',r.users,'| properties',r.properties,
+            '| clients',r.clients,'| mapped domains',r.domains,'| invalid indexes',r.invalid_indexes);
+          if (Number(r.migrations) !== 23 ||
+              Number(r.tables) !== 42 ||
+              Number(r.users) !== 0 ||
+              Number(r.properties) !== 0 ||
+              Number(r.clients) !== 0 ||
+              Number(r.domains) !== 0 ||
+              Number(r.invalid_indexes) !== 0) {
+            throw new Error('The isolated DEV database differs from the verified baseline; investigate before changing it.');
+          }
+          console.log('ISOLATED DEV READ-ONLY VERIFICATION APPROVED.');
+          NODE
