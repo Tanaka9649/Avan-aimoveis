@@ -1,0 +1,112 @@
+name: "Neon DEV isolado - migrações manuais"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Para autorizar SOMENTE o DEV isolado, digite MIGRAR-DEV-ISOLADO"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: avanca-neon-dev-isolado-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate-dev-isolado:
+    if: ${{ github.repository == 'Tanaka9649/Avan-aimoveis' && inputs.confirmation == 'MIGRAR-DEV-ISOLADO' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: avanca-dev-isolado
+    steps:
+      - name: Checkout pinned reviewed SaaS migration source
+        uses: actions/checkout@v5
+        with:
+          ref: 8d4d19bf3c09eff9f5c1d26484cda2b1c963498c
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies before secrets are accessible
+        run: npm ci
+
+      - name: Verify exact Neon target without printing credentials
+        env:
+          ISOLATED_DIRECT_URL: ${{ secrets.AVANCA_DEV_ISOLATED_DIRECT_URL }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const raw = process.env.ISOLATED_DIRECT_URL;
+          if (!raw) throw new Error('Missing isolated DEV environment secret.');
+          let target;
+          try { target = new URL(raw); } catch { throw new Error('Secret is not a valid PostgreSQL URL.'); }
+          const EXPECTED_HOST = 'ep-empty-rain-b52xpcx0.c-7.us-east-2.aws.neon.tech';
+          if (!['postgres:', 'postgresql:'].includes(target.protocol) ||
+              target.hostname !== EXPECTED_HOST ||
+              (target.port && target.port !== '5432') ||
+              target.pathname !== '/neondb' ||
+              !target.username || !target.password) {
+            throw new Error('Safety check failed: target is not isolated Neon DEV neondb.');
+          }
+          console.log('Safe target: isolated Neon DEV endpoint and neondb. Credentials hidden.');
+          NODE
+
+      - name: Require an empty destination database
+        env:
+          ISOLATED_DIRECT_URL: ${{ secrets.AVANCA_DEV_ISOLATED_DIRECT_URL }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { neon } from '@neondatabase/serverless';
+          const sql = neon(process.env.ISOLATED_DIRECT_URL);
+          const rows = await sql`SELECT COUNT(*)::int AS total FROM pg_catalog.pg_tables WHERE schemaname = 'public'`;
+          if (Number(rows[0].total) !== 0) {
+            throw new Error('Destination is no longer empty. Refusing to rerun automatically.');
+          }
+          console.log('Blank isolated DEV schema verified.');
+          NODE
+
+      - name: Apply pinned Drizzle migrations (0000-0022)
+        env:
+          DIRECT_URL: ${{ secrets.AVANCA_DEV_ISOLATED_DIRECT_URL }}
+        run: npm run db:migrate
+
+      - name: Neutralize production domain and verify no business data
+        env:
+          ISOLATED_DIRECT_URL: ${{ secrets.AVANCA_DEV_ISOLATED_DIRECT_URL }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { neon } from '@neondatabase/serverless';
+          const sql = neon(process.env.ISOLATED_DIRECT_URL);
+          await sql`UPDATE public.tenants
+            SET name = 'Avança Imóveis - DEV isolado',
+                standard_domain = NULL,
+                custom_domain = NULL,
+                site = '{"title":"Avança Imóveis - AMBIENTE DE TESTE"}'::jsonb,
+                updated_at = now()
+            WHERE id = '00000000-0000-4000-8000-000000000001'::uuid`;
+          const result = await sql`SELECT
+            (SELECT COUNT(*)::int FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE') AS tables,
+            (SELECT COUNT(*)::int FROM public.users) AS users,
+            (SELECT COUNT(*)::int FROM public.properties) AS properties,
+            (SELECT COUNT(*)::int FROM public.clients) AS clients,
+            (SELECT COUNT(*)::int FROM public.tenants WHERE standard_domain IS NOT NULL OR custom_domain IS NOT NULL) AS domains`;
+          const row = result[0];
+          if (Number(row.tables) === 0 ||
+              Number(row.users) !== 0 ||
+              Number(row.properties) !== 0 ||
+              Number(row.clients) !== 0 ||
+              Number(row.domains) !== 0) {
+            throw new Error('DEV schema verification failed: unexpected business data or domain.');
+          }
+          console.log('DEV migration successful. Public tables:', row.tables,
+            '| users: 0 | properties: 0 | clients: 0 | domains: 0');
+          NODE
