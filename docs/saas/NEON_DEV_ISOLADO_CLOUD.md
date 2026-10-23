@@ -1,43 +1,34 @@
-# Neon: desenvolvimento isolado via GitHub Actions
+# Neon DEV isolado: operação 100% na nuvem
 
-## Escopo confirmado
+## Projeto e estado verificado (23/10/2026)
 
-- Neon **novo** projeto `avanca-imoveis-dev-isolado`, ID `lively-dawn-85746107`
-- Branch `development`, ID `br-rapid-mud-b57m1bsh`
-- PostgreSQL 18, região `aws-us-east-2`, banco `neondb`
-- Endpoint PostgreSQL não-pooler esperado: `ep-empty-rain-b52xpcx0.c-7.us-east-2.aws.neon.tech`
-- Projeto anterior `avan-aimoveis-dev` (ID `wandering-snow-32301627`) **fora do escopo**.
+- Neon: `avanca-imoveis-dev-isolado`, projeto `lively-dawn-85746107`
+- Branch `development`: `br-rapid-mud-b57m1bsh`
+- PostgreSQL 18, região AWS `us-east-2`, database `neondb`
+- Endpoint Direct: `ep-empty-rain-b52xpcx0.c-7.us-east-2.aws.neon.tech`
+- **Leitura direta no Neon após criação:** 42 tabelas `public`, 23 migrações registradas em `drizzle.__drizzle_migrations`, 0 usuários, 0 clientes, 0 imóveis, 0 fotos cadastradas, 0 negócios, 0 índices inválidos, 0 constraints não validadas, 0 domínios de tenant configurados.
+- Tenant de desenvolvimento `Avanca Imoveis - DEV ISOLADO`, status `configuring`, sem domínio de produção.
+- **A origem da aplicação das 23 migrações não foi identificada nesta operação.** O banco apareceu preenchido depois de uma consulta inicial que mostrava zero tabelas; não reexecute migrações sem investigar.
 
-Este PR **não** altera conexões da Vercel, não migra produção, não cria um deployment e não toca nos dez branches antigos. A migração só será executada após merge e despacho **manual** com confirmação textual.
+**Nenhuma migração, seed nem DDL foi executada neste PR.** O banco antigo `avan-aimoveis-dev` (`wandering-snow-32301627`) e a Vercel estão fora do escopo.
 
-## Antes de executar pela primeira vez
+## Workflow preparado para verificação — somente leitura
 
-1. Revise e aprove este PR. Ele adiciona apenas um workflow manual ao GitHub. O arquivo só aparece como workflow executável depois de entrar na branch padrão do repositório.
-2. Acesse o Neon no navegador, projeto `avanca-imoveis-dev-isolado`, branch `development`, database `neondb`. Em **Connect**, escolha conexão **Direct** (não pooled). Confirme que o hostname é o endpoint indicado acima.
-3. Em GitHub, abra este repositório em **Settings > Environments**. Crie `avanca-dev-isolado`. Configure, se disponível no plano, revisores obrigatórios e restrição de branches para a branch padrão.
-4. Dentro desse ambiente GitHub, em **Environment secrets**, adicione `AVANCA_DEV_ISOLATED_DIRECT_URL` com a conexão Direct completa. Faça essa operação **diretamente nas interfaces Neon e GitHub**, nunca em chat, issue, pull request ou documento.
-5. Verifique que o segredo está no **ambiente** `avanca-dev-isolado`, e não em Production da Vercel.
+O arquivo `.github/workflows/migrate-neon-dev-isolado.yml`, apesar do nome histórico, **não migra dados nem altera tabelas**. Apenas verifica o endpoint exato, as contagens e a integridade estrutural mínima. Não é acionado automaticamente.
 
-## Execução
+Para usá-lo, após revisar e mesclar este PR na branch padrão:
 
-Após merge na branch padrão, vá em GitHub **Actions > Neon DEV isolado - migrações manuais > Run workflow** e informe **exatamente** `MIGRAR-DEV-ISOLADO`.
+1. No Neon, abra o projeto isolado e selecione branch `development`, banco `neondb`, **Direct** (não pooled). Confirme o hostname.
+2. No GitHub, abra `Settings > Environments`, crie `avanca-dev-isolado` e configure revisores obrigatórios e restrições de branch se disponíveis no seu plano.
+3. Adicione **Environment secret** chamado `AVANCA_DEV_ISOLATED_DIRECT_URL`. Cole a conexão completa **diretamente no GitHub**, nunca em chat, pull request, arquivo versionado ou logs.
+4. Depois do merge, em **Actions > Neon DEV isolado - verificação manual > Run workflow**, informe `VERIFICAR-DEV-ISOLADO`.
+5. O workflow deve terminar com `ISOLATED DEV READ-ONLY VERIFICATION APPROVED.`. Caso as contagens mudem, bloqueia o check. **Não há execução de migrações nem deploy.**
 
-Proteções do workflow:
+O código de verificação utiliza uma revisão fixa para dependências: `8d4d19bf3c09eff9f5c1d26484cda2b1c963498c`.
 
-- Referência de código de migrações **fixada** em `8d4d19bf3c09eff9f5c1d26484cda2b1c963498c` (`feat/saas-multitenant` no momento da preparação)
-- Valida hostname exato, banco `neondb` e protocolo PostgreSQL antes de qualquer migração
-- Exige banco vazio (o workflow não pode ser repetido automaticamente em banco já populado)
-- Usa `npm ci` com lockfile e aplica `npm run db:migrate` (Drizzle, **não Prisma**)
-- Ajusta o tenant criado pelas migrações para remover o domínio real da produção no banco de testes
-- Confere que não existem usuários, clientes, imóveis nem domínios de tenants vinculados
-- Nunca imprime a string de conexão nem roda deploy na Vercel
+## Próximos marcos
 
-**Atenção:** se a migração interromper após criar algumas tabelas, não a execute novamente sem diagnóstico. O teste de banco vazio impedirá a repetição automática para evitar uma migração parcial inesperada.
-
-## Depois da execução
-
-Conferir no Neon as tabelas, migrações e contagem zero de usuários/clientes/imóveis, então planejar um Preview **separado** na Vercel, com credenciais e recursos de storage específicos de desenvolvimento. Não migrar nem alterar os valores Secret de Production.
-
-## Backups existentes (pendência independente)
-
-Os backups dos 10 branches antigos, 698 fotos e 5 documentos foram validados localmente. **Uma segunda cópia independente em nuvem ainda não foi realizada.** A criação deste projeto e o workflow não substituem essa cópia. A forma segura é armazená-los criptografados em um destino privado, preservando manifests e hashes, sem publicar em GitHub nem em site público.
+- Para **migrations futuras**, revisar diferenças Drizzle e preparar um workflow separado explicitamente autorizado antes de executar qualquer DDL.
+- Preparar Preview de teste na Vercel com banco e buckets exclusivos de desenvolvimento. **Não alterar variáveis Secret de Production** nem atribuir domínio de produção ao banco de testes.
+- Guardar backups antigos em segunda cópia criptografada independente na nuvem. Hoje foram validados no Windows, mas **a segunda cópia cloud ainda não foi feita**.
+- Não excluir nenhum dos 10 branches antigos até concluir associação de conexões e segunda cópia.
